@@ -1,0 +1,7 @@
+{
+  "name": "example-ts",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/services/example-ts/src",
+  "tags": ["type:app", "stack:ts", "platform:serverless"]
+}
