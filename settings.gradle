@@ -1,0 +1,21 @@
+pluginManagement {
+  repositories {
+    mavenCentral()
+    gradlePluginPortal()
+  }
+  plugins {
+    id 'io.quarkus' version "${quarkusPluginVersion}"
+  }
+}
+
+rootProject.name = 'playground'
+
+// NOTE: o nome do projeto Gradle vira o nome do projeto no Nx (@nx/gradle);
+// o serviço fica na mesma raiz do serverless.yml para os targets do Gradle e
+// os do plugin serverless caírem no mesmo projeto.
+include ':example-quarkus'
+project(':example-quarkus').projectDir =
+    file('apps/services/example-quarkus')
+include ':example-quarkus-core'
+project(':example-quarkus-core').projectDir =
+    file('apps/services/example-quarkus/core')
