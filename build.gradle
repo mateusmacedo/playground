@@ -1,0 +1,55 @@
+plugins {
+  id 'io.quarkus' apply false
+  // WHY: relata projetos, dependências e tasks do Gradle ao @nx/gradle, que
+  // monta o grafo e os targets do Nx.
+  id 'dev.nx.gradle.project-graph' version '0.1.26'
+  id 'com.diffplug.spotless' version '8.11.0' apply false
+}
+
+allprojects {
+  apply plugin: 'dev.nx.gradle.project-graph'
+}
+
+subprojects {
+  apply plugin: 'java-library'
+  apply plugin: 'com.diffplug.spotless'
+
+  group = 'dev.playground'
+  version = '0.1.0-SNAPSHOT'
+
+  repositories {
+    mavenCentral()
+  }
+
+  java {
+    toolchain {
+      languageVersion = JavaLanguageVersion.of(21)
+    }
+  }
+
+  spotless {
+    java {
+      target 'src/**/*.java'
+      // NOTE: versão do Eclipse fixada para o formato não mudar quando o
+      // Spotless trocar o padrão; o perfil serve também ao editor.
+      eclipse('4.41').configFile(
+          rootProject.file('tools/java/eclipse-formatter.xml'))
+    }
+  }
+
+  tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs.add('-parameters')
+  }
+
+  dependencies {
+    testImplementation enforcedPlatform(
+        "${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+  }
+
+  tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+  }
+}
