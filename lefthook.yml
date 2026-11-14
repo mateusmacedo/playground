@@ -1,0 +1,37 @@
+pre-commit:
+  commands:
+    biome:
+      # NOTE: cobre JS, TS, JSON, CSS, SCSS, YAML e Markdown; Go e Java têm
+      # formatador próprio.
+      run: pnpm exec biome check --write --staged --no-errors-on-unmatched
+      stage_fixed: true
+    gofmt:
+      glob: '*.go'
+      run: gofmt -w {staged_files}
+      stage_fixed: true
+    terraform-fmt:
+      glob: '*.{tf,tfvars,tftest.hcl}'
+      # WHY: quem não mexe em infra não precisa do Terraform instalado; o gate
+      # `fmt` do CI pega o que passar sem formatar.
+      run: |
+        if ! command -v terraform > /dev/null 2>&1; then
+          echo 'terraform não instalado: formatação de .tf pulada (o CI confere)' >&2
+          exit 0
+        fi
+        terraform fmt {staged_files}
+      stage_fixed: true
+    # NOTE: sem Spotless (Java) aqui: 2 a 8 s com o daemon do Gradle quente, mas
+    # 22 a 26 s com a JVM fria. Ele roda no `build` do core (PR) e no release;
+    # para corrigir à mão: `./gradlew spotlessApply`.
+
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpm exec commitlint --edit {1}
+
+pre-push:
+  commands:
+    affected:
+      # WHY: nível rápido, sem build nem e2e e só 2 em paralelo para não saturar
+      # a máquina. O `test` de Go e Java entra aqui; o `lint`, onde o projeto o tem.
+      run: pnpm exec nx affected -t lint typecheck test --base=origin/main --parallel=2
