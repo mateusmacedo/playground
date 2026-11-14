@@ -1,6 +1,6 @@
-import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
 import { join } from 'node:path';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig(() => ({
   root: import.meta.dirname,
@@ -14,6 +14,9 @@ export default defineConfig(() => ({
   test: {
     name: 'backoffice',
     watch: false,
+    // WHY: sem limite o Vitest usa todos os núcleos; com 3 tarefas do Nx em
+    // paralelo isso satura a máquina. VITEST_MAX_WORKERS sobrescreve este valor.
+    maxWorkers: 2,
     globals: true,
     environment: 'jsdom',
     include: [
@@ -23,6 +26,9 @@ export default defineConfig(() => ({
     coverage: {
       reportsDirectory: './test-output/vitest/coverage',
       provider: 'v8' as const,
+      // NOTE: cobertura só quando pedida (VITEST_COVERAGE=1 ou `--coverage`);
+      // a variável entra no hash do Nx via targetDefaults.test.inputs.
+      enabled: process.env.VITEST_COVERAGE === '1',
     },
   },
 }));

@@ -1,7 +1,6 @@
 'use client';
 
-import Link from 'next/link';
-import { useMemo } from 'react';
+import CIcon from '@coreui/icons-react';
 import {
   CCloseButton,
   CSidebar,
@@ -10,7 +9,8 @@ import {
   CSidebarHeader,
   CSidebarToggler,
 } from '@coreui/react';
-import CIcon from '@coreui/icons-react';
+import Link from 'next/link';
+import { useMemo } from 'react';
 
 import { appConfig } from '@/core/config/app-config';
 import { useSession } from '@/core/session/session-context';
@@ -33,6 +33,9 @@ export function AppSidebar() {
 
   return (
     <CSidebar
+      // WHY: <nav> dá ao menu o papel `navigation`, para leitor de tela e para o e2e acharem o menu sem depender do id.
+      aria-label="Menu lateral"
+      as="nav"
       className="border-end d-print-none"
       colorScheme="dark"
       id="sidebar"
