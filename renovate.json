@@ -1,0 +1,86 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "timezone": "America/Sao_Paulo",
+  "packageRules": [
+    {
+      "description": "Nx não atualiza só por versão: as migrations vêm do `nx migrate`, então sem automerge.",
+      "matchPackageNames": ["nx", "@nx/**"],
+      "groupName": "nx",
+      "automerge": false,
+      "prBodyNotes": [
+        "Depois do merge das versões, rode `pnpm nx migrate latest` (ou a versão do grupo) para aplicar as migrations do Nx."
+      ]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "schedule": ["before 6am on monday"]
+    },
+    {
+      "description": "O plugin do Gradle e o BOM do Quarkus precisam andar na mesma versão: um único PR para os dois.",
+      "matchPackageNames": ["io.quarkus**", "io.quarkus.platform**"],
+      "groupName": "quarkus"
+    },
+    {
+      "description": "Wrapper do Gradle em PR próprio (a versão fixa o Gradle de todos os módulos Java).",
+      "matchManagers": ["gradle-wrapper"],
+      "groupName": "gradle-wrapper"
+    },
+    {
+      "description": "Depois de atualizar um módulo Go, roda `go mod tidy` para manter go.sum e go.mod coerentes.",
+      "matchManagers": ["gomod"],
+      "postUpdateOptions": ["gomodTidy"]
+    },
+    {
+      "description": "Os providers do Terraform sobem juntos, num PR só, com o .terraform.lock.hcl de cada casca e módulo atualizado.",
+      "matchManagers": ["terraform"],
+      "matchDepTypes": ["required_provider"],
+      "groupName": "terraform-providers"
+    },
+    {
+      "description": "O plugin aws do tflint exige uma faixa de versões do tflint, então os dois sobem juntos.",
+      "matchPackageNames": [
+        "terraform-linters/tflint",
+        "terraform-linters/tflint-ruleset-aws"
+      ],
+      "groupName": "tflint"
+    },
+    {
+      "description": "A lib de eventos da Lambda e o adaptador HTTP evoluem juntos.",
+      "matchPackageNames": [
+        "github.com/aws/aws-lambda-go",
+        "github.com/awslabs/aws-lambda-go-api-proxy"
+      ],
+      "groupName": "aws-lambda-go"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/actionlint\\.versions$/"],
+      "matchStrings": [
+        "ACTIONLINT_VERSION=(?<currentValue>[0-9.]+)[\\s\\S]*?ACTIONLINT_REF_SHA=(?<currentDigest>[a-f0-9]{40})"
+      ],
+      "depNameTemplate": "rhysd/actionlint",
+      "datasourceTemplate": "github-tags",
+      "extractVersionTemplate": "^v?(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^tools/lint-actions\\.sh$/"],
+      "matchStrings": ["RENOVATE_PIN_VERSION=\"(?<currentValue>[0-9.]+)\""],
+      "depNameTemplate": "renovate",
+      "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "description": "Versões do Terraform e do tflint fixadas no composite `setup`, cada uma marcada com `# renovate:` na linha de cima.",
+      "managerFilePatterns": ["/^\\.github/actions/setup/action\\.yml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n\\s+(?:terraform|tflint)_version: (?<currentValue>[0-9.]+)"
+      ],
+      "extractVersionTemplate": "^v?(?<version>.+)$"
+    }
+  ]
+}

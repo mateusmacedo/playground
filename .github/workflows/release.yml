@@ -1,0 +1,198 @@
+name: Release
+
+# NOTE: ciclo de versão inteiro no GitHub, via `nx release`: versão pelos
+# conventional commits, changelog por projeto, tag `{projeto}@{versão}`, GitHub
+# Release por projeto e publicação (GitHub Packages para npm e GHCR para
+# imagens). Antes de publicar roda a validação completa da política "rápido por
+# padrão, completo só no release": todos os projetos, com coverage e e2e em
+# todos os browsers.
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Simula o release (nada é commitado, tagueado, publicado nem criado no GitHub)'
+        required: false
+        default: false
+        type: boolean
+
+# WHY: um release por vez e nunca cancelado no meio: cancelar entre o push das
+# tags e a publicação deixa o repositório com tag sem pacote.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NODE_OPTIONS: --max-old-space-size=3072
+  NX_DAEMON: 'false'
+
+jobs:
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          go-version-file: apps/services/example-go/go.mod
+
+      - name: Biome (completo)
+        run: pnpm exec biome ci .
+
+      # WHY: o Biome não formata Go; o script falha se o gofmt listar algum
+      # arquivo e é o mesmo do ci.yml e do lint dos serviços Go.
+      - name: gofmt
+        run: bash tools/go-fmt-check.sh
+
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # WHY: o valor entra no hash do Nx (targetDefaults.test.inputs), então o
+    # teste com coverage não reaproveita o cache do PR, que roda sem coverage.
+    env:
+      VITEST_COVERAGE: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          go-version-file: apps/services/example-go/go.mod
+          java-version: '21'
+          terraform: 'true'
+
+      - name: Verificar sync
+        run: pnpm exec nx sync:check
+
+      # NOTE: `spotlessCheck` só existe nos projetos Gradle (Java) e leva de 20 a
+      # 50 s, caro demais para o PR; o `build` do core já roda o `check`, mas o
+      # módulo do app só passa por aqui.
+      # NOTE: `fmt` e `validate` só existem nos projetos de Terraform; o Nx pula
+      # os projetos sem o target.
+      - name: Lint, typecheck, test, build, fmt, validate e spotless de todos os projetos
+        run: pnpm exec nx run-many -t lint typecheck test build fmt validate spotlessCheck --parallel=3
+
+  e2e:
+    name: E2E (todos os browsers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      E2E_ALL_BROWSERS: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          java-version: '21'
+
+      # WHY: Edge e Chrome de canal não vêm no runner e não estão nos projetos.
+      - name: Instalar browsers
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
+
+      - name: E2E
+        run: pnpm exec nx run-many -t e2e
+
+  release:
+    name: Release
+    needs: [format, checks, e2e]
+    # WHY: release de verdade só a partir da main; o dry-run vale em qualquer
+    # branch porque não altera nada.
+    if: ${{ inputs.dry-run || github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # NOTE: `contents: write` cria o commit de release, as tags e os GitHub
+    # Releases; `packages: write` publica no GitHub Packages e no GHCR.
+    # `id-token: write` não entra: a proveniência do npm não existe no GitHub
+    # Packages.
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      # WHY: o `nx release` precisa da história inteira e das tags para achar a
+      # versão atual de cada projeto, e do token no git para fazer o push.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: true
+
+      # NOTE: `registry-url` e `scope` fazem o setup-node gerar o .npmrc com
+      # `NODE_AUTH_TOKEN` para o GitHub Packages.
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          go-version-file: apps/services/example-go/go.mod
+          java-version: '21'
+          registry-url: https://npm.pkg.github.com
+          scope: '@mateusmacedo'
+
+      - name: Login no GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configurar autor do commit de release
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # WHY: com 0 projetos publicáveis o `nx release` falha DEPOIS de criar
+      # tags e Releases (não acha o alvo `nx-release-publish`); aí só versiona.
+      # Conta só libs npm não privadas e imagens dos grupos de release (as
+      # tags `publishable` e `release:image`), não qualquer projeto com Dockerfile.
+      - name: Contar projetos publicáveis
+        id: publishable
+        run: |
+          count="$(pnpm exec nx show projects --withTarget=nx-release-publish -p 'tag:publishable,tag:release:image' --json | jq 'length')"
+          echo "projetos publicáveis: ${count}"
+          echo "count=${count}" >> "$GITHUB_OUTPUT"
+
+      # WHY: no dry-run o `nx release` não roda o preVersionCommand que constrói
+      # as imagens e o `docker tag` falha sem a imagem local. No release de
+      # verdade o próprio Nx constrói antes de versionar.
+      - name: Construir imagens (dry-run)
+        if: ${{ inputs.dry-run }}
+        run: |
+          count="$(pnpm exec nx show projects --withTarget=docker:build --json | jq 'length')"
+          if [ "${count}" -gt 0 ]; then
+            pnpm exec nx run-many -t docker:build
+          else
+            echo "nenhum projeto com Dockerfile"
+          fi
+
+      # NOTE: `--yes` e `--skip-publish` são mutuamente exclusivos. O primeiro
+      # release não precisa de `--first-release`: sem tag o Nx cai no fallback
+      # `disk` configurado no nx.json.
+      # `LEFTHOOK=0`: o commit de release é do bot e o código já passou pela
+      # validação dos jobs anteriores; os hooks são para quem desenvolve.
+      - name: Nx Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LEFTHOOK: '0'
+          DRY_RUN: ${{ inputs.dry-run }}
+          PUBLISHABLE: ${{ steps.publishable.outputs.count }}
+        run: |
+          args=()
+          if [ "${DRY_RUN}" = 'true' ]; then args+=(--dry-run); fi
+          if [ "${PUBLISHABLE}" = '0' ]; then args+=(--skip-publish); else args+=(--yes); fi
+          pnpm exec nx release "${args[@]}"

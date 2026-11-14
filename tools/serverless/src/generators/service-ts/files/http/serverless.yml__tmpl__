@@ -1,0 +1,43 @@
+service: <%= serviceName %>
+
+frameworkVersion: '4'
+
+# WHY: o núcleo do Serverless v4 fala com CloudFormation e S3 pelo AWS SDK v2,
+# que ignora AWS_ENDPOINT_URL; o plugin redireciona essas chamadas ao Floci.
+plugins:
+  - serverless-localstack
+
+custom:
+  localstack:
+    stages:
+      - local
+    host: http://localhost
+    edgePort: 4566
+    autostart: false
+  # WHY: sem retenção o grupo de logs da função nunca expira e o custo de
+  # armazenamento só cresce; prod guarda mais para investigação.
+  logRetentionInDays:
+    prod: 30
+  nxServerless:
+    language: typescript
+    type: http
+
+provider:
+  name: aws
+  stage: ${opt:stage, 'local'}
+  region: ${env:AWS_REGION, 'us-east-1'}
+  runtime: <%= runtime %>
+  architecture: ${env:SLS_ARCH, 'arm64'}
+  memorySize: <%= memorySize %>
+  timeout: <%= timeout %>
+  logRetentionInDays: ${self:custom.logRetentionInDays.${sls:stage}, 7}
+  environment:
+    LOG_LEVEL: ${ssm:<%= ssmPrefix %>/${sls:stage}/${aws:region}/<%= serviceName %>/config/log-level, 'info'}
+
+functions:
+  handler:
+    handler: src/entrypoints/lambda.handler
+    events:
+      - httpApi:
+          path: /<%= serviceName %>
+          method: get

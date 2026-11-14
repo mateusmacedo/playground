@@ -17,11 +17,11 @@ export function AppFooter() {
       <div className="ms-auto">
         Feito por{' '}
         <a
-          href="https://github.com/mateusmacedo"
+          href={appConfig.credit.url}
           rel="noopener noreferrer"
           target="_blank"
         >
-          Mateus Macedo
+          {appConfig.credit.name}
         </a>
       </div>
     </CFooter>

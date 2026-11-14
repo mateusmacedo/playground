@@ -1,6 +1,14 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import {
+  cilAccountLogout,
+  cilContrast,
+  cilMenu,
+  cilMoon,
+  cilSun,
+  cilUser,
+} from '@coreui/icons';
+import CIcon from '@coreui/icons-react';
 import {
   CAvatar,
   CContainer,
@@ -12,19 +20,11 @@ import {
   CHeader,
   CHeaderNav,
   CHeaderToggler,
-  useColorModes,
 } from '@coreui/react';
-import CIcon from '@coreui/icons-react';
-import {
-  cilAccountLogout,
-  cilContrast,
-  cilMenu,
-  cilMoon,
-  cilSun,
-  cilUser,
-} from '@coreui/icons';
+import { useEffect, useRef } from 'react';
 
 import { useSession } from '@/core/session/session-context';
+import { useColorMode } from '@/shared/hooks/use-color-mode';
 import { useIsClient } from '@/shared/hooks/use-is-client';
 
 import { AppBreadcrumb } from './app-breadcrumb';
@@ -53,7 +53,7 @@ export function AppHeader() {
   const headerRef = useRef<HTMLDivElement>(null);
   const { sidebarVisible, setSidebarVisible } = useShell();
   const { user, signOut } = useSession();
-  const { colorMode, setColorMode } = useColorModes(THEME_STORAGE_KEY);
+  const { colorMode, setColorMode } = useColorMode(THEME_STORAGE_KEY);
   // WHY: o tema salvo só existe no navegador; antes da hidratação o ícone fica neutro para não divergir do servidor.
   const isClient = useIsClient();
   const currentMode = isClient
@@ -66,7 +66,7 @@ export function AppHeader() {
         'shadow-sm',
         document.documentElement.scrollTop > 0,
       );
-    document.addEventListener('scroll', handleScroll);
+    document.addEventListener('scroll', handleScroll, { passive: true });
     return () => document.removeEventListener('scroll', handleScroll);
   }, []);
 

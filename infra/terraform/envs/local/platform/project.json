@@ -1,0 +1,131 @@
+{
+  "name": "infra-local-platform",
+  "$schema": "../../../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "infra/terraform/envs/local/platform",
+  "tags": ["scope:infra", "type:tool"],
+  "namedInputs": {
+    "terraform": [
+      "{projectRoot}/*.tf",
+      "{projectRoot}/*.tfvars",
+      "{projectRoot}/.terraform.lock.hcl",
+      "{workspaceRoot}/infra/terraform/modules/network/*.tf",
+      "{workspaceRoot}/infra/terraform/modules/ecr/*.tf",
+      "{workspaceRoot}/infra/terraform/modules/alb/*.tf",
+      "{workspaceRoot}/infra/terraform/modules/ssm-contract/*.tf",
+      { "runtime": "terraform version -json" }
+    ],
+    "terraformModuleTests": [
+      "{workspaceRoot}/infra/terraform/modules/network/*.tf",
+      "{workspaceRoot}/infra/terraform/modules/network/.terraform.lock.hcl",
+      "{workspaceRoot}/infra/terraform/modules/network/tests/*.tftest.hcl",
+      "{workspaceRoot}/infra/terraform/modules/ecr/*.tf",
+      "{workspaceRoot}/infra/terraform/modules/ecr/.terraform.lock.hcl",
+      "{workspaceRoot}/infra/terraform/modules/ecr/tests/*.tftest.hcl",
+      "{workspaceRoot}/infra/terraform/modules/alb/*.tf",
+      "{workspaceRoot}/infra/terraform/modules/alb/.terraform.lock.hcl",
+      "{workspaceRoot}/infra/terraform/modules/alb/tests/*.tftest.hcl",
+      "{workspaceRoot}/infra/terraform/modules/ssm-contract/*.tf",
+      "{workspaceRoot}/infra/terraform/modules/ssm-contract/.terraform.lock.hcl",
+      "{workspaceRoot}/infra/terraform/modules/ssm-contract/tests/*.tftest.hcl",
+      { "runtime": "terraform version -json" }
+    ]
+  },
+  "targets": {
+    "init": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "cwd": "{projectRoot}",
+        "env": {
+          "TF_DATA_DIR": "../../../../../tmp/terraform/infra-local-platform"
+        },
+        "command": "terraform init -input=false"
+      }
+    },
+    "fmt": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["terraform"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "terraform fmt -check -recursive . ../../../modules/network ../../../modules/ecr ../../../modules/alb ../../../modules/ssm-contract"
+      }
+    },
+    "validate": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["terraform"],
+      "dependsOn": ["init"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "env": {
+          "TF_DATA_DIR": "../../../../../tmp/terraform/infra-local-platform"
+        },
+        "command": "terraform validate"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "terraform",
+        "{workspaceRoot}/.tflint.hcl",
+        { "runtime": "tflint --version" }
+      ],
+      "dependsOn": ["init"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "env": {
+          "TF_DATA_DIR": "../../../../../tmp/terraform/infra-local-platform"
+        },
+        "command": "tflint --config=../../../../../.tflint.hcl"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["terraformModuleTests"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "for m in network ecr alb ssm-contract; do export TF_DATA_DIR=../../../../tmp/terraform/infra-local-platform-$m; terraform -chdir=../../../modules/$m init -backend=false -input=false -lockfile=readonly && terraform -chdir=../../../modules/$m test || exit 1; done"
+      }
+    },
+    "plan": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["init"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "env": {
+          "TF_DATA_DIR": "../../../../../tmp/terraform/infra-local-platform"
+        },
+        "command": "terraform plan -input=false"
+      }
+    },
+    "apply": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["init"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "env": {
+          "TF_DATA_DIR": "../../../../../tmp/terraform/infra-local-platform"
+        },
+        "command": "terraform apply -input=false -auto-approve"
+      }
+    },
+    "destroy": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["init"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "env": {
+          "TF_DATA_DIR": "../../../../../tmp/terraform/infra-local-platform"
+        },
+        "command": "terraform destroy -input=false -auto-approve"
+      }
+    }
+  }
+}

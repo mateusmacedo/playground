@@ -1,0 +1,29 @@
+import { describe, expect, it } from 'vitest';
+
+import { DomainError, processMessage } from './messages.js';
+
+describe('processMessage', () => {
+  it('devolve o payload de uma mensagem com corpo JSON', async () => {
+    await expect(
+      processMessage({ id: 'msg-1', body: '{"action":"a"}' }),
+    ).resolves.toEqual({ id: 'msg-1', payload: { action: 'a' } });
+  });
+
+  it('recusa corpo que não é JSON', async () => {
+    await expect(
+      processMessage({ id: 'msg-2', body: 'não é json' }),
+    ).rejects.toThrow('Mensagem msg-2 com corpo inválido');
+  });
+
+  it('recusa com invalid_input e sem o conteúdo do corpo no erro', async () => {
+    const body = 'Bearer eyJhbGciOiJIUzI1NiJ9.segredo';
+
+    const error = await processMessage({ id: 'msg-3', body }).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toBeInstanceOf(DomainError);
+    expect(error).toMatchObject({ code: 'invalid_input', cause: 'SyntaxError' });
+    expect(String((error as DomainError).stack)).not.toContain('eyJ');
+  });
+});

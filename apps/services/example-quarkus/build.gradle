@@ -1,0 +1,33 @@
+plugins {
+  id 'io.quarkus'
+}
+
+// WHY: o adapter de runtime é escolhido no build (ADR 0008). Com a extensão
+// quarkus-amazon-lambda-http, o Quarkus troca o servidor HTTP pelo loop de
+// eventos da Lambda, e o artefato só roda dentro dela; sem a extensão, o mesmo
+// código JAX-RS sobe como servidor HTTP comum, para container.
+def runtime = providers.gradleProperty('runtime').getOrElse('lambda')
+if (!(runtime in ['lambda', 'container'])) {
+  throw new GradleException(
+      "Propriedade runtime inválida: '${runtime}'. Use lambda ou container.")
+}
+
+dependencies {
+  implementation enforcedPlatform(
+      "${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
+  implementation project(':example-quarkus-core')
+  implementation 'io.quarkus:quarkus-arc'
+  implementation 'io.quarkus:quarkus-rest-jackson'
+  implementation 'io.quarkus:quarkus-smallrye-health'
+  implementation 'io.quarkus:quarkus-logging-json'
+  if (runtime == 'lambda') {
+    implementation 'io.quarkus:quarkus-amazon-lambda-http'
+  }
+
+  testImplementation 'io.quarkus:quarkus-junit'
+  testImplementation 'io.rest-assured:rest-assured'
+}
+
+tasks.named('test') {
+  systemProperty 'java.util.logging.manager', 'org.jboss.logmanager.LogManager'
+}

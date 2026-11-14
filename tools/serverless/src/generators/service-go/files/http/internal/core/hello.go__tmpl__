@@ -1,0 +1,13 @@
+// Package core concentra as regras do serviço, sem dependência de runtime.
+package core
+
+// HelloResponse é a resposta do caso de uso SayHello.
+type HelloResponse struct {
+	Message string `json:"message"`
+	Path    string `json:"path"`
+}
+
+// SayHello monta a saudação do serviço para o caminho recebido.
+func SayHello(path string) HelloResponse {
+	return HelloResponse{Message: "Olá de <%= serviceName %>", Path: path}
+}

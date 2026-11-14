@@ -1,0 +1,8 @@
+{
+  "name": "nx-serverless",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "tools/serverless/src",
+  "projectType": "library",
+  "tags": ["type:tool", "scope:shared"],
+  "targets": {}
+}

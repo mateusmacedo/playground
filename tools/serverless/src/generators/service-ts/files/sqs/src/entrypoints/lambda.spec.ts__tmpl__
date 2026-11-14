@@ -1,0 +1,122 @@
+import type { Context, SQSEvent, SQSRecord } from 'aws-lambda';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { processMessage } from '../core/messages.js';
+import { handler } from './lambda.js';
+
+vi.mock('../core/messages.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../core/messages.js')>();
+  return { ...actual, processMessage: vi.fn(actual.processMessage) };
+});
+
+const record = (messageId: string, body: string): SQSRecord =>
+  ({
+    messageId,
+    body,
+    attributes: { ApproximateReceiveCount: '3' },
+  }) as SQSRecord;
+
+const context = { awsRequestId: 'req-1' } as Context;
+
+const captureStdout = () => {
+  const lines: Record<string, unknown>[] = [];
+  vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
+    lines.push(JSON.parse(String(chunk)));
+    return true;
+  });
+  return lines;
+};
+
+describe('entrypoint Lambda', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it('devolve só as falhas em batchItemFailures e resume o lote em JSON', async () => {
+    vi.stubEnv('LOG_LEVEL', 'debug');
+    const lines = captureStdout();
+    const event = {
+      Records: [record('msg-ok', '{}'), record('msg-ruim', 'não é json')],
+    } as SQSEvent;
+
+    await expect(handler(event, context)).resolves.toEqual({
+      batchItemFailures: [{ itemIdentifier: 'msg-ruim' }],
+    });
+    expect(lines).toMatchObject([
+      {
+        level: 'debug',
+        message: 'message_processed',
+        messageId: 'msg-ok',
+        requestId: 'req-1',
+      },
+      {
+        level: 'warn',
+        message: 'message_failed',
+        messageId: 'msg-ruim',
+        receiveCount: 3,
+        permanent: true,
+        requestId: 'req-1',
+      },
+      {
+        level: 'warn',
+        message: 'batch_completed',
+        total: 2,
+        failed: 1,
+        durationMs: expect.any(Number),
+        status: 'partial',
+        requestId: 'req-1',
+      },
+    ]);
+  });
+
+  it('não loga o sucesso por mensagem em INFO e resume o lote completo', async () => {
+    const lines = captureStdout();
+    const event = { Records: [record('msg-ok', '{}')] } as SQSEvent;
+
+    await handler(event, context);
+
+    expect(lines).toMatchObject([
+      {
+        level: 'info',
+        message: 'batch_completed',
+        total: 1,
+        failed: 0,
+        status: 'completed',
+      },
+    ]);
+  });
+
+  it('loga em ERROR a falha que não é entrada inválida', async () => {
+    const lines = captureStdout();
+    vi.mocked(processMessage).mockRejectedValueOnce(
+      new Error('dependência fora do ar'),
+    );
+    const event = { Records: [record('msg-1', '{}')] } as SQSEvent;
+
+    await handler(event, context);
+
+    expect(lines).toMatchObject([
+      { level: 'error', message: 'message_failed', permanent: false },
+      { message: 'batch_completed', status: 'failed' },
+    ]);
+  });
+
+  it('não deixa o começo do corpo recusado chegar ao log', async () => {
+    const chunks: string[] = [];
+    vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
+      chunks.push(String(chunk));
+      return true;
+    });
+    const event = {
+      Records: [record('msg-1', 'Bearer eyJhbGciOiJIUzI1NiJ9.segredo')],
+    } as SQSEvent;
+
+    await handler(event, context);
+
+    const output = chunks.join('');
+    expect(output).toContain('message_failed');
+    expect(output).not.toContain('Bearer');
+    expect(output).not.toContain('eyJ');
+  });
+});

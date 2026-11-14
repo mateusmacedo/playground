@@ -1,0 +1,85 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambdacontext"
+
+	"<%= modulePath %>/internal/core"
+)
+
+func TestHandleScheduleExecutaOJob(t *testing.T) {
+	event := events.EventBridgeEvent{Time: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
+
+	if err := handleSchedule(context.Background(), event); err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+}
+
+func TestHandleScheduleLogaOResultadoComORequestIDDaInvocacao(t *testing.T) {
+	previous := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(previous) })
+	var output bytes.Buffer
+	slog.SetDefault(newLogger(&output, "info"))
+	ctx := lambdacontext.NewContext(context.Background(), &lambdacontext.LambdaContext{AwsRequestID: "req-1"})
+	event := events.EventBridgeEvent{Time: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
+
+	if err := handleSchedule(ctx, event); err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+
+	lines := logLines(t, &output)
+	if len(lines) != 1 || lines[0]["message"] != "job_completed" || lines[0]["requestId"] != "req-1" ||
+		lines[0]["scheduledAt"] != "2026-01-01T00:00:00Z" {
+		t.Fatalf("log inesperado: %v", lines)
+	}
+}
+
+func TestRouterExecutaOJobNoHorarioAgendado(t *testing.T) {
+	request := httptest.NewRequest(http.MethodPost, "/run", nil)
+	request.Header.Set("X-Scheduled-At", "2026-01-01T03:00:00-03:00")
+	recorder := httptest.NewRecorder()
+	newRouter().ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status esperado 200, recebido %d", recorder.Code)
+	}
+	var result core.JobResult
+	if err := json.NewDecoder(recorder.Body).Decode(&result); err != nil {
+		t.Fatalf("corpo não é JSON válido: %v", err)
+	}
+	if want := time.Date(2026, 1, 1, 6, 0, 0, 0, time.UTC); !result.ScheduledAt.Equal(want) {
+		t.Fatalf("horário agendado esperado %s, recebido %s", want, result.ScheduledAt)
+	}
+}
+
+func TestRouterRecusaHorarioAgendadoAusenteOuInvalido(t *testing.T) {
+	for name, value := range map[string]string{"ausente": "", "fora do formato": "amanhã cedo"} {
+		request := httptest.NewRequest(http.MethodPost, "/run", nil)
+		request.Header.Set("X-Request-Id", "req-1")
+		if value != "" {
+			request.Header.Set("X-Scheduled-At", value)
+		}
+		recorder := httptest.NewRecorder()
+		newRouter().ServeHTTP(recorder, request)
+
+		if recorder.Code != http.StatusBadRequest {
+			t.Fatalf("%s: status esperado 400, recebido %d", name, recorder.Code)
+		}
+		var body errorResponse
+		if err := json.NewDecoder(recorder.Body).Decode(&body); err != nil {
+			t.Fatalf("%s: corpo não é JSON válido: %v", name, err)
+		}
+		if body.Error.Code != "invalid_request" || body.Error.RequestID != "req-1" || body.Error.Message == "" {
+			t.Fatalf("%s: corpo de erro inesperado: %+v", name, body.Error)
+		}
+	}
+}
