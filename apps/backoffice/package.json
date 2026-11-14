@@ -16,9 +16,9 @@
     "@coreui/icons-react": "2.3.0",
     "@coreui/react": "5.13.1",
     "@popperjs/core": "2.11.8",
-    "next": "~16.4.6",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "simplebar-react": "3.3.2"
   }
 }

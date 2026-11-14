@@ -1,7 +1,7 @@
 'use client';
 
+import { CButton, CPlaceholder, CSpinner } from '@coreui/react';
 import type { ReactNode } from 'react';
-import { CButton, CPlaceholder } from '@coreui/react';
 
 /** Lista ou página sem dados: o texto e, como filhos, a ação ("Nenhuma cotação ainda." com "Nova cotação"). */
 export function EmptyState({
@@ -16,16 +16,21 @@ export function EmptyState({
   );
 }
 
-/** Falha ao carregar, com o motivo e o botão da saída ("Tentar de novo", por padrão). */
+/**
+ * Falha ao carregar, com o motivo e o botão da saída ("Tentar de novo", por padrão). Com `busy`, a nova tentativa está
+ * em andamento: o botão fica travado e mostra o spinner.
+ */
 export function ErrorState({
   message = 'Não foi possível carregar os dados.',
   detail,
   actionLabel = 'Tentar de novo',
+  busy = false,
   onRetry,
 }: Readonly<{
   message?: string;
   detail?: string;
   actionLabel?: string;
+  busy?: boolean;
   onRetry: () => void;
 }>) {
   return (
@@ -35,10 +40,12 @@ export function ErrorState({
       <CButton
         className="mt-2"
         color="primary"
+        disabled={busy}
         onClick={onRetry}
         type="button"
         variant="outline"
       >
+        {busy && <CSpinner aria-hidden="true" className="me-2" size="sm" />}
         {actionLabel}
       </CButton>
     </div>
@@ -61,6 +68,7 @@ export function LoadingState({
           aria-hidden="true"
           as="p"
           className="mb-2"
+          // biome-ignore lint/suspicious/noArrayIndexKey: as linhas do esqueleto são estáticas e não têm identidade própria
           key={index}
         >
           <CPlaceholder

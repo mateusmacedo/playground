@@ -14,6 +14,7 @@ export interface Session {
   readonly user: SessionUser | null;
   /** Permissões que liberam áreas do painel, como `quotes:read`. */
   readonly permissions: ReadonlySet<string>;
+  /** Texto seguro para mostrar ao usuário: nunca a mensagem crua de uma exceção, nem detalhe interno do servidor. */
   readonly error?: string;
   readonly reload: () => void;
   /** Sem `signIn`, a sessão expirada oferece só recarregar. */

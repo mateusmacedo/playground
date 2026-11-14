@@ -1,6 +1,5 @@
 'use client';
 
-import { useId, type ReactNode } from 'react';
 import {
   CButton,
   CModal,
@@ -10,6 +9,7 @@ import {
   CModalTitle,
   CSpinner,
 } from '@coreui/react';
+import { type ReactNode, useId, useRef } from 'react';
 
 export interface ConfirmModalProps {
   readonly visible: boolean;
@@ -22,8 +22,11 @@ export interface ConfirmModalProps {
   /** Gravação em andamento: trava os botões e o fechamento e mostra o spinner na confirmação. */
   readonly busy?: boolean;
   readonly confirmDisabled?: boolean;
-  /** A tela grava e, no fim, passa `visible={false}`. */
-  readonly onConfirm: () => void;
+  /**
+   * A tela grava e, no fim, passa `visible={false}`. Se devolver uma promessa, cliques enquanto ela não termina são
+   * ignorados; o erro da promessa é da tela tratar, aqui ele só libera o botão de novo.
+   */
+  readonly onConfirm: () => void | Promise<void>;
   readonly onCancel: () => void;
 }
 
@@ -41,6 +44,20 @@ export function ConfirmModal({
   onCancel,
 }: Readonly<ConfirmModalProps>) {
   const titleId = useId();
+  // WHY: `busy` só chega depois da próxima renderização; um segundo clique no mesmo instante passaria pelo `disabled`.
+  const inFlight = useRef(false);
+
+  const handleConfirm = async () => {
+    if (inFlight.current) {
+      return;
+    }
+    inFlight.current = true;
+    try {
+      await onConfirm();
+    } finally {
+      inFlight.current = false;
+    }
+  };
 
   return (
     <CModal
@@ -72,7 +89,7 @@ export function ConfirmModal({
         <CButton
           color={confirmColor}
           disabled={busy || confirmDisabled}
-          onClick={onConfirm}
+          onClick={handleConfirm}
           type="button"
         >
           {busy && <CSpinner aria-hidden="true" className="me-2" size="sm" />}

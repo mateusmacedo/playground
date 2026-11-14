@@ -21,6 +21,7 @@ export default function RootLayout({
     // WHY: o script do tema muda `data-coreui-theme` antes da hidratação; o aviso de divergência é esperado aqui.
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: o script é uma constante do código, sem entrada de usuário, e precisa rodar antes da hidratação */}
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
       </head>
       <body>

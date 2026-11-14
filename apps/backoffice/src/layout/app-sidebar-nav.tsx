@@ -1,8 +1,6 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import SimpleBar from 'simplebar-react';
+import CIcon from '@coreui/icons-react';
 import {
   CBadge,
   CNavGroup,
@@ -11,7 +9,9 @@ import {
   CNavTitle,
   CSidebarNav,
 } from '@coreui/react';
-import CIcon from '@coreui/icons-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import SimpleBar from 'simplebar-react';
 
 import {
   isActivePath,
