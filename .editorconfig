@@ -1,0 +1,25 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+max_line_length = 80
+
+# WHY: no markdown, dois espaços no fim da linha são quebra de linha explícita.
+[*.md]
+trim_trailing_whitespace = false
+
+# WHY: gofmt impõe tabulação; o Biome não formata Go, então só os editores
+# precisam saber.
+[*.{go,mod}]
+indent_style = tab
+
+[Makefile]
+indent_style = tab
+
+[*.bat]
+end_of_line = crlf
