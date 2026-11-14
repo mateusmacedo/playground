@@ -57,3 +57,22 @@ out
 test-output
 vitest.config.*.timestamp*
 .vitest
+
+# Armazenamento local de plugin de memória do usuário
+.remember/
+
+# Gradle (serviços Quarkus)
+.gradle/
+build/
+
+# Saída do `serverless package` (cada serviço)
+.serverless/
+
+# Terraform: cache de providers, state e planos. O .terraform.lock.hcl FICA
+# versionado (trava as versões dos providers), por isso não há regra para *.hcl.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+plan-result.json
+.terraform.tfstate.lock.info

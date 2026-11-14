@@ -5,11 +5,22 @@
     "production": [
       "default",
       "!{projectRoot}/.eslintrc.json",
-      "!{projectRoot}/eslint.config.mjs",
+      "!{projectRoot}/eslint.config.{js,cjs,mjs}",
+      "!{workspaceRoot}/eslint.config.mjs",
+      "!{workspaceRoot}/biome.json",
+      "!{projectRoot}/vitest.config.{js,cjs,mjs,ts,cts,mts}",
+      "!{projectRoot}/playwright.config.{js,cjs,mjs,ts,cts,mts}",
       "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
+      "!{projectRoot}/**/*_test.go",
+      "!{projectRoot}/src/test/**/*",
       "!{projectRoot}/tsconfig.spec.json"
     ],
-    "sharedGlobals": []
+    "sharedGlobals": [
+      "{workspaceRoot}/tsconfig.base.json",
+      "{workspaceRoot}/eslint.config.mjs",
+      "{workspaceRoot}/biome.json",
+      "{workspaceRoot}/pnpm-workspace.yaml"
+    ]
   },
   "plugins": [
     {
@@ -56,13 +67,112 @@
         "ciTargetName": "test-ci",
         "testMode": "watch"
       }
+    },
+    {
+      "plugin": "@nx/docker",
+      "options": {
+        "buildTarget": "docker:build",
+        "runTarget": "docker:run"
+      }
+    },
+    {
+      "plugin": "@nx/gradle",
+      "options": {
+        "ciTestTargetName": "test-ci"
+      }
+    },
+    {
+      "plugin": "./tools/serverless",
+      "options": {
+        "defaultConfiguration": "floci",
+        "defaultGoArchitecture": "arm64"
+      }
     }
   ],
-  "analytics": true,
+  "analytics": false,
   "nxCloudId": "6af884afbe866a0bcfdaefce",
+  "sync": {
+    "applyChanges": true
+  },
+  "parallel": 3,
+  "release": {
+    "projectsRelationship": "independent",
+    "releaseTag": {
+      "pattern": "{projectName}@{version}"
+    },
+    "version": {
+      "conventionalCommits": true,
+      "fallbackCurrentVersionResolver": "disk",
+      "versionActionsOptions": {
+        "skipLockFileUpdate": true
+      }
+    },
+    "changelog": {
+      "automaticFromRef": true,
+      "workspaceChangelog": false,
+      "projectChangelogs": {
+        "createRelease": "github"
+      }
+    },
+    "git": {
+      "commitMessage": "chore(release): publish [skip ci]"
+    },
+    "groups": {
+      "services-js": {
+        "projects": ["tag:stack:ts"]
+      },
+      "services-git-tag": {
+        "projects": ["tag:platform:serverless", "!tag:stack:ts"],
+        "version": {
+          "versionActions": "./tools/release/git-tag-version-actions.cjs"
+        }
+      }
+    }
+  },
   "targetDefaults": {
-    "test": {
-      "dependsOn": ["^build"]
+    "*": [
+      {
+        "filter": { "plugin": "@nx/gradle" },
+        "inputs": [
+          "...",
+          "{workspaceRoot}/settings.gradle",
+          "{workspaceRoot}/build.gradle",
+          "{projectRoot}/build.gradle"
+        ]
+      }
+    ],
+    "build": [
+      {
+        "dependsOn": ["^build"],
+        "cache": true
+      },
+      {
+        "filter": { "plugin": "@nx/next/plugin" },
+        "inputs": ["production", "^production"]
+      },
+      {
+        "filter": { "plugin": "@nx/js/typescript" },
+        "inputs": ["production", "^production"]
+      },
+      {
+        "filter": { "plugin": "@nx/gradle" },
+        "inputs": [
+          "...",
+          "{workspaceRoot}/settings.gradle",
+          "{workspaceRoot}/build.gradle",
+          "{projectRoot}/build.gradle"
+        ]
+      }
+    ],
+    "test": [
+      {
+        "filter": { "plugin": "@nx/vitest" },
+        "dependsOn": ["^build"],
+        "inputs": ["...", { "env": "VITEST_COVERAGE" }]
+      }
+    ],
+    "e2e": {
+      "inputs": ["...", { "env": "E2E_ALL_BROWSERS" }]
     }
   },
   "generators": {
