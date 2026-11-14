@@ -1,0 +1,19 @@
+package core
+
+import (
+	"context"
+	"testing"
+	"time"
+)
+
+func TestRunJobConcluiNoHorarioAgendado(t *testing.T) {
+	scheduledAt := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	result, err := RunJob(context.Background(), scheduledAt)
+	if err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	if result != (JobResult{ScheduledAt: scheduledAt, Status: "completed"}) {
+		t.Fatalf("resultado inesperado: %+v", result)
+	}
+}

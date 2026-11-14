@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "version": 2,
+  "title": "Validate executor",
+  "description": "Valida o serverless.yml contra as políticas do monorepo.",
+  "type": "object",
+  "properties": {
+    "stack": {
+      "type": "string",
+      "enum": ["typescript", "go", "java"],
+      "description": "Linguagem do serviço."
+    },
+    "operation": {
+      "type": "string",
+      "enum": ["deploy", "package", "remove", "invoke-local"],
+      "default": "deploy",
+      "description": "Operação que será executada depois da validação."
+    },
+    "stage": {
+      "type": "string",
+      "description": "Stage alvo (obrigatório para deploy, package e remove)."
+    },
+    "configPath": {
+      "type": "string",
+      "default": "serverless.yml",
+      "description": "Caminho do manifesto, relativo à raiz do projeto."
+    }
+  },
+  "required": ["stack"],
+  "additionalProperties": false
+}

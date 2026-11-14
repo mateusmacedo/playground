@@ -1,0 +1,14 @@
+import { describe, expect, it } from 'vitest';
+
+import { runJob } from './job.js';
+
+describe('runJob', () => {
+  it('conclui a execução no horário agendado', async () => {
+    await expect(
+      runJob({ scheduledAt: '2026-01-01T00:00:00Z' }),
+    ).resolves.toEqual({
+      scheduledAt: '2026-01-01T00:00:00Z',
+      status: 'completed',
+    });
+  });
+});
