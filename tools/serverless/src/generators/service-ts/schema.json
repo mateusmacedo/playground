@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "ServiceTs",
+  "title": "Serviço serverless em TypeScript",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome do serviço em kebab-case; vira o nome do projeto Nx e o `service` do serverless.yml.",
+      "$default": {
+        "$source": "argv",
+        "index": 0
+      },
+      "x-prompt": "Qual o nome do serviço?"
+    },
+    "type": {
+      "type": "string",
+      "description": "Gatilho do serviço.",
+      "enum": ["http", "sqs", "scheduled"],
+      "default": "http",
+      "x-prompt": {
+        "message": "Qual o tipo do serviço?",
+        "type": "list",
+        "items": [
+          { "value": "http", "label": "HTTP: API Gateway (HTTP API)" },
+          { "value": "sqs", "label": "SQS: consumidor de fila" },
+          { "value": "scheduled", "label": "Agendado: EventBridge (rate/cron)" }
+        ]
+      }
+    },
+    "queue": {
+      "type": "string",
+      "description": "Só para o tipo sqs. `external` (padrão): a fila é do Terraform e o serviço lê ARN e URL do SSM. `owned`: o serviço cria a fila e a DLQ, só para fila descartável de um único consumidor.",
+      "enum": ["external", "owned"]
+    },
+    "queueParam": {
+      "type": "string",
+      "description": "Só para sqs com queue external: `<domínio>/<recurso>` do contrato SSM da fila (padrão: `<name>/queue`). Ex.: `shared/sample-events-queue` para consumir uma fila compartilhada.",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*/[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+    },
+    "directory": {
+      "type": "string",
+      "description": "Diretório do serviço (padrão: apps/services/<name>)."
+    },
+    "domain": {
+      "type": "string",
+      "description": "Domínio de negócio; gera a tag Nx scope:<domain>."
+    },
+    "tags": {
+      "type": "string",
+      "description": "Tags Nx extras, separadas por vírgula."
+    },
+    "runtime": {
+      "type": "string",
+      "description": "Runtime Node.js da Lambda.",
+      "default": "nodejs24.x"
+    },
+    "memorySize": {
+      "type": "integer",
+      "description": "Memória da Lambda em MB.",
+      "minimum": 128,
+      "maximum": 10240,
+      "default": 256
+    },
+    "timeout": {
+      "type": "integer",
+      "description": "Timeout da Lambda em segundos (o HTTP API corta em 30 s).",
+      "minimum": 1,
+      "maximum": 900,
+      "default": 29
+    },
+    "skipFormat": {
+      "type": "boolean",
+      "description": "Não formata os arquivos gerados.",
+      "default": false
+    },
+    "skipPackageJson": {
+      "type": "boolean",
+      "description": "Não adiciona `serverless`, `serverless-localstack` e `@types/aws-lambda` ao package.json da raiz.",
+      "default": false
+    }
+  },
+  "required": ["name"]
+}

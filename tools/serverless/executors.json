@@ -1,0 +1,14 @@
+{
+  "executors": {
+    "validate": {
+      "implementation": "./src/executors/validate/executor",
+      "schema": "./src/executors/validate/schema.json",
+      "description": "Valida as políticas do serviço serverless antes de package, deploy ou remove."
+    },
+    "go-build": {
+      "implementation": "./src/executors/go-build/executor",
+      "schema": "./src/executors/go-build/schema.json",
+      "description": "Compila o binário Go da Lambda e gera o artefato .bin/bootstrap.zip."
+    }
+  }
+}

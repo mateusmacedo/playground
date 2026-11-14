@@ -1,0 +1,60 @@
+import type { Context, SQSBatchResponse, SQSEvent } from 'aws-lambda';
+
+import { DomainError, processMessage } from '../core/messages.js';
+import { log, withRequestId } from './logger.js';
+
+type BatchStatus = 'completed' | 'partial' | 'failed';
+
+const batchStatus = (total: number, failed: number): BatchStatus => {
+  if (failed === 0) {
+    return 'completed';
+  }
+  return failed === total ? 'failed' : 'partial';
+};
+
+// WHY: devolver só os ids que falharam reprocessa apenas essas mensagens, sem
+// repetir o lote inteiro (ReportBatchItemFailures).
+const processBatch = async (event: SQSEvent): Promise<SQSBatchResponse> => {
+  const startedAt = Date.now();
+  const total = event.Records.length;
+  const batchItemFailures: SQSBatchResponse['batchItemFailures'] = [];
+  // WHY: se algo escapar do laço, o lote inteiro volta para a fila; o resumo
+  // precisa dizer isso, e não "partial".
+  let status: BatchStatus = 'failed';
+
+  try {
+    for (const record of event.Records) {
+      try {
+        await processMessage({ id: record.messageId, body: record.body });
+        log('debug', 'message_processed', { messageId: record.messageId });
+      } catch (error) {
+        // WHY: entrada inválida é falha esperada e não se resolve repetindo; a
+        // mensagem volta para a fila e segue para a DLQ pelo maxReceiveCount.
+        const permanent =
+          error instanceof DomainError && error.code === 'invalid_input';
+        log(permanent ? 'warn' : 'error', 'message_failed', {
+          messageId: record.messageId,
+          receiveCount: Number(record.attributes.ApproximateReceiveCount),
+          permanent,
+          error,
+        });
+        batchItemFailures.push({ itemIdentifier: record.messageId });
+      }
+    }
+    status = batchStatus(total, batchItemFailures.length);
+    return { batchItemFailures };
+  } finally {
+    log(status === 'completed' ? 'info' : 'warn', 'batch_completed', {
+      total,
+      failed: batchItemFailures.length,
+      durationMs: Date.now() - startedAt,
+      status,
+    });
+  }
+};
+
+export const handler = (
+  event: SQSEvent,
+  context: Context,
+): Promise<SQSBatchResponse> =>
+  withRequestId(context.awsRequestId, () => processBatch(event));

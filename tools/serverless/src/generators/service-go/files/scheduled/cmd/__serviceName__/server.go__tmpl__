@@ -1,0 +1,42 @@
+package main
+
+import (
+	"log/slog"
+	"net/http"
+	"time"
+
+	"<%= modulePath %>/internal/core"
+)
+
+// scheduledAtHeader leva o horário agendado da execução, em RFC 3339.
+const scheduledAtHeader = "X-Scheduled-At"
+
+// NOTE: em container, o agendamento fica com um scheduler externo (por
+// exemplo, CronJob do Kubernetes ou EventBridge Scheduler) chamando POST /run
+// com o cabeçalho X-Scheduled-At.
+//
+// WHY: o horário agendado vem de quem agenda, como o `time` do evento na
+// Lambda, e não do relógio da requisição: a repetição da mesma execução leva o
+// mesmo valor, e o job consegue reconhecê-la (idempotência).
+func newRouter() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", health)
+	mux.HandleFunc("POST /run", func(w http.ResponseWriter, r *http.Request) {
+		scheduledAt, err := time.Parse(time.RFC3339, r.Header.Get(scheduledAtHeader))
+		if err != nil {
+			slog.WarnContext(r.Context(), "scheduled_at_rejected", "error", err)
+			writeError(w, r, http.StatusBadRequest, "invalid_request", "Cabeçalho X-Scheduled-At ausente ou fora do formato RFC 3339")
+			return
+		}
+
+		result, err := core.RunJob(r.Context(), scheduledAt.UTC())
+		if err != nil {
+			slog.ErrorContext(r.Context(), "job_failed", "scheduledAt", scheduledAt.UTC(), "error", err)
+			writeError(w, r, http.StatusInternalServerError, "internal", "Erro interno")
+			return
+		}
+		slog.InfoContext(r.Context(), "job_completed", "scheduledAt", result.ScheduledAt, "status", result.Status)
+		writeJSON(w, r, http.StatusOK, result)
+	})
+	return assignRequestID(mux)
+}

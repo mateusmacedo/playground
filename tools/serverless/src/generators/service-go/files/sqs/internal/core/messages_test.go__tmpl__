@@ -1,0 +1,28 @@
+package core
+
+import (
+	"context"
+	"errors"
+	"strings"
+	"testing"
+)
+
+func TestProcessMessageRecusaCorpoInvalido(t *testing.T) {
+	if err := ProcessMessage(context.Background(), Message{ID: "ok", Body: `{"action":"a"}`}); err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	if err := ProcessMessage(context.Background(), Message{ID: "ruim", Body: "não é json"}); err == nil {
+		t.Fatal("esperava erro para corpo que não é JSON")
+	}
+}
+
+func TestProcessMessageRecusaComInvalidInputESemOCorpoNoErro(t *testing.T) {
+	err := ProcessMessage(context.Background(), Message{ID: "ruim", Body: "Bearer eyJhbGciOiJIUzI1NiJ9.segredo"})
+
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("esperava ErrInvalidInput, recebido %v", err)
+	}
+	if strings.Contains(err.Error(), "Bearer") || strings.Contains(err.Error(), "'B'") {
+		t.Fatalf("o erro vazou o corpo da mensagem: %v", err)
+	}
+}

@@ -1,0 +1,20 @@
+import type { Context, ScheduledEvent } from 'aws-lambda';
+
+import { runJob } from '../core/job.js';
+import { log, withRequestId } from './logger.js';
+
+export const handler = (
+  event: ScheduledEvent,
+  context: Context,
+): Promise<void> =>
+  withRequestId(context.awsRequestId, async () => {
+    try {
+      const result = await runJob({ scheduledAt: event.time });
+      log('info', 'job_completed', result);
+    } catch (error) {
+      // WHY: relançar faz a invocação falhar (métrica de erro e retentativa
+      // do EventBridge); o log leva o horário agendado, que o runtime não tem.
+      log('error', 'job_failed', { scheduledAt: event.time, error });
+      throw error;
+    }
+  });

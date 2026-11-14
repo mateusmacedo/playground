@@ -1,0 +1,63 @@
+import type { Context, ScheduledEvent } from 'aws-lambda';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { runJob } from '../core/job.js';
+import { handler } from './lambda.js';
+
+vi.mock('../core/job.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../core/job.js')>();
+  return { ...actual, runJob: vi.fn(actual.runJob) };
+});
+
+const event = {
+  time: '2026-01-01T00:00:00Z',
+  detail: {},
+} as ScheduledEvent;
+
+const context = { awsRequestId: 'req-1' } as Context;
+
+const captureStdout = () => {
+  const lines: Record<string, unknown>[] = [];
+  vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
+    lines.push(JSON.parse(String(chunk)));
+    return true;
+  });
+  return lines;
+};
+
+describe('entrypoint Lambda', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('repassa o horário do EventBridge ao núcleo e loga o resultado em JSON', async () => {
+    const lines = captureStdout();
+
+    await expect(handler(event, context)).resolves.toBeUndefined();
+    expect(lines).toMatchObject([
+      {
+        level: 'info',
+        message: 'job_completed',
+        scheduledAt: '2026-01-01T00:00:00Z',
+        status: 'completed',
+        requestId: 'req-1',
+      },
+    ]);
+  });
+
+  it('loga job_failed com o horário agendado e relança o erro', async () => {
+    const lines = captureStdout();
+    vi.mocked(runJob).mockRejectedValueOnce(new Error('job quebrou'));
+
+    await expect(handler(event, context)).rejects.toThrow('job quebrou');
+    expect(lines).toMatchObject([
+      {
+        level: 'error',
+        message: 'job_failed',
+        scheduledAt: '2026-01-01T00:00:00Z',
+        requestId: 'req-1',
+        error: { message: 'job quebrou' },
+      },
+    ]);
+  });
+});

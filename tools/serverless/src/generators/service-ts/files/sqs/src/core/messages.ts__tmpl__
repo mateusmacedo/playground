@@ -1,0 +1,40 @@
+export type Message = {
+  id: string;
+  body: string;
+};
+
+export type ProcessedMessage = {
+  id: string;
+  payload: unknown;
+};
+
+export type DomainErrorCode = 'invalid_input';
+
+// WHY: o núcleo só diz o que aconteceu (`code`); quem decide o nível do log e
+// a retentativa é o entrypoint.
+export class DomainError extends Error {
+  readonly code: DomainErrorCode;
+
+  constructor(code: DomainErrorCode, message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'DomainError';
+    this.code = code;
+  }
+}
+
+export const processMessage = async (
+  message: Message,
+): Promise<ProcessedMessage> => {
+  try {
+    return { id: message.id, payload: JSON.parse(message.body) };
+  } catch (cause) {
+    // WHY: a mensagem do SyntaxError cita o começo do corpo (no Node 24,
+    // `Unexpected token 'B', "Bearer eyJ"...`), que pode ser segredo; só o
+    // nome do erro segue adiante, e o stack dele também não.
+    throw new DomainError(
+      'invalid_input',
+      `Mensagem ${message.id} com corpo inválido`,
+      { cause: cause instanceof Error ? cause.name : undefined },
+    );
+  }
+};

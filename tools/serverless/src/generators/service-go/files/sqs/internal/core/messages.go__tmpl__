@@ -1,0 +1,32 @@
+// Package core concentra as regras do serviço, sem dependência de runtime.
+package core
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+)
+
+// ErrInvalidInput marca a entrada que o núcleo recusa e que repetir não
+// resolve; quem decide o nível do log e a retentativa é o entrypoint.
+var ErrInvalidInput = errors.New("invalid_input")
+
+// Message é uma mensagem recebida, independente da origem (SQS ou HTTP).
+type Message struct {
+	ID   string
+	Body string
+}
+
+// ProcessMessage processa uma mensagem; corpo que não é JSON é recusado.
+//
+// WHY: o erro do json.Unmarshal fica de fora do retorno porque ele pode citar
+// um pedaço do corpo, que pode ser segredo; o id da mensagem basta para achar
+// o corpo na fila ou na DLQ.
+func ProcessMessage(_ context.Context, message Message) error {
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(message.Body), &payload); err != nil {
+		return fmt.Errorf("mensagem %s com corpo inválido: %w", message.ID, ErrInvalidInput)
+	}
+	return nil
+}

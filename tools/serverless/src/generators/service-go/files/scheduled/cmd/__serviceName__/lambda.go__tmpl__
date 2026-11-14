@@ -1,0 +1,21 @@
+package main
+
+import (
+	"context"
+	"log/slog"
+
+	"github.com/aws/aws-lambda-go/events"
+
+	"<%= modulePath %>/internal/core"
+)
+
+func handleSchedule(ctx context.Context, event events.EventBridgeEvent) error {
+	ctx = withLambdaRequestID(ctx)
+	result, err := core.RunJob(ctx, event.Time)
+	if err != nil {
+		slog.ErrorContext(ctx, "job_failed", "scheduledAt", event.Time, "error", err)
+		return err
+	}
+	slog.InfoContext(ctx, "job_completed", "scheduledAt", result.ScheduledAt, "status", result.Status)
+	return nil
+}

@@ -1,0 +1,8 @@
+module <%= modulePath %>
+
+go <%= goVersion %>
+
+require (
+	github.com/aws/aws-lambda-go <%= awsLambdaGoVersion %><% if (type === 'http') { %>
+	github.com/awslabs/aws-lambda-go-api-proxy <%= awsLambdaGoApiProxyVersion %><% } %>
+)
