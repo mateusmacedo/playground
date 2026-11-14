@@ -19,22 +19,24 @@ jobs:
           filter: tree:0
           fetch-depth: 0
 
-      # This enables task distribution via Nx Cloud
-      # Run this command as early as possible, before dependencies are installed
-      # Learn more at https://nx.dev/docs/reference/nx-cloud-cli#npx-nxcloud-startcirun
-      - run: npx nx start-ci-run --distribute-on="3 linux-medium-js" --stop-agents-after="e2e"
+      # NOTE: sem `version`, o pnpm/action-setup usa o `packageManager` do package.json.
+      - uses: pnpm/action-setup@v6
+        with:
+          cache: true
 
-      # Cache node_modules
       - uses: actions/setup-node@v5
         with:
           node-version: 24
-          cache: 'npm'
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
-      # Prepend any command with "nx record --" to record its logs to Nx Cloud
-      - run: npx nx record -- npx nx format:check --base="remotes/origin/main"
-      - run: npx nx run-many -t lint test build typecheck e2e
-      # Nx Cloud recommends fixes for failures to help you get CI green faster. Learn more: https://nx.dev/docs/features/ci-features/self-healing-ci
-      - run: npx nx fix-ci
-        if: always()
+      # NOTE: define NX_BASE e NX_HEAD para os comandos affected e o format:check.
+      - uses: nrwl/nx-set-shas@v5
+
+      - run: pnpm exec nx sync:check
+      - run: pnpm exec nx format:check --base="$NX_BASE" --head="$NX_HEAD"
+      - run: pnpm exec nx affected -t lint test typecheck build
+
+      # WHY: o Playwright gerado também lista Edge e Chrome de canal, que não vêm no runner; o CI cobre o Chromium.
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec nx e2e backoffice-e2e -- --project=chromium

@@ -1,0 +1,6 @@
+// NOTE: altura cheia para o conteúdo do menu; sem ela, os itens não ocupam a coluna e o rodapé do menu sobe.
+.simplebar-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
