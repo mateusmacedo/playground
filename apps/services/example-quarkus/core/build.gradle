@@ -1,0 +1,2 @@
+// WHY: núcleo do serviço em Java puro. Sem Quarkus no classpath, o compilador
+// barra qualquer dependência do domínio no runtime (ADR 0008).
