@@ -1,0 +1,97 @@
+{
+  "name": "infra-local",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "infra/local",
+  "tags": ["scope:infra", "type:tool"],
+  "targets": {
+    "up": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "cwd": "{projectRoot}",
+        "parallel": false,
+        "commands": [
+          "docker compose up -d --wait floci",
+          "docker compose run --rm -T floci-bootstrap"
+        ]
+      }
+    },
+    "down": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "docker compose down --remove-orphans"
+      }
+    },
+    "reset": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "cwd": "{projectRoot}",
+        "parallel": false,
+        "commands": [
+          "docker compose down -v --remove-orphans",
+          "docker ps -aq --filter label=floci_namespace=playground | xargs -r docker rm -f",
+          "docker volume ls -q | grep '^floci-aws-playground-' | xargs -r docker volume rm",
+          "docker compose up -d --wait floci",
+          "docker compose run --rm -T floci-bootstrap"
+        ]
+      }
+    },
+    "logs": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "docker compose logs -f --tail=200"
+      }
+    },
+    "status": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "cwd": "{projectRoot}",
+        "parallel": false,
+        "commands": [
+          "docker compose ps -a",
+          "curl -fsS --connect-timeout 3 --max-time 10 http://localhost:4566/_floci/health"
+        ]
+      }
+    },
+    "validate": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "bash scripts/validate.sh"
+      }
+    },
+    "local:provision": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "parallel": false,
+        "commands": [
+          "pnpm nx run infra-local:up",
+          "pnpm nx run infra-local-platform:apply",
+          "pnpm nx run infra-local-services:apply",
+          "pnpm nx run infra-local-services:smoke"
+        ]
+      }
+    },
+    "local:destroy": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "parallel": false,
+        "commands": [
+          "pnpm nx run infra-local-services:destroy",
+          "pnpm nx run infra-local-platform:destroy"
+        ]
+      }
+    }
+  }
+}
