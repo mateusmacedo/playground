@@ -1,15 +1,18 @@
-import { defineConfig, devices } from '@playwright/test';
-import { nxE2EPreset } from '@nx/playwright/preset';
 import { getReadyUrl, workspaceRoot } from '@nx/devkit';
+import { nxE2EPreset } from '@nx/playwright/preset';
+import { defineConfig, devices } from '@playwright/test';
 
-const isCI = !!process.env['CI'];
+const isCI = !!process.env.CI;
+// WHY: por padrão só o Chromium, que é o mais barato; E2E_ALL_BROWSERS=1 liga
+// firefox e webkit (release e `pnpm e2e:full`). A variável entra no hash do Nx.
+const allBrowsers = process.env.E2E_ALL_BROWSERS === '1';
 // getReadyUrl moves the address to the port the server task reported.
 const webServerAddress = getReadyUrl(
   isCI ? 'http://localhost:3000' : 'http://127.0.0.1:3000',
 );
 
 // For CI, you may want to set BASE_URL to the deployed application.
-const baseURL = process.env['BASE_URL'] || webServerAddress;
+const baseURL = process.env.BASE_URL || webServerAddress;
 
 /**
  * Read environment variables from file.
@@ -29,6 +32,9 @@ const baseURL = process.env['BASE_URL'] || webServerAddress;
  */
 export default defineConfig({
   ...nxE2EPreset(import.meta.dirname, { testDir: './src' }),
+  // WHY: o preset usa 1 worker no CI e todos os núcleos local; 2 no runner de
+  // 4 vCPU e metade das CPUs local deixam espaço para o servidor do Next.
+  workers: isCI ? 2 : '50%',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     baseURL,
@@ -48,35 +54,17 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-
-    // Uncomment for mobile browsers support
-    /* {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
-    }, */
-
-    // Uncomment for branded browsers
-    /* {
-      name: 'Microsoft Edge',
-      use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    },
-    {
-      name: 'Google Chrome',
-      use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    } */
+    ...(allBrowsers
+      ? [
+          {
+            name: 'firefox',
+            use: { ...devices['Desktop Firefox'] },
+          },
+          {
+            name: 'webkit',
+            use: { ...devices['Desktop Safari'] },
+          },
+        ]
+      : []),
   ],
 });
