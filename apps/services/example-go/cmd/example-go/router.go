@@ -1,0 +1,83 @@
+package main
+
+import (
+	"log/slog"
+	"net/http"
+	"runtime/debug"
+	"time"
+
+	"apps/services/example-go/internal/core"
+)
+
+func newRouter() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", health)
+	mux.HandleFunc("GET /example-go", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, r, http.StatusOK, core.SayHello(r.URL.Path))
+	})
+	return assignRequestID(logRequest(recoverPanic(mux)))
+}
+
+// statusRecorder guarda o status que o handler escreveu, para o resumo da
+// requisição.
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (s *statusRecorder) WriteHeader(status int) {
+	s.status = status
+	s.ResponseWriter.WriteHeader(status)
+}
+
+// Unwrap deixa o http.ResponseController alcançar o ResponseWriter original.
+func (s *statusRecorder) Unwrap() http.ResponseWriter { return s.ResponseWriter }
+
+// logRequest emite a linha-resumo de cada requisição, inclusive a que termina
+// em 500 depois do recoverPanic.
+//
+// WHY: o health check do ALB chega a cada poucos segundos; vai para DEBUG para
+// não afogar o log de quem investiga um incidente.
+func logRequest(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		startedAt := time.Now()
+		recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		defer func() {
+			level := slog.LevelInfo
+			if r.URL.Path == "/health" {
+				level = slog.LevelDebug
+			}
+			slog.Log(r.Context(), level, "request_completed",
+				"method", r.Method, "route", routeOf(r),
+				"status", recorder.status, "durationMs", time.Since(startedAt).Milliseconds())
+		}()
+		next.ServeHTTP(recorder, r)
+	})
+}
+
+// recoverPanic transforma um panic no handler em log e resposta 500 genérica.
+//
+// WHY: na Lambda, o httpadapter roda o handler na própria goroutine do
+// runtime, e um panic sem recover derruba a invocação; em container, o
+// net/http só fecha a conexão, sem resposta. O detalhe fica no log, nunca na
+// resposta; o requestId é o elo entre os dois.
+func recoverPanic(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			recovered := recover()
+			if recovered == nil {
+				return
+			}
+			// NOTE: http.ErrAbortHandler é o jeito documentado de abortar a
+			// resposta em silêncio; quem o usa quer que ele chegue ao servidor.
+			if recovered == http.ErrAbortHandler {
+				panic(recovered)
+			}
+			slog.ErrorContext(r.Context(), "handler_panic",
+				"method", r.Method, "path", r.URL.Path,
+				"error", recovered, "stack", string(debug.Stack()))
+			writeError(w, r, http.StatusInternalServerError, "internal", "Erro interno")
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
