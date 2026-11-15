@@ -1,9 +1,71 @@
 packages:
   - 'packages/*'
   - 'apps/*'
+  - 'apps/services/*'
+  - 'tools/*'
+
+# WHY: o pnpm 11 bloqueia scripts de ciclo de vida de dependências por padrão.
+# Só entra como `true` o que precisa rodar de fato: o postinstall do nx
+# atualiza o cliente do Nx Cloud e o do lefthook instala os hooks do git.
 allowBuilds:
   sharp: false
   unrs-resolver: false
   '@parcel/watcher': false
   '@swc/core': false
-  nx: false
+  nx: true
+  lefthook: true
+  # WHY: o postinstall do serverless só pré-baixa o binário; o run.js baixa na
+  # primeira execução. Assim os jobs que não usam o serverless não o baixam.
+  serverless: false
+  # WHY: o postinstall do aws-sdk (v2, via serverless-localstack) só avisa que
+  # o SDK está em modo de manutenção.
+  aws-sdk: false
+
+# Catálogo: fonte única das versões. Cada package.json referencia com
+# "catalog:", então bump de nx, @nx/* e typescript acontece num lugar só.
+# NOTE: os especificadores abaixo são os mesmos que estavam nos package.json,
+# por isso o lockfile continua resolvendo as mesmas versões.
+catalog:
+  '@biomejs/biome': 2.6.7
+  '@commitlint/cli': 21.2.4
+  '@commitlint/config-conventional': 21.2.4
+  '@commitlint/config-nx-scopes': 21.2.3
+  '@nx/devkit': 24.0.0
+  '@nx/docker': 24.0.0
+  '@nx/eslint': 24.0.0
+  '@nx/eslint-plugin': 24.0.0
+  '@nx/gradle': 24.0.0
+  '@nx/js': 24.0.0
+  '@nx/next': 24.0.0
+  '@nx/playwright': 24.0.0
+  '@nx/vitest': 24.0.0
+  '@playwright/test': ^1.37.0
+  '@swc-node/register': 1.11.1
+  '@swc/cli': ~0.8.1
+  '@swc/core': 1.15.8
+  '@swc/helpers': 0.5.18
+  '@testing-library/dom': 10.4.0
+  '@testing-library/react': 16.3.0
+  '@types/aws-lambda': ^8.10.164
+  '@types/node': ^24.0.0
+  '@types/react': ^19.0.0
+  '@types/react-dom': ^19.0.0
+  '@vitejs/plugin-react': ^6.0.0
+  '@vitest/coverage-v8': ~5.0.1
+  '@vitest/ui': ~5.0.1
+  eslint: ^9.8.0
+  jsdom: ^27.1.0
+  lefthook: 2.2.2
+  next: ~16.4.6
+  nx: 24.0.0
+  react: ^19.0.0
+  react-dom: ^19.0.0
+  sass: 1.97.2
+  serverless: 4.46.0
+  serverless-localstack: 1.4.0
+  tslib: ^2.3.0
+  typescript: ~6.0.3
+  typescript-eslint: ^8.58.0
+  vite: ^8.0.0
+  vitest: ~5.0.1
+  yaml: 2.9.0

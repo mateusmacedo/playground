@@ -1,0 +1,40 @@
+# Contexto de build das imagens: a raiz do workspace. Os Dockerfiles copiam só o
+# que precisam; este arquivo mantém de fora o que é gerado, pesado ou sigiloso.
+
+.git
+.github
+.vscode
+.idea
+
+# Ferramentas de agentes e memória local
+.agents
+.claude
+.codex
+.cursor
+.remember
+
+# Dependências e saídas de build do host
+node_modules
+**/node_modules
+.nx
+dist
+**/dist
+build
+**/build
+.gradle
+**/.gradle
+.serverless
+**/.serverless
+.bin
+**/.bin
+.next
+**/.next
+tmp
+coverage
+**/*.log
+
+# Segredos: só o .env.example é versionado
+.env
+**/.env
+**/.env.*
+!**/.env.example
