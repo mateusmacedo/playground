@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 
 import { ConfirmModal } from './confirm-modal';
 
@@ -67,5 +73,106 @@ describe('ConfirmModal', () => {
 
     expect(confirm.hasAttribute('disabled')).toBe(true);
     expect(cancel.hasAttribute('disabled')).toBe(true);
+  });
+});
+
+describe('ConfirmModal, cancelamento e variações', () => {
+  it('cancela quando o usuário fecha pelo X do cabeçalho', async () => {
+    const onCancel = vi.fn();
+    render(
+      <ConfirmModal
+        onCancel={onCancel}
+        onConfirm={() => undefined}
+        title="Excluir cotação"
+        visible
+      >
+        A cotação some da lista.
+      </ConfirmModal>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Close' }));
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancela pelo botão "Cancelar"', async () => {
+    const onCancel = vi.fn();
+    render(
+      <ConfirmModal
+        onCancel={onCancel}
+        onConfirm={() => undefined}
+        title="Excluir cotação"
+        visible
+      >
+        A cotação some da lista.
+      </ConfirmModal>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancelar' }));
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('não conta como cancelamento quando a tela fecha o modal', async () => {
+    const onCancel = vi.fn();
+    const modal = (visible: boolean) => (
+      <ConfirmModal
+        onCancel={onCancel}
+        onConfirm={() => undefined}
+        title="Excluir cotação"
+        visible={visible}
+      >
+        A cotação some da lista.
+      </ConfirmModal>
+    );
+    const { rerender } = render(modal(true));
+    await screen.findByRole('button', { name: 'Confirmar' });
+
+    rerender(modal(false));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Confirmar' })).toBeNull(),
+    );
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it('esconde o X do cabeçalho enquanto a tela marca busy', async () => {
+    render(
+      <ConfirmModal
+        busy
+        onCancel={() => undefined}
+        onConfirm={() => undefined}
+        title="Excluir cotação"
+        visible
+      >
+        A cotação some da lista.
+      </ConfirmModal>,
+    );
+
+    await screen.findByRole('button', { name: 'Confirmar' });
+
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
+  });
+
+  it('usa os textos dados nos botões e trava a confirmação com confirmDisabled', async () => {
+    render(
+      <ConfirmModal
+        cancelLabel="Voltar"
+        confirmColor="danger"
+        confirmDisabled
+        confirmLabel="Excluir"
+        onCancel={() => undefined}
+        onConfirm={() => undefined}
+        title="Excluir cotação"
+        visible
+      >
+        A cotação some da lista.
+      </ConfirmModal>,
+    );
+
+    const confirm = await screen.findByRole('button', { name: 'Excluir' });
+
+    expect(confirm.hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Voltar' })).toBeTruthy();
   });
 });

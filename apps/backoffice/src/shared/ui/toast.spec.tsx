@@ -1,6 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 
-import { ToastProvider, useToast } from './toast';
+import { TOAST_DELAY_MS, ToastProvider, useToast } from './toast';
 
 function Triggers() {
   const toast = useToast();
@@ -17,6 +23,12 @@ function Triggers() {
       </button>
       <button onClick={() => toast.info('Sincronizado.')} type="button">
         Sincronizar
+      </button>
+      <button onClick={() => toast.warning('Cota quase cheia.')} type="button">
+        Alertar
+      </button>
+      <button onClick={() => toast.show('Sem tipo informado.')} type="button">
+        Mostrar
       </button>
     </>
   );
@@ -59,6 +71,60 @@ describe('ToastProvider', () => {
     expect(await screen.findByText('Sincronizado.')).toBeTruthy();
     expect(await screen.findByText('Cotação salva.')).toBeTruthy();
     expect(screen.getAllByRole('alert')).toHaveLength(3);
+  });
+});
+
+describe('ToastProvider, tipos e fechamento', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('usa o título "Atenção" no aviso de warning', async () => {
+    renderProvider();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Alertar' }));
+
+    expect(await screen.findByText('Cota quase cheia.')).toBeTruthy();
+    expect(screen.getByText('Atenção')).toBeTruthy();
+  });
+
+  it('mostra como sucesso o aviso sem tipo', async () => {
+    renderProvider();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mostrar' }));
+
+    expect(await screen.findByText('Sem tipo informado.')).toBeTruthy();
+    expect(screen.getByText('Pronto')).toBeTruthy();
+  });
+
+  it('tira só o aviso fechado pelo botão, mantendo os outros', async () => {
+    renderProvider();
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar e enviar' }));
+    expect(await screen.findByText('Cotação salva.')).toBeTruthy();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[0]);
+
+    await waitFor(() =>
+      expect(screen.queryByText('Cotação salva.')).toBeNull(),
+    );
+    expect(screen.getByText('Falha ao enviar o e-mail.')).toBeTruthy();
+  });
+
+  it('fecha o aviso sozinho depois do tempo de exibição', () => {
+    vi.useFakeTimers();
+    renderProvider();
+    fireEvent.click(screen.getByRole('button', { name: 'Sincronizar' }));
+    expect(screen.getByText('Sincronizado.')).toBeTruthy();
+
+    act(() => {
+      vi.advanceTimersByTime(TOAST_DELAY_MS);
+    });
+    // WHY: a saída é animada; o aviso só sai da lista depois da transição, que começa no render do passo anterior.
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(screen.queryByText('Sincronizado.')).toBeNull();
   });
 });
 

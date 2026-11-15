@@ -29,6 +29,20 @@ export default defineConfig(() => ({
       // NOTE: cobertura só quando pedida (VITEST_COVERAGE=1 ou `--coverage`);
       // a variável entra no hash do Nx via targetDefaults.test.inputs.
       enabled: process.env.VITEST_COVERAGE === '1',
+      // WHY: sem `include` o v8 só relata os arquivos que algum teste importou, e um arquivo nunca testado some do
+      // total; assim o número local fica igual ao do Sonar, que conta todo o `src` do painel.
+      include: ['src/**/*.{ts,tsx}'],
+      // NOTE: espelha as exclusões do `sonar-project.properties` (testes e arquivos de configuração), para o número
+      // local e o do Sonar medirem o mesmo conjunto de arquivos.
+      exclude: [
+        '**/*.spec.ts',
+        '**/*.spec.tsx',
+        '**/*.d.ts',
+        '**/*.config.*',
+        '**/test-setup.ts',
+      ],
+      // WHY: a meta do projeto é cobertura acima de 90% em linhas e ramos.
+      thresholds: { lines: 90.01, branches: 90.01 },
     },
   },
 }));
