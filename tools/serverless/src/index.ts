@@ -39,14 +39,9 @@ let cachedSourceHash: string | undefined;
 
 // WHY: ordem por code unit, igual em qualquer máquina, para o hash do plugin
 // não mudar com o idioma do sistema, como mudaria com o `localeCompare`.
+// Devolve -1, 0 ou 1 como o contrato do `sort` pede.
 function compareByCodeUnit(left: string, right: string): number {
-  if (left < right) {
-    return -1;
-  }
-  if (left > right) {
-    return 1;
-  }
-  return 0;
+  return Number(left > right) - Number(left < right);
 }
 
 // WHY: o cache de inferência é chaveado pelos arquivos do serviço e pelas
