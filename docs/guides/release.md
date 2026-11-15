@@ -6,14 +6,14 @@ Como o repositório transforma Conventional Commits em versões, changelogs e Gi
 
 ## Como funciona
 
-| Peça                         | O que faz                                                                                                 |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------- |
-| **Conventional Commits**     | Definem a versão (já garantidos pelo commitlint no `commit-msg`).                                         |
-| **Releases independentes**   | Cada projeto tem a própria versão e muda só quando tem mudança.                                           |
-| **Tag `{projeto}@{versão}`** | Uma tag por projeto e versão, por exemplo `example-ts@0.1.0`.                                             |
-| **Changelog por projeto**    | Gerado em `<pasta-do-projeto>/CHANGELOG.md`, por exemplo `apps/services/example-ts/CHANGELOG.md`.         |
-| **GitHub Release**           | Uma por projeto e versão (`createRelease: github`), com o texto do changelog.                             |
-| **Commit do release**        | `chore(release): publish [skip ci]`, feito pelo `github-actions[bot]`. O `[skip ci]` evita disparar o CI. |
+| Peça                         | O que faz                                                                                                                                                                                                                   |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Conventional Commits**     | Definem a versão (já garantidos pelo commitlint no `commit-msg`).                                                                                                                                                           |
+| **Releases independentes**   | Cada projeto tem a própria versão e muda só quando tem mudança.                                                                                                                                                             |
+| **Tag `{projeto}@{versão}`** | Uma tag por projeto e versão, por exemplo `example-ts@0.1.0`.                                                                                                                                                               |
+| **Changelog por projeto**    | Gerado em `<pasta-do-projeto>/CHANGELOG.md`, por exemplo `apps/services/example-ts/CHANGELOG.md`. Fica fora do Biome (`biome.json`): o `nx release` o reescreve a cada versão, no commit do bot, que não passa pelos hooks. |
+| **GitHub Release**           | Uma por projeto e versão (`createRelease: github`), com o texto do changelog.                                                                                                                                               |
+| **Commit do release**        | `chore(release): publish [skip ci]`, feito pelo `github-actions[bot]`. O `[skip ci]` evita disparar o CI.                                                                                                                   |
 
 ### Como a mensagem de commit vira versão
 

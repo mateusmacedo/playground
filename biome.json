@@ -26,6 +26,7 @@
       "!**/*.tsbuildinfo",
       "!**/pnpm-lock.yaml",
       "!**/next-env.d.ts",
+      "!**/CHANGELOG.md",
       "!**/.github/skills",
       "!**/.github/prompts",
       "!**/.github/agents",
