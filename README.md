@@ -1,5 +1,15 @@
 # Playground
 
+[![Quality gate](https://sonarcloud.io/api/project_badges/measure?project=mateusmacedo_playground&metric=alert_status)](https://sonarcloud.io/summary/overall?id=mateusmacedo_playground)
+[![Confiabilidade](https://sonarcloud.io/api/project_badges/measure?project=mateusmacedo_playground&metric=reliability_rating)](https://sonarcloud.io/summary/overall?id=mateusmacedo_playground)
+[![Segurança](https://sonarcloud.io/api/project_badges/measure?project=mateusmacedo_playground&metric=security_rating)](https://sonarcloud.io/summary/overall?id=mateusmacedo_playground)
+[![Manutenibilidade](https://sonarcloud.io/api/project_badges/measure?project=mateusmacedo_playground&metric=sqale_rating)](https://sonarcloud.io/summary/overall?id=mateusmacedo_playground)
+[![Cobertura](https://sonarcloud.io/api/project_badges/measure?project=mateusmacedo_playground&metric=coverage)](https://sonarcloud.io/component_measures?id=mateusmacedo_playground&metric=coverage)
+[![Duplicação](https://sonarcloud.io/api/project_badges/measure?project=mateusmacedo_playground&metric=duplicated_lines_density)](https://sonarcloud.io/component_measures?id=mateusmacedo_playground&metric=duplicated_lines_density)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=mateusmacedo_playground&metric=bugs)](https://sonarcloud.io/project/issues?id=mateusmacedo_playground&types=BUG&resolved=false)
+[![Vulnerabilidades](https://sonarcloud.io/api/project_badges/measure?project=mateusmacedo_playground&metric=vulnerabilities)](https://sonarcloud.io/project/issues?id=mateusmacedo_playground&types=VULNERABILITY&resolved=false)
+[![Code smells](https://sonarcloud.io/api/project_badges/measure?project=mateusmacedo_playground&metric=code_smells)](https://sonarcloud.io/project/issues?id=mateusmacedo_playground&types=CODE_SMELL&resolved=false)
+
 Monorepo [Nx](https://nx.dev) para um painel administrativo em Next.js e serviços serverless na AWS, com um ambiente AWS local virtualizado (Floci). Serve de base para crescer em várias stacks sem perder a mesma esteira de qualidade: um jeito de rodar, testar, cachear e publicar tudo.
 
 ## Visão geral

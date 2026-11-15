@@ -1,5 +1,7 @@
 # infra/local
 
+[![Quality gate](https://sonarcloud.io/api/project_badges/measure?project=mateusmacedo_playground&metric=alert_status)](https://sonarcloud.io/summary/overall?id=mateusmacedo_playground) [Métricas desta pasta no SonarQube Cloud](https://sonarcloud.io/code?id=mateusmacedo_playground&selected=mateusmacedo_playground%3Ainfra%2Flocal)
+
 Ambiente AWS local do monorepo. O [Floci](https://github.com/floci-io/floci) (MIT, versão fixada em `docker-compose.yml`) é o único ambiente virtualizado: tudo que for desenvolvido aqui deve rodar igual na AWS (Lambda, API Gateway, S3, SQS, SNS, DynamoDB, SSM, Secrets Manager, Cognito, RDS).
 
 Pré-requisitos: Docker com Compose v2 e, para os comandos de verificação, o AWS CLI v2.

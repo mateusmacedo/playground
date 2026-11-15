@@ -1,5 +1,7 @@
 # Backoffice
 
+[![Quality gate](https://sonarcloud.io/api/project_badges/measure?project=mateusmacedo_playground&metric=alert_status)](https://sonarcloud.io/summary/overall?id=mateusmacedo_playground) [Métricas desta pasta no SonarQube Cloud](https://sonarcloud.io/code?id=mateusmacedo_playground&selected=mateusmacedo_playground%3Aapps%2Fbackoffice)
+
 Painel administrativo em **Next.js 16** (App Router) e **React 19**, com o shell do **CoreUI Free 5.x**: menu lateral filtrado por permissão, cabeçalho com tema claro, escuro e automático, breadcrumb e rodapé com o ambiente. As decisões por trás estão nos ADRs [0003](../../docs/adr/0003-coreui-free-no-backoffice-nextjs.md) e [0006](../../docs/adr/0006-next-16-4-6-e-allowed-dev-origins.md).
 
 Projeto Nx `backoffice`, com tags `scope:backoffice` e `type:app`. Os testes de ponta a ponta ficam em [`apps/backoffice-e2e`](../backoffice-e2e).
