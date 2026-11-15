@@ -1,7 +1,7 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import { CContainer } from '@coreui/react';
+import type { ReactNode } from 'react';
 
 import { useSession } from '@/core/session/session-context';
 import { ErrorState, LoadingState } from '@/shared/ui/states';
@@ -12,7 +12,7 @@ import { AppSidebar } from './app-sidebar';
 import { ShellProvider } from './shell-context';
 
 /** Enquanto a sessão não fica pronta, o estado dela ocupa o lugar da página. */
-function SessionGate({ children }: Readonly<{ children: ReactNode }>) {
+export function SessionGate({ children }: Readonly<{ children: ReactNode }>) {
   const { status, error, reload, signIn } = useSession();
   switch (status) {
     case 'loading':
@@ -28,13 +28,19 @@ function SessionGate({ children }: Readonly<{ children: ReactNode }>) {
     case 'expired':
       return (
         <ErrorState
-          actionLabel="Entrar de novo"
+          actionLabel={signIn ? 'Entrar de novo' : 'Recarregar'}
           message="Sua sessão expirou. Entre de novo para continuar."
           onRetry={signIn ?? reload}
         />
       );
-    default:
+    case 'ready':
       return children;
+    default: {
+      // WHY: um estado novo no contrato da sessão precisa de uma tela aqui; falhar alto evita liberar a página sem
+      // querer, e o `never` faz o compilador apontar o caso que faltou.
+      const unhandled: never = status;
+      throw new Error(`Estado de sessão sem tela: ${String(unhandled)}`);
+    }
   }
 }
 

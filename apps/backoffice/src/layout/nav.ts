@@ -6,7 +6,12 @@ export type NavIcon = string[];
 export interface NavBadge {
   readonly text: string;
   readonly color:
-    'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'danger';
+    | 'primary'
+    | 'secondary'
+    | 'success'
+    | 'info'
+    | 'warning'
+    | 'danger';
 }
 
 /** Rótulo de seção; some quando nenhum item da seção sobra para o usuário. */
