@@ -1,5 +1,7 @@
 # infra/terraform
 
+[![Quality gate](https://sonarcloud.io/api/project_badges/measure?project=mateusmacedo_playground&metric=alert_status)](https://sonarcloud.io/summary/overall?id=mateusmacedo_playground) [Métricas desta pasta no SonarQube Cloud](https://sonarcloud.io/code?id=mateusmacedo_playground&selected=mateusmacedo_playground%3Ainfra%2Fterraform)
+
 Terraform do playground. Hoje existe só o ambiente local, no [Floci](../local/README.md): a decisão e os gatilhos para crescer estão no [ADR 0011](../../docs/adr/0011-estrutura-profissional-do-terraform.md); o dono de cada recurso, no [ADR 0004](../../docs/adr/0004-serverless-e-terraform.md); as camadas, no [ADR 0009](../../docs/adr/0009-camadas-e-ordem-de-implantacao.md).
 
 ```text

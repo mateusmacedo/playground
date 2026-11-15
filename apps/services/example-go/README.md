@@ -1,5 +1,7 @@
 # example-go
 
+[![Quality gate](https://sonarcloud.io/api/project_badges/measure?project=mateusmacedo_playground&metric=alert_status)](https://sonarcloud.io/summary/overall?id=mateusmacedo_playground) [Métricas desta pasta no SonarQube Cloud](https://sonarcloud.io/code?id=mateusmacedo_playground&selected=mateusmacedo_playground%3Aapps%2Fservices%2Fexample-go)
+
 Serviço serverless em Go, HTTP acionado pelo API Gateway (HTTP API), no runtime `provided.al2023`.
 
 ## Estrutura

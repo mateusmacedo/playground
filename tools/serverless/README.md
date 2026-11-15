@@ -1,5 +1,7 @@
 # nx-serverless
 
+[![Quality gate](https://sonarcloud.io/api/project_badges/measure?project=mateusmacedo_playground&metric=alert_status)](https://sonarcloud.io/summary/overall?id=mateusmacedo_playground) [Métricas desta pasta no SonarQube Cloud](https://sonarcloud.io/code?id=mateusmacedo_playground&selected=mateusmacedo_playground%3Atools%2Fserverless)
+
 Plugin Nx local que infere targets para serviços do Serverless Framework v4 a
 partir de cada `serverless.yml` do workspace, com executors de validação e de
 build Go e generators de serviços TypeScript e Go.
