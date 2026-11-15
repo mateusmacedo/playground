@@ -1,0 +1,8 @@
+{
+  "name": "ai-instructions",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "tools/ai",
+  "projectType": "library",
+  "tags": ["type:tool", "scope:shared"],
+  "targets": {}
+}
