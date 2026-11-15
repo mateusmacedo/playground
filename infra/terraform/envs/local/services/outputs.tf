@@ -9,7 +9,7 @@ output "routes" {
   }
 }
 
-output "http_listener_port" {
-  description = "Porta do listener HTTP do ALB (no Floci, dentro do container do emulador)."
+output "https_listener_port" {
+  description = "Porta do listener HTTPS do ALB (no Floci, dentro do container do emulador)."
   value       = local.platform.listener_port
 }

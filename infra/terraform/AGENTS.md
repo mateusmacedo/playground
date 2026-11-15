@@ -7,5 +7,5 @@ Terraform do ambiente local (Floci): 8 módulos e 2 envs, `infra-local-platform`
 - **Tarefas pelo Nx**: `fmt`, `validate`, `lint`, `test`, `plan`, `apply`, `destroy` e `smoke`. Terraform à mão só com `TF_DATA_DIR=<raiz>/tmp/terraform/<projeto>`: nenhuma pasta `.terraform/` dentro do repositório.
 - **Floci é o único alvo**: o provider usa `test`/`test` e só aceita endpoint em loopback. Não aponte um env para conta real.
 - **Contornos do Floci** levam o marcador `WORKAROUND(floci-<versão>)` e são desligáveis por variável.
-- **Sem estrutura antecipada**: nada de `stacks`, ambientes AWS, backend remoto, organização, WAF, CloudFront ou observabilidade antes do gatilho da tabela do ADR 0011. Módulo novo só com um env que o use.
+- **Sem estrutura antecipada**: nada de `stacks`, ambientes AWS, backend remoto, organização, WAF, CloudFront ou observabilidade antes do gatilho da tabela do ADR 0011. A exceção é o que um achado de segurança do Sonar exige para a nota A: hoje, o HTTPS e os access logs do ALB ([ADR 0014](../../docs/adr/0014-meta-de-seguranca-a-antecipa-https-e-logs-do-alb.md)). Módulo novo só com um env que o use.
 - Mudou módulo ou env: `pnpm nx affected -t fmt validate lint test` e, se mexeu no que roda, `pnpm nx run infra-local:local:provision` no Floci.

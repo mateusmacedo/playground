@@ -18,10 +18,10 @@ variable "public_subnets" {
   }
 }
 
-variable "alb_listener_port" {
-  description = "Porta do listener do ALB aberta no security group dele."
-  type        = number
-  default     = 80
+variable "alb_listener_ports" {
+  description = "Portas dos listeners do ALB abertas no security group dele (HTTPS e o redirecionamento HTTP)."
+  type        = list(number)
+  default     = [443, 80]
 }
 
 variable "alb_ingress_cidrs" {

@@ -8,12 +8,17 @@ output "dns_name" {
   value       = aws_lb.this.dns_name
 }
 
-output "http_listener_arn" {
-  description = "ARN do listener HTTP, onde os serviços penduram as regras."
-  value       = aws_lb_listener.http.arn
+output "https_listener_arn" {
+  description = "ARN do listener HTTPS, onde os serviços penduram as regras."
+  value       = aws_lb_listener.https.arn
 }
 
-output "http_listener_port" {
-  description = "Porta do listener HTTP."
-  value       = aws_lb_listener.http.port
+output "https_listener_port" {
+  description = "Porta do listener HTTPS."
+  value       = aws_lb_listener.https.port
+}
+
+output "access_logs_bucket" {
+  description = "Bucket S3 que recebe os access logs do ALB."
+  value       = aws_s3_bucket.access_logs.id
 }
