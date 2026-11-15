@@ -5,9 +5,19 @@ import (
 	"log/slog"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambdacontext"
 
 	"<%= modulePath %>/internal/core"
 )
+
+// withLambdaRequestID põe no contexto o id da invocação da Lambda; fora da
+// Lambda devolve o contexto como veio.
+func withLambdaRequestID(ctx context.Context) context.Context {
+	if invocation, ok := lambdacontext.FromContext(ctx); ok {
+		return withRequestID(ctx, invocation.AwsRequestID)
+	}
+	return ctx
+}
 
 func handleSchedule(ctx context.Context, event events.EventBridgeEvent) error {
 	ctx = withLambdaRequestID(ctx)
