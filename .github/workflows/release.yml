@@ -151,13 +151,15 @@ jobs:
       packages: write
     steps:
       # WHY: o `nx release` precisa da história inteira e das tags para achar a
-      # versão atual de cada projeto, e do token no git para fazer o push.
+      # versão atual de cada projeto. O push do commit de versão e das tags vai
+      # pela deploy key, a única exceção do ruleset da main (ADR 0015).
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           fetch-tags: true
           persist-credentials: true
+          ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
 
       # NOTE: `registry-url` e `scope` fazem o setup-node gerar o .npmrc com
       # `NODE_AUTH_TOKEN` para o GitHub Packages.
