@@ -42,4 +42,12 @@ run "asg_of_one" {
     condition     = aws_launch_template.this.metadata_options[0].http_tokens == "required"
     error_message = "A instância exige IMDSv2."
   }
+
+  assert {
+    condition = (
+      aws_launch_template.this.network_interfaces[0].associate_public_ip_address == "false" &&
+      aws_launch_template.this.network_interfaces[0].security_groups == toset(var.security_group_ids)
+    )
+    error_message = "A instância não recebe IP público e usa os security groups do serviço."
+  }
 }

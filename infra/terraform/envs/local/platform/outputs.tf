@@ -8,6 +8,11 @@ output "alb_dns_name" {
   value       = module.alb.dns_name
 }
 
+output "alb_certificate_pem" {
+  description = "Certificado público (PEM) do listener HTTPS, para o cliente local confiar nele."
+  value       = tls_self_signed_cert.alb.cert_pem
+}
+
 output "ecr_repositories" {
   description = "Repositórios ECR por nome."
   value       = module.ecr.repositories

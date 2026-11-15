@@ -1,19 +1,30 @@
 #!/usr/bin/env bash
 # Smoke test (L6) dos serviços de container atrás do ALB do Floci, pelo host:
-# sem regra o listener responde 404 e, para cada serviço do env services,
-# GET /health pelo host e GET /<serviço> pelo path respondem 2xx.
+# o HTTP só redireciona para o HTTPS, sem regra o listener HTTPS responde 404
+# e, para cada serviço do env services, GET /health pelo host e GET /<serviço>
+# pelo path respondem 2xx.
 #
-# WHY: o listener do ALB abre dentro do container do Floci; o infra/local
-# publica a porta 80 em 127.0.0.1:${FLOCI_ALB_HTTP_PORT} (padrão 8088).
+# WHY: os listeners do ALB abrem dentro do container do Floci; o infra/local
+# publica a 443 em 127.0.0.1:${FLOCI_ALB_HTTPS_PORT} (padrão 8443) e a 80 em
+# 127.0.0.1:${FLOCI_ALB_HTTP_PORT} (padrão 8088).
 set -euo pipefail
 
+readonly https_port="${FLOCI_ALB_HTTPS_PORT:-8443}"
 readonly http_port="${FLOCI_ALB_HTTP_PORT:-8088}"
-readonly base_url="http://localhost:${http_port}"
+readonly base_url="https://localhost:${https_port}"
 readonly repo_root="$(git rev-parse --show-toplevel)"
+readonly platform_dir="${repo_root}/infra/terraform/envs/local/platform"
 readonly services_dir="${repo_root}/infra/terraform/envs/local/services"
 # NOTE: um target recém-registrado leva alguns segundos para ficar saudável.
 readonly max_attempts="${SMOKE_MAX_ATTEMPTS:-30}"
 readonly wait_seconds=2
+
+# WHY: o certificado do ALB local é autoassinado; o curl confia só nele, pela
+# chave pública do output do platform, em vez de desligar a verificação.
+readonly ca_file="${repo_root}/tmp/alb-smoke/ca.pem"
+mkdir -p "$(dirname "${ca_file}")"
+TF_DATA_DIR="${repo_root}/tmp/terraform/infra-local-platform" \
+  terraform -chdir="${platform_dir}" output -raw alb_certificate_pem >"${ca_file}"
 
 export TF_DATA_DIR="${repo_root}/tmp/terraform/infra-local-services"
 routes="$(terraform -chdir="${services_dir}" output -json routes)"
@@ -34,7 +45,7 @@ check() {
     # (28) ou conexão resetada (56); o exit do curl da última tentativa vai na
     # mensagem de falha.
     curl_exit=0
-    status="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$@")" || curl_exit=$?
+    status="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 --cacert "${ca_file}" "$@")" || curl_exit=$?
     if [[ "${status}" =~ ${expected} ]]; then
       printf 'ok     %s  %s\n' "${status}" "${label}"
       return 0
@@ -47,6 +58,8 @@ check() {
   failed=1
 }
 
+check '^301$' "GET http://localhost:${http_port}/ (redireciona para o HTTPS)" \
+  "http://localhost:${http_port}/"
 check '^404$' "GET ${base_url}/ (sem regra)" "${base_url}/"
 
 services="$(jq -r 'to_entries[] | "\(.key) \(.value.host)"' <<<"${routes}")"

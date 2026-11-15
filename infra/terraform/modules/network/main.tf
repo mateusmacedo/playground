@@ -52,15 +52,25 @@ resource "aws_security_group" "alb" {
   tags = merge(var.tags, { Name = "${var.name}-alb" })
 }
 
+# WHY: a regra da porta 80 ganhou a porta na chave; o `moved` mantém a mesma
+# regra em vez de recriar uma idêntica, que o EC2 recusaria como duplicada.
+moved {
+  from = aws_vpc_security_group_ingress_rule.alb_listener["0.0.0.0/0"]
+  to   = aws_vpc_security_group_ingress_rule.alb_listener["0.0.0.0/0:80"]
+}
+
 resource "aws_vpc_security_group_ingress_rule" "alb_listener" {
-  for_each = toset(var.alb_ingress_cidrs)
+  for_each = {
+    for pair in setproduct(var.alb_ingress_cidrs, var.alb_listener_ports) :
+    "${pair[0]}:${pair[1]}" => { cidr = pair[0], port = pair[1] }
+  }
 
   security_group_id = aws_security_group.alb.id
   description       = "Client traffic to the ALB listener"
   ip_protocol       = "tcp"
-  from_port         = var.alb_listener_port
-  to_port           = var.alb_listener_port
-  cidr_ipv4         = each.value
+  from_port         = each.value.port
+  to_port           = each.value.port
+  cidr_ipv4         = each.value.cidr
 }
 
 resource "aws_vpc_security_group_egress_rule" "alb_all" {

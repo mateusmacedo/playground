@@ -27,18 +27,19 @@ Cada ADR registra **uma** decisão que o time precisa entender daqui a seis mese
 
 ## Índice
 
-| ADR                                                     | Título                                                         | Status   |
-| ------------------------------------------------------- | -------------------------------------------------------------- | -------- |
-| [0001](./0001-nx-pnpm-ts-solution.md)                   | Nx 24 com pnpm no setup TypeScript solution                    | Aceito   |
-| [0002](./0002-floci-ambiente-aws-local.md)              | Floci como único ambiente AWS virtualizado local               | Aceito   |
-| [0003](./0003-coreui-free-no-backoffice-nextjs.md)      | CoreUI Free 5.x no backoffice Next.js                          | Aceito   |
-| [0004](./0004-serverless-e-terraform.md)                | Serverless Framework v4 e Terraform: quem é dono de quê        | Aceito   |
-| [0005](./0005-angular-no-setup-ts-solution.md)          | Angular no setup TypeScript solution                           | Proposto |
-| [0006](./0006-next-16-4-6-e-allowed-dev-origins.md)     | Next.js 16.4.6 por segurança e o efeito do `allowedDevOrigins` | Aceito   |
-| [0007](./0007-lint-e-formatacao-biome-eslint-minimo.md) | Lint e formatação híbridos, Biome e ESLint mínimo              | Aceito   |
-| [0008](./0008-adapters-de-runtime.md)                   | Adapters de runtime para portabilidade Lambda, ECS, EKS e EC2  | Aceito   |
-| [0009](./0009-camadas-e-ordem-de-implantacao.md)        | Camadas, fronteiras e ordem de implantação                     | Aceito   |
-| [0010](./0010-versionamento-e-publicacao-no-github.md)  | Versionamento e publicação no GitHub com nx release            | Aceito   |
-| [0011](./0011-estrutura-profissional-do-terraform.md)   | Terraform enxuto e evolutivo                                   | Aceito   |
-| [0012](./0012-instrucoes-de-ia-por-projeto.md)          | Instruções de IA por projeto                                   | Aceito   |
-| [0013](./0013-analise-sonarqube-cloud.md)               | Análise do SonarQube Cloud com a cobertura dos testes          | Aceito   |
+| ADR                                                                | Título                                                         | Status   |
+| ------------------------------------------------------------------ | -------------------------------------------------------------- | -------- |
+| [0001](./0001-nx-pnpm-ts-solution.md)                              | Nx 24 com pnpm no setup TypeScript solution                    | Aceito   |
+| [0002](./0002-floci-ambiente-aws-local.md)                         | Floci como único ambiente AWS virtualizado local               | Aceito   |
+| [0003](./0003-coreui-free-no-backoffice-nextjs.md)                 | CoreUI Free 5.x no backoffice Next.js                          | Aceito   |
+| [0004](./0004-serverless-e-terraform.md)                           | Serverless Framework v4 e Terraform: quem é dono de quê        | Aceito   |
+| [0005](./0005-angular-no-setup-ts-solution.md)                     | Angular no setup TypeScript solution                           | Proposto |
+| [0006](./0006-next-16-4-6-e-allowed-dev-origins.md)                | Next.js 16.4.6 por segurança e o efeito do `allowedDevOrigins` | Aceito   |
+| [0007](./0007-lint-e-formatacao-biome-eslint-minimo.md)            | Lint e formatação híbridos, Biome e ESLint mínimo              | Aceito   |
+| [0008](./0008-adapters-de-runtime.md)                              | Adapters de runtime para portabilidade Lambda, ECS, EKS e EC2  | Aceito   |
+| [0009](./0009-camadas-e-ordem-de-implantacao.md)                   | Camadas, fronteiras e ordem de implantação                     | Aceito   |
+| [0010](./0010-versionamento-e-publicacao-no-github.md)             | Versionamento e publicação no GitHub com nx release            | Aceito   |
+| [0011](./0011-estrutura-profissional-do-terraform.md)              | Terraform enxuto e evolutivo                                   | Aceito   |
+| [0012](./0012-instrucoes-de-ia-por-projeto.md)                     | Instruções de IA por projeto                                   | Aceito   |
+| [0013](./0013-analise-sonarqube-cloud.md)                          | Análise do SonarQube Cloud com a cobertura dos testes          | Aceito   |
+| [0014](./0014-meta-de-seguranca-a-antecipa-https-e-logs-do-alb.md) | A meta de segurança A antecipa o HTTPS e os access logs do ALB | Aceito   |

@@ -90,9 +90,16 @@ resource "aws_launch_template" "this" {
   name                   = local.resource_name
   image_id               = var.ami_id
   instance_type          = var.instance_type
-  vpc_security_group_ids = var.security_group_ids
   user_data              = base64encode(local.user_data)
   update_default_version = true
+
+  # WHY: a instância só recebe tráfego do ALB pelo IP privado; sem IP público,
+  # ela não fica alcançável da internet mesmo numa subnet pública.
+  network_interfaces {
+    associate_public_ip_address = false
+    delete_on_termination       = true
+    security_groups             = var.security_group_ids
+  }
 
   iam_instance_profile {
     arn = aws_iam_instance_profile.this.arn

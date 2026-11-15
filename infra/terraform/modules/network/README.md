@@ -2,10 +2,10 @@
 
 Rede da plataforma (L1): VPC, subnets públicas em duas ou mais zonas, internet gateway, route table pública e os dois security groups.
 
-| Security group    | Entrada                                                                           |
-| ----------------- | --------------------------------------------------------------------------------- |
-| `<nome>-alb`      | Porta do listener (`alb_listener_port`, 80) a partir de `alb_ingress_cidrs`       |
-| `<nome>-services` | Só do SG do ALB, na faixa `service_port_range` (container, instância ou NodePort) |
+| Security group    | Entrada                                                                                                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------- |
+| `<nome>-alb`      | Portas dos listeners (`alb_listener_ports`: 443 e o redirecionamento na 80) a partir de `alb_ingress_cidrs` |
+| `<nome>-services` | Só do SG do ALB, na faixa `service_port_range` (container, instância ou NodePort)                           |
 
 ```hcl
 module "network" {

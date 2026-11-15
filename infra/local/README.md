@@ -90,11 +90,12 @@ Os apps de dev rodam no host (`next dev`, `serverless`), mas as Lambdas rodam em
 
 Limitação: uma URL gerada por dentro de uma Lambda (como um presigned) aponta para `localhost.floci.io` e não serve para o navegador. Um container próprio que precise falar com o Floci deve entrar na rede `playground-floci` e usar `http://floci:4566`.
 
-Um ALB criado no Floci (por exemplo, pelo Terraform) abre o socket do listener dentro do container do Floci. O compose publica o listener HTTP da porta 80 em `127.0.0.1:${FLOCI_ALB_HTTP_PORT}` (padrão `8088`; a 8080 fica livre para os serviços rodando no host). Como o Floci serve todos os ALBs por um único socket por porta, a requisição escolhe a regra pelo cabeçalho `Host` ou pelo path:
+Um ALB criado no Floci (por exemplo, pelo Terraform) abre o socket do listener dentro do container do Floci. O compose publica o listener HTTPS da porta 443 em `127.0.0.1:${FLOCI_ALB_HTTPS_PORT}` (padrão `8443`) e o HTTP da porta 80, que só redireciona para o HTTPS, em `127.0.0.1:${FLOCI_ALB_HTTP_PORT}` (padrão `8088`; a 8080 fica livre para os serviços rodando no host). Como o Floci serve todos os ALBs por um único socket por porta, a requisição escolhe a regra pelo cabeçalho `Host` ou pelo path. O certificado do ALB do Terraform é autoassinado para `localhost`; o curl confia nele pelo output do env `platform` ([ADR 0014](../../docs/adr/0014-meta-de-seguranca-a-antecipa-https-e-logs-do-alb.md)):
 
 ```bash
-curl -s -o /dev/null -w '%{http_code}\n' -H 'Host: example-go.playground.local' http://localhost:8088/health
-curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8088/example-quarkus
+TF_DATA_DIR=tmp/terraform/infra-local-platform terraform -chdir=infra/terraform/envs/local/platform output -raw alb_certificate_pem > tmp/alb-ca.pem
+curl -s -o /dev/null -w '%{http_code}\n' --cacert tmp/alb-ca.pem -H 'Host: example-go.playground.local' https://localhost:8443/health
+curl -s -o /dev/null -w '%{http_code}\n' --cacert tmp/alb-ca.pem https://localhost:8443/example-quarkus
 ```
 
 Listener em outra porta não é publicado: acrescente a porta em `docker-compose.yml`, ou chame de dentro da rede `playground-floci` (`http://floci:<porta>`). A mudança de porta só vale depois de recriar o container (`pnpm nx run infra-local:up`).

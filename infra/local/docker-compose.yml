@@ -6,8 +6,10 @@ services:
     image: docker.io/floci/floci:2.4.0@sha256:5ee85db604c4aa74ac76e07ea5cc83086f37bb472bf3dbb97e34019e48efae9c
     ports:
       - '127.0.0.1:4566:4566'
-      # WHY: o socket do listener HTTP (porta 80) do ALB abre dentro do container
-      # do Floci. 8088 e não 8080, que é a porta padrão dos serviços no host.
+      # WHY: os sockets dos listeners do ALB (HTTPS na 443 e o redirecionamento
+      # HTTP na 80) abrem dentro do container do Floci. 8088 e não 8080, que é
+      # a porta padrão dos serviços no host.
+      - '127.0.0.1:${FLOCI_ALB_HTTPS_PORT:-8443}:443'
       - '127.0.0.1:${FLOCI_ALB_HTTP_PORT:-8088}:80'
     environment:
       # WHY: vazio mantém localhost:4566 nas URLs devolvidas; as Lambdas

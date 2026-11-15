@@ -18,8 +18,12 @@ run "public_subnets_only" {
   }
 
   assert {
-    condition     = aws_vpc_security_group_ingress_rule.alb_listener["0.0.0.0/0"].from_port == 80
-    error_message = "O SG do ALB abre só a porta do listener."
+    condition = (
+      length(aws_vpc_security_group_ingress_rule.alb_listener) == 2 &&
+      aws_vpc_security_group_ingress_rule.alb_listener["0.0.0.0/0:443"].from_port == 443 &&
+      aws_vpc_security_group_ingress_rule.alb_listener["0.0.0.0/0:80"].from_port == 80
+    )
+    error_message = "O SG do ALB abre só as portas dos listeners: HTTPS e o redirecionamento HTTP."
   }
 
   assert {

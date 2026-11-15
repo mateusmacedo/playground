@@ -8,14 +8,17 @@ provider "aws" {
   skip_credentials_validation = true
   skip_metadata_api_check     = true
   skip_requesting_account_id  = true
+  s3_use_path_style           = true
 
   endpoints {
+    acm            = var.endpoint
     ec2            = var.endpoint
     ecr            = var.endpoint
     ecs            = var.endpoint
     eks            = var.endpoint
     elbv2          = var.endpoint
     iam            = var.endpoint
+    s3             = var.endpoint
     secretsmanager = var.endpoint
     ssm            = var.endpoint
     sts            = var.endpoint

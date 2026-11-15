@@ -14,8 +14,8 @@ locals {
     [
       "platform/vpc/id",
       "platform/public-subnets/ids",
-      "platform/alb/http-listener-arn",
-      "platform/alb/http-listener-port",
+      "platform/alb/https-listener-arn",
+      "platform/alb/https-listener-port",
       "platform/services-security-group/id",
     ],
     contains(local.stages_in_use, "ecs") ? ["platform/ecs-cluster/arn"] : [],
@@ -75,8 +75,8 @@ locals {
   platform = {
     vpc_id                     = local.contract["platform/vpc/id"]
     subnet_ids                 = split(",", local.contract["platform/public-subnets/ids"])
-    listener_arn               = local.contract["platform/alb/http-listener-arn"]
-    listener_port              = tonumber(local.contract["platform/alb/http-listener-port"])
+    listener_arn               = local.contract["platform/alb/https-listener-arn"]
+    listener_port              = tonumber(local.contract["platform/alb/https-listener-port"])
     services_security_group_id = local.contract["platform/services-security-group/id"]
     ecs_cluster_arn            = lookup(local.contract, "platform/ecs-cluster/arn", null)
   }
