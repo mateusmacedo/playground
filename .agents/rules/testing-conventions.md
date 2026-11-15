@@ -20,6 +20,18 @@ Vale para todo teste do repositório. O específico de cada stack está no escop
 
 Rode pelo Nx: `pnpm nx test <projeto>` ou `pnpm nx affected -t test`. Cobertura só quando pedida (`VITEST_COVERAGE=1`).
 
+## Cobertura mínima
+
+**OBRIGATÓRIO**: todo projeto fica **acima de 90%** em linhas e em ramos, sem excluir código do projeto para subir o número.
+
+| Stack      | Onde a meta é cobrada                                                                                                             |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| TypeScript | `thresholds: { lines: 90.01, branches: 90.01 }` no `vitest.config.mts`, com `coverage.include` de todos os fontes do projeto      |
+| Java       | `jacocoTestCoverageVerification` (linhas e ramos acima de 0,9) junto do `test` com `-Pcoverage`                                   |
+| Go         | o `sonar.yml` reprova o total de statements do `go test -coverprofile` abaixo da meta (o Sonar não mede ramos em Go)               |
+
+Projeto novo nasce com a meta configurada. Sem `coverage.include`, o Vitest só mede o que os testes carregam, e o Sonar conta o resto como 0%.
+
 ## O que testar onde
 
 | Categoria  | Alvo                                                        | Observação                                          |
