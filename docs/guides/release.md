@@ -106,7 +106,8 @@ O script `release` (`nx release --yes`) existe **só para o CI**: fora dele (sem
 
 ## Pré-requisitos no GitHub
 
-- **Proteção de branch.** Se a `main` exigir PR ou checks, o push do commit e das tags feito pelo `GITHUB_TOKEN` (`github-actions[bot]`) será **recusado**. É preciso um token de **GitHub App** ou um **PAT** com permissão de bypass, usado no checkout e no `nx release`. Lembre que pushes feitos com o `GITHUB_TOKEN` **não disparam workflows**, e que o commit de release já tem `[skip ci]`.
+- **Proteção de branch.** O ruleset da `main` exige PR, checks e histórico linear ([ADR 0015](../adr/0015-metas-de-qualidade-e-gate-obrigatorio.md)), e um push do `GITHUB_TOKEN` seria **recusado**. A única exceção do ruleset são as deploy keys: o job `release` faz o checkout com a deploy key do secret **`RELEASE_DEPLOY_KEY`** (chave SSH com escrita, cadastrada em Settings, Deploy keys), e o `nx release` grava o commit e as tags por ela. Sem o secret, o push falha. O commit de release tem `[skip ci]`, então não dispara os workflows de novo. Para girar a chave, gere outra, cadastre a pública como deploy key com escrita, troque o secret e remova a antiga.
+- **Metas do SonarQube.** O job `quality` reprova o release se a última análise da `main` não for do commit que vira versão ou se as metas do ADR 0015 não forem atendidas.
 - **Pacotes npm** vão para o GitHub Packages (`https://npm.pkg.github.com`), e o **nome do pacote precisa ter o escopo do dono**: `@mateusmacedo/<nome>`. O mapeamento do escopo para o registry fica no `.npmrc` da raiz (`@mateusmacedo:registry=https://npm.pkg.github.com`). Prefira o `.npmrc` ao `publishConfig.registry`: a documentação do Nx desaconselha o segundo, porque ele impede sobrescrever o registry. A autenticação vem do `setup-node` no CI e **nunca** do arquivo versionado.
 - **Imagens** vão para `ghcr.io/mateusmacedo/<projeto>`.
 
