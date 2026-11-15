@@ -1,11 +1,31 @@
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: os specs comparam a sintaxe ${...} de variáveis do Serverless.
-import { readJson, readProjectConfiguration, type Tree } from '@nx/devkit';
+import {
+  addDependenciesToPackageJson,
+  addProjectConfiguration,
+  formatFiles,
+  readJson,
+  readProjectConfiguration,
+  type Tree,
+} from '@nx/devkit';
 import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { parseServerlessManifest } from '../../core/serverless-manifest.js';
 import { getObject, parseYamlObject } from '../../core/yaml.js';
 import { serviceTsGenerator } from './generator.js';
+
+// WHY: o formatador real depende do que o workspace tem instalado e escreve
+// aviso quando falta; o que importa aqui é o gerador chamá-lo ou não. A
+// instalação das dependências delega à implementação real e só os testes de
+// tarefas pós-geração trocam o retorno, para não instalar pacote.
+vi.mock('@nx/devkit', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@nx/devkit')>();
+  return {
+    ...actual,
+    formatFiles: vi.fn(async () => undefined),
+    addDependenciesToPackageJson: vi.fn(actual.addDependenciesToPackageJson),
+  };
+});
 
 describe('serviceTsGenerator', () => {
   let tree: Tree;
@@ -311,5 +331,81 @@ describe('serviceTsGenerator', () => {
         }),
       ).rejects.toThrow(/inválido para "queue"/);
     });
+  });
+});
+
+describe('serviceTsGenerator: formatação e tarefas depois da geração', () => {
+  let tree: Tree;
+
+  beforeEach(() => {
+    tree = createTreeWithEmptyWorkspace();
+    vi.clearAllMocks();
+  });
+
+  it('formata os arquivos gerados quando skipFormat não é informado', async () => {
+    await serviceTsGenerator(tree, { name: 'a' });
+
+    expect(formatFiles).toHaveBeenCalledWith(tree);
+  });
+
+  it('não formata com skipFormat', async () => {
+    await serviceTsGenerator(tree, { name: 'a', skipFormat: true });
+
+    expect(formatFiles).not.toHaveBeenCalled();
+  });
+
+  it('devolve a instalação das dependências como tarefa a rodar depois', async () => {
+    const install = vi.fn();
+    vi.mocked(addDependenciesToPackageJson).mockReturnValueOnce(install);
+
+    const afterGenerate = await serviceTsGenerator(tree, {
+      name: 'a',
+      skipFormat: true,
+    });
+    expect(install).not.toHaveBeenCalled();
+
+    await afterGenerate();
+
+    expect(install).toHaveBeenCalledOnce();
+  });
+
+  it('não instala nada com skipPackageJson', async () => {
+    const afterGenerate = await serviceTsGenerator(tree, {
+      name: 'a',
+      skipFormat: true,
+      skipPackageJson: true,
+    });
+
+    await expect(afterGenerate()).resolves.toBeUndefined();
+    expect(addDependenciesToPackageJson).not.toHaveBeenCalled();
+  });
+});
+
+describe('serviceTsGenerator: diretório já ocupado', () => {
+  let tree: Tree;
+
+  beforeEach(() => {
+    tree = createTreeWithEmptyWorkspace();
+  });
+
+  it('recusa o diretório que já pertence a outro projeto', async () => {
+    addProjectConfiguration(tree, 'legado', { root: 'apps/services/novo' });
+
+    await expect(
+      serviceTsGenerator(tree, { name: 'novo', skipFormat: true }),
+    ).rejects.toThrow(
+      'O diretório "apps/services/novo" já pertence ao projeto "legado".',
+    );
+  });
+
+  it('recusa o diretório que já tem arquivos fora de um projeto', async () => {
+    tree.write('apps/services/novo/anotacoes.md', 'ficou aqui');
+
+    await expect(
+      serviceTsGenerator(tree, { name: 'novo', skipFormat: true }),
+    ).rejects.toThrow(
+      'O diretório "apps/services/novo" já existe e não está vazio.',
+    );
+    expect(tree.exists('apps/services/novo/serverless.yml')).toBe(false);
   });
 });

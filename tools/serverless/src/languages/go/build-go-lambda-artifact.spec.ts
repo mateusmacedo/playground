@@ -47,10 +47,10 @@ function goProject(): string {
   return projectDir;
 }
 
-function pathWithFakeGo(): string {
+function pathWithFakeGo(script: string = FAKE_GO): string {
   const binDir = mkdtempSync(join(tmpdir(), 'nx-serverless-fake-go-'));
   const goPath = join(binDir, 'go');
-  writeFileSync(goPath, FAKE_GO);
+  writeFileSync(goPath, script);
   chmodSync(goPath, 0o755);
   return binDir;
 }
@@ -214,5 +214,126 @@ describe('writeFileAtomic', () => {
     expect(() => writeFileAtomic(path, Buffer.from('novo'))).toThrow();
 
     expect(readFileSync(path, 'utf-8')).toBe('antigo');
+  });
+});
+
+describe('normalizePackagePath apontando para a raiz do projeto', () => {
+  it.each(['./', './.'])('recusa "%s"', (value) => {
+    expect(normalizePackagePath(value)).toEqual({
+      error: `packagePath não pode apontar para a raiz do projeto, recebido "${value}".`,
+    });
+  });
+});
+
+describe('buildGoLambdaArtifact com projeto e packagePath', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  const buildWith = (
+    options: { packagePath?: string; files?: Record<string, string> } = {},
+  ) => {
+    vi.stubEnv('PATH', pathWithFakeGo());
+    vi.spyOn(logger, 'info').mockImplementation(() => undefined);
+    const error = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+    const projectDir = goProject();
+    for (const [path, content] of Object.entries(options.files ?? {})) {
+      mkdirSync(join(projectDir, path, '..'), { recursive: true });
+      writeFileSync(join(projectDir, path), content);
+    }
+    const result = buildGoLambdaArtifact({
+      absProjectRoot: projectDir,
+      ...BUILD_OPTIONS,
+      ...(options.packagePath === undefined
+        ? {}
+        : { packagePath: options.packagePath }),
+    });
+    return { result, error };
+  };
+
+  it('falha quando o projeto não tem go.mod', () => {
+    vi.stubEnv('PATH', pathWithFakeGo());
+    const error = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+    const withoutGoMod = mkdtempSync(join(tmpdir(), 'nx-serverless-no-mod-'));
+
+    const result = buildGoLambdaArtifact({
+      absProjectRoot: withoutGoMod,
+      ...BUILD_OPTIONS,
+    });
+
+    expect(result).toEqual({ success: false });
+    expect(error).toHaveBeenCalledWith(
+      `go.mod não encontrado em ${withoutGoMod}.`,
+    );
+  });
+
+  it('recusa um packagePath inválido sem compilar', () => {
+    const { result, error } = buildWith({ packagePath: '../fora' });
+
+    expect(result).toEqual({ success: false });
+    expect(error).toHaveBeenCalledWith(
+      'packagePath não pode conter "..", recebido "../fora".',
+    );
+  });
+
+  it('falha quando o diretório do packagePath não existe', () => {
+    const { result, error } = buildWith({ packagePath: 'cmd/ausente' });
+
+    expect(result).toEqual({ success: false });
+    expect(error).toHaveBeenCalledWith(
+      'Diretório de packagePath não encontrado: cmd/ausente.',
+    );
+  });
+
+  it('falha quando o packagePath aponta para um arquivo', () => {
+    const { result, error } = buildWith({
+      packagePath: 'cmd/api',
+      files: { 'cmd/api': 'package main\n' },
+    });
+
+    expect(result).toEqual({ success: false });
+    expect(error).toHaveBeenCalledWith(
+      'Diretório de packagePath não encontrado: cmd/api.',
+    );
+  });
+
+  it('compila o pacote informado quando ele existe', () => {
+    const { result, error } = buildWith({
+      packagePath: 'cmd/api/',
+      files: { 'cmd/api/main.go': 'package main\n' },
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(error).not.toHaveBeenCalled();
+  });
+});
+
+describe('buildGoLambdaArtifact quando o go build é interrompido', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it('informa o sinal que encerrou o processo', () => {
+    // NOTE: o go falso responde ao `version` e se mata com SIGTERM no build.
+    vi.stubEnv(
+      'PATH',
+      pathWithFakeGo(`#!/bin/sh
+if [ "$1" = "version" ]; then exit 0; fi
+kill -TERM $$
+`),
+    );
+    const error = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+
+    const result = buildGoLambdaArtifact({
+      absProjectRoot: goProject(),
+      ...BUILD_OPTIONS,
+    });
+
+    expect(result).toEqual({ success: false });
+    expect(error).toHaveBeenCalledWith(
+      'go build falhou (interrompido pelo sinal SIGTERM).',
+    );
   });
 });
