@@ -63,7 +63,8 @@ A seção "Estrutura de pastas" do [`README.md`](./README.md) tem o quadro atual
 ### Git
 
 - **Branch** `tipo/descricao-curta`, com `tipo` em `feat`, `fix`, `refactor`, `perf`, `docs`, `test` ou `chore`, e descrição em kebab-case minúsculo. Exemplo: `feat/customers-page`.
-- **PR sempre para a `main`.** Não existe `develop` como base. O merge é só por rebase (histórico linear, data de autoria preservada), e o ruleset da `main` exige os checks do CI e o gate do SonarQube ([ADR 0015](./docs/adr/0015-metas-de-qualidade-e-gate-obrigatorio.md)).
+- **PR sempre para a `main`.** Não existe `develop` como base. O ruleset da `main` exige PR, os checks do CI e o gate do SonarQube, histórico linear, e bloqueia push direto, force push e remoção; a única exceção é a deploy key do release ([ADR 0015](./docs/adr/0015-metas-de-qualidade-e-gate-obrigatorio.md)).
+- **Merge só por rebase.** O repositório tem merge commit e squash desativados: o rebase mantém o histórico linear, um commit por mudança e a data de autoria de cada commit. A branch remota do PR é apagada no merge; rode `git fetch --prune` para limpar as referências locais.
 - **Commits** em Conventional Commits, em **inglês**: `tipo(scope): descrição`, no imperativo, minúscula, só ASCII, até 120 caracteres, sem ponto final. O `scope` é o nome de um projeto Nx ou um destes: `workspace`, `ci`, `deps`, `release`, `docs`, `tooling`, `infra`. Os projetos da raiz (`@org/source` do pnpm e `playground` do Gradle) **não** valem como scope: use `workspace`. O `commitlint.config.mjs` valida isso no hook `commit-msg`.
 - O `.gitattributes` fixa o fim de linha em **LF** (CRLF só em `*.bat`; o `gradlew` em LF; `*.jar` e `*.zip` como binários). O `.editorconfig` segue o mesmo critério.
 - Nunca use `--no-verify` para contornar hook. Se um hook falhar, corrija a causa.
