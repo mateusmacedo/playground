@@ -6,37 +6,144 @@ on:
       - main
   pull_request:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# WHY: `actions: read` é exigido pelo nx-set-shas para achar o último CI
+# verde; os jobs que não precisam dele reduzem para `contents: read`.
 permissions:
   actions: read
   contents: read
 
+# WHY: o runner tem 4 vCPU e 16 GB e o tsc/Next estouram o heap padrão do Node
+# quando o monorepo cresce. Fica só aqui, nunca no repo, para não limitar o uso
+# local.
+env:
+  NODE_OPTIONS: --max-old-space-size=3072
+  NX_DAEMON: 'false'
+
 jobs:
-  main:
+  format:
+    name: Format
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v5
+      # WHY: `--changed --since=origin/main` precisa da história para achar a
+      # base; sem isso `origin/main` não existe no checkout raso.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          go-version-file: apps/services/example-go/go.mod
+
+      # NOTE: no PR só os arquivos alterados; sem arquivo alterado o Biome sai
+      # com erro, por isso o `--no-errors-on-unmatched`.
+      - name: Biome (arquivos alterados)
+        if: github.event_name == 'pull_request'
+        run: pnpm exec biome ci --changed --since=origin/main --no-errors-on-unmatched
+
+      # WHY: no push para a main `origin/main` é o próprio HEAD e não haveria
+      # nada a checar; o repo todo custa milissegundos.
+      - name: Biome (completo)
+        if: github.event_name != 'pull_request'
+        run: pnpm exec biome ci .
+
+      - name: Instruções de IA
+        run: node tools/ai/check-instructions.mjs
+
+      # WHY: o Biome não formata Go; o script falha se o gofmt listar algum
+      # arquivo e é o mesmo do release.yml e do lint dos serviços Go.
+      - name: gofmt
+        run: bash tools/go-fmt-check.sh
+
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           filter: tree:0
           fetch-depth: 0
+          persist-credentials: false
 
-      # NOTE: sem `version`, o pnpm/action-setup usa o `packageManager` do package.json.
-      - uses: pnpm/action-setup@v6
+      - name: Setup
+        uses: ./.github/actions/setup
         with:
-          cache: true
+          go-version-file: apps/services/example-go/go.mod
+          java-version: '21'
+          terraform: 'true'
 
-      - uses: actions/setup-node@v5
+      # NOTE: define NX_BASE e NX_HEAD, que o `nx affected` lê sozinho.
+      - name: Definir SHAs base e head
+        uses: nrwl/nx-set-shas@e602fada7ad5987b0f7b1905e7a99ea1c661514c # v5.1.0
+
+      - name: Verificar sync
+        run: pnpm exec nx sync:check
+
+      # NOTE: nível rápido: só o afetado e testes sem coverage. O completo,
+      # com coverage e e2e em todos os browsers, roda no release.yml.
+      # `spotlessCheck` fica no release.yml: 26 a 52 s, caro para o PR. O `build` do
+      # core Java já roda o `check` do Gradle (spotless e testes).
+      # NOTE: `fmt` e `validate` só existem nos projetos de Terraform; o Nx pula
+      # os projetos sem o target.
+      - name: Lint, typecheck, test, build, fmt e validate
+        run: pnpm exec nx affected -t lint typecheck test build fmt validate --parallel=3
+
+      # NOTE: Self-Healing CI do Nx Cloud; roda mesmo quando os passos acima
+      # falham (é quando há o que corrigir) e sai sem efeito se nada qualifica.
+      - name: Self-Healing CI
+        if: ${{ !cancelled() }}
+        run: pnpm exec nx fix-ci
+
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 24
+          filter: tree:0
+          fetch-depth: 0
+          persist-credentials: false
 
-      - run: pnpm install --frozen-lockfile
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          java-version: '21'
 
-      # NOTE: define NX_BASE e NX_HEAD para os comandos affected e o format:check.
-      - uses: nrwl/nx-set-shas@v5
+      - name: Definir SHAs base e head
+        uses: nrwl/nx-set-shas@e602fada7ad5987b0f7b1905e7a99ea1c661514c # v5.1.0
 
-      - run: pnpm exec nx sync:check
-      - run: pnpm exec nx format:check --base="$NX_BASE" --head="$NX_HEAD"
-      - run: pnpm exec nx affected -t lint test typecheck build
+      # WHY: instalar o Chromium custa ~1 min; sem projeto de e2e afetado o job
+      # termina aqui.
+      - name: Verificar se há e2e afetado
+        id: affected
+        run: |
+          count="$(pnpm exec nx show projects --affected --withTarget=e2e --json | jq 'length')"
+          echo "projetos de e2e afetados: ${count}"
+          if [ "${count}" -gt 0 ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
 
-      # WHY: o Playwright gerado também lista Edge e Chrome de canal, que não vêm no runner; o CI cobre o Chromium.
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm exec nx e2e backoffice-e2e -- --project=chromium
+      # WHY: o Playwright gerado também lista Edge e Chrome de canal, que não
+      # vêm no runner; no PR roda só o Chromium (E2E_ALL_BROWSERS fica no release).
+      - name: Instalar Chromium
+        if: steps.affected.outputs.run == 'true'
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: E2E
+        if: steps.affected.outputs.run == 'true'
+        run: pnpm exec nx affected -t e2e

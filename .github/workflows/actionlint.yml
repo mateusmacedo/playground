@@ -1,0 +1,45 @@
+name: actionlint
+
+on:
+  pull_request:
+    paths:
+      - '.github/**'
+      - 'tools/lint-actions.sh'
+      - 'renovate.json'
+
+concurrency:
+  group: actionlint-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    name: actionlint + pinning + renovate-config
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # WHY: só precisa de pnpm e Node (o renovate-config-validator roda via
+      # `pnpm dlx`); instalar as dependências do workspace seria desperdício.
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          install: 'false'
+
+      - name: Carregar versões pinadas do actionlint
+        run: cat .github/actionlint.versions >> "$GITHUB_ENV"
+
+      - name: Verificar política de pinning de Actions
+        run: bash tools/lint-actions.sh --check-pinning
+
+      - name: Verificar sintaxe de workflows (actionlint)
+        run: bash tools/lint-actions.sh --syntax-only
+
+      - name: Validar renovate.json
+        run: bash tools/lint-actions.sh --validate-renovate

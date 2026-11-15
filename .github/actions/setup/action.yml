@@ -1,0 +1,114 @@
+name: 'Setup Workspace'
+description: 'Configura pnpm e Node e instala as dependências do monorepo Nx'
+
+inputs:
+  node-version:
+    description: 'Versão do Node.js'
+    required: false
+    default: '24'
+  install:
+    description: 'Instala as dependências (false quando o job só precisa de pnpm e Node)'
+    required: false
+    default: 'true'
+  java-version:
+    description: 'Versão do JDK (ex.: 21); vazio não instala. Os projetos Gradle e o grafo do @nx/gradle precisam dele'
+    required: false
+    default: ''
+  go-version-file:
+    description: 'go.mod de onde ler a versão do Go (ex.: apps/services/example-go/go.mod); vazio não instala. Os projetos Go e o gofmt precisam dele'
+    required: false
+    default: ''
+  terraform:
+    description: 'Instala Terraform e tflint (true ou false). Os projetos infra-local-* precisam deles nos targets fmt, validate e lint'
+    required: false
+    default: 'false'
+  registry-url:
+    description: 'Registry npm para publicar (ex.: https://npm.pkg.github.com); vazio não configura'
+    required: false
+    default: ''
+  scope:
+    description: 'Escopo npm ligado ao registry-url (ex.: @mateusmacedo)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    # NOTE: sem `version`, o pnpm/action-setup lê o `packageManager` do package.json.
+    - name: Setup pnpm
+      uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      with:
+        cache: true
+
+    - name: Setup Node
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        registry-url: ${{ inputs.registry-url }}
+        scope: ${{ inputs.scope }}
+
+    # WHY: o @nx/gradle roda o `gradlew` para montar o grafo do Nx, então todo job
+    # que chama `nx` precisa do JDK; o cache do Gradle vem do próprio setup-java.
+    - name: Setup Java
+      if: inputs.java-version != ''
+      uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+      with:
+        distribution: temurin
+        java-version: ${{ inputs.java-version }}
+        cache: gradle
+
+    # WHY: o hash do build Go inclui `go version`, então todo job que roda esses
+    # projetos precisa do mesmo Go do go.mod; o cache dos módulos vem do setup-go.
+    - name: Setup Go
+      if: inputs.go-version-file != ''
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version-file: ${{ inputs.go-version-file }}
+        cache-dependency-path: '**/go.sum'
+
+    # WHY: o wrapper do setup-terraform embrulha a saída e o código de saída em
+    # outputs; o Nx precisa do binário puro.
+    - name: Setup Terraform
+      if: inputs.terraform == 'true'
+      uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+      with:
+        # renovate: datasource=github-releases depName=hashicorp/terraform
+        terraform_version: 1.15.6
+        terraform_wrapper: false
+
+    # NOTE: `cache` guarda os plugins do tflint, com a chave derivada do
+    # `.tflint.hcl`.
+    - name: Setup tflint
+      if: inputs.terraform == 'true'
+      uses: terraform-linters/setup-tflint@6ffdbaa3be476b3431f7275c26966ef32ff60337 # v6.3.2
+      with:
+        # renovate: datasource=github-releases depName=terraform-linters/tflint
+        tflint_version: 0.63.1
+        cache: true
+
+    # WHY: `TF_INPUT=0` impede o Terraform de esperar resposta num prompt; o
+    # `-lockfile=readonly` faz o `init` usar exatamente o `.terraform.lock.hcl`
+    # versionado, sem atualizá-lo em silêncio.
+    - name: Configurar o ambiente do Terraform
+      if: inputs.terraform == 'true'
+      shell: bash
+      run: |
+        {
+          echo "TF_INPUT=0"
+          echo "TF_CLI_ARGS_init=-lockfile=readonly"
+        } >> "$GITHUB_ENV"
+
+    - name: Instalar o plugin aws do tflint
+      if: inputs.terraform == 'true'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: tflint --init --config .tflint.hcl
+
+    # WHY: sem actions/cache em `.nx/cache`. O cache de tarefas é o remoto do
+    # Nx Cloud (`nxCloudId`); transportar o diretório local entre runners custa
+    # cota de cache e o Nx recusa artefatos gerados em outra máquina.
+    - name: Install dependencies
+      if: inputs.install == 'true'
+      shell: bash
+      run: pnpm install --frozen-lockfile
