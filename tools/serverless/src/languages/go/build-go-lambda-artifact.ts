@@ -16,6 +16,7 @@ import {
   LAMBDA_BINARY_NAME,
   LAMBDA_OUTPUT_DIR,
 } from '../../shared/constants.js';
+import { resolveExecutable } from '../../shared/resolve-executable.js';
 import type { ExecutorResult, GoArch } from '../../shared/types.js';
 import { createZip } from './zip.js';
 
@@ -111,8 +112,14 @@ export function buildGoLambdaArtifact(options: GoBuildOptions): ExecutorResult {
     );
   }
 
-  if (spawnSync('go', ['version'], { stdio: 'ignore' }).status !== 0) {
-    return fail('Go não está instalado ou não está no PATH.');
+  const goBinary = resolveExecutable({ name: 'go' });
+  if (
+    goBinary === undefined ||
+    spawnSync(goBinary, ['version'], { stdio: 'ignore' }).status !== 0
+  ) {
+    return fail(
+      'Go não está instalado ou não está numa pasta absoluta e protegida contra escrita do PATH.',
+    );
   }
 
   if (!existsSync(join(absProjectRoot, 'go.mod'))) {
@@ -139,16 +146,20 @@ export function buildGoLambdaArtifact(options: GoBuildOptions): ExecutorResult {
   const binaryPath = join(outputDir, LAMBDA_BINARY_NAME);
   mkdirSync(outputDir, { recursive: true });
 
-  const build = spawnSync('go', goBuildArgs(options, binaryPath, packagePath), {
-    cwd: absProjectRoot,
-    env: {
-      ...process.env,
-      GOOS: 'linux',
-      GOARCH: architecture,
-      CGO_ENABLED: '0',
+  const build = spawnSync(
+    goBinary,
+    goBuildArgs(options, binaryPath, packagePath),
+    {
+      cwd: absProjectRoot,
+      env: {
+        ...process.env,
+        GOOS: 'linux',
+        GOARCH: architecture,
+        CGO_ENABLED: '0',
+      },
+      stdio: 'inherit',
     },
-    stdio: 'inherit',
-  });
+  );
   if (build.status !== 0 || build.signal) {
     const reason = build.signal
       ? `interrompido pelo sinal ${build.signal}`

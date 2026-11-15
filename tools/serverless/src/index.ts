@@ -37,6 +37,18 @@ const PLUGIN_SPEC = /\.spec\.ts$/;
 
 let cachedSourceHash: string | undefined;
 
+// WHY: ordem por code unit, igual em qualquer máquina, para o hash do plugin
+// não mudar com o idioma do sistema, como mudaria com o `localeCompare`.
+function compareByCodeUnit(left: string, right: string): number {
+  if (left < right) {
+    return -1;
+  }
+  if (left > right) {
+    return 1;
+  }
+  return 0;
+}
+
 // WHY: o cache de inferência é chaveado pelos arquivos do serviço e pelas
 // opções; sem o hash do próprio plugin, mudar um comando ou uma flag aqui só
 // valeria depois de alguém mexer no serviço.
@@ -47,7 +59,7 @@ export function pluginSourceHash(root: string = pluginRoot): string {
   const files = readdirSync(join(root, 'src'), { recursive: true })
     .map(String)
     .filter((file) => PLUGIN_SOURCE.test(file) && !PLUGIN_SPEC.test(file))
-    .sort();
+    .sort(compareByCodeUnit);
   const hash = hashArray(
     files.flatMap((file) => [
       file,
