@@ -1,16 +1,16 @@
 name: SonarQube
 
-# NOTE: análise do SonarQube Cloud com a cobertura dos testes (ADR 0013). Fica
-# fora dos checks do PR: o quality gate chega ao PR pelo app do SonarQube
-# Cloud, e uma indisponibilidade do serviço não bloqueia o merge. No PR, só os
-# projetos afetados rodam os testes; a análise completa da main é semanal ou
-# manual.
+# NOTE: análise do SonarQube Cloud com a cobertura dos testes (ADR 0013) e
+# check obrigatório da main (ADR 0015): o job falha se o quality gate falhar.
+# No PR, só os projetos afetados rodam os testes; a cada push na main a
+# análise é completa e confere as metas gerais do projeto.
+# WHY: sem filtro de caminho, porque um check obrigatório que não roda deixa o
+# PR esperando para sempre.
 on:
   pull_request:
     branches: [main]
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
+  push:
+    branches: [main]
   schedule:
     - cron: '41 9 * * 1'
   workflow_dispatch:
@@ -139,3 +139,12 @@ jobs:
             -Dsonar.java.libraries=${{ steps.paths.outputs.libraries }}
             -Dsonar.java.test.libraries=${{ steps.paths.outputs.libraries }}
             -Dsonar.go.coverage.reportPaths=${{ steps.paths.outputs.go-reports }}
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=600
+      # NOTE: o gate do PR olha só o código novo; na main a conferência cobre o
+      # projeto inteiro (notas, cobertura e duplicação) e o commit analisado.
+      - name: Metas do projeto na main
+        if: github.event_name != 'pull_request'
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: bash tools/sonar/check-quality-gate.sh main "${GITHUB_SHA}"

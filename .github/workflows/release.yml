@@ -113,9 +113,30 @@ jobs:
       - name: E2E
         run: pnpm exec nx run-many -t e2e
 
+  # WHY: nenhuma versão sai sem as metas do ADR 0015, analisadas no próprio
+  # commit que vira versão.
+  quality:
+    name: Metas do SonarQube
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Conferir as metas na main
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          ON_MAIN: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          set -euo pipefail
+          revision=''
+          if [ "${ON_MAIN}" = 'true' ]; then revision="${GITHUB_SHA}"; fi
+          bash tools/sonar/check-quality-gate.sh main "${revision}"
+
   release:
     name: Release
-    needs: [format, checks, e2e]
+    needs: [format, checks, e2e, quality]
     # WHY: release de verdade só a partir da main; o dry-run vale em qualquer
     # branch porque não altera nada.
     if: ${{ inputs.dry-run || github.ref == 'refs/heads/main' }}
