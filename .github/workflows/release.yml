@@ -1,11 +1,7 @@
 name: Release
 
-# NOTE: ciclo de versão inteiro no GitHub, via `nx release`: versão pelos
-# conventional commits, changelog por projeto, tag `{projeto}@{versão}`, GitHub
-# Release por projeto e publicação (GitHub Packages para npm e GHCR para
-# imagens). Antes de publicar roda a validação completa da política "rápido por
-# padrão, completo só no release": todos os projetos, com coverage e e2e em
-# todos os browsers.
+# NOTE: valida tudo (cobertura e e2e em todos os browsers) e publica pelo
+# `nx release`; o ciclo completo está em docs/guides/release.md.
 on:
   workflow_dispatch:
     inputs:
@@ -81,11 +77,8 @@ jobs:
       - name: Verificar sync
         run: pnpm exec nx sync:check
 
-      # NOTE: `spotlessCheck` só existe nos projetos Gradle (Java) e leva de 20 a
-      # 50 s, caro demais para o PR; o `build` do core já roda o `check`, mas o
-      # módulo do app só passa por aqui.
-      # NOTE: `fmt` e `validate` só existem nos projetos de Terraform; o Nx pula
-      # os projetos sem o target.
+      # NOTE: o `spotlessCheck` (20 a 50 s) só roda aqui; no PR, só o core Java
+      # passa pelo `check`. O Nx pula os projetos sem `fmt` e `validate`.
       - name: Lint, typecheck, test, build, fmt, validate e spotless de todos os projetos
         run: pnpm exec nx run-many -t lint typecheck test build fmt validate spotlessCheck --parallel=3
 
@@ -142,10 +135,8 @@ jobs:
     if: ${{ inputs.dry-run || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # NOTE: `contents: write` cria o commit de release, as tags e os GitHub
-    # Releases; `packages: write` publica no GitHub Packages e no GHCR.
-    # `id-token: write` não entra: a proveniência do npm não existe no GitHub
-    # Packages.
+    # NOTE: `contents` para commit, tags e Releases; `packages` para o GitHub
+    # Packages e o GHCR. Sem `id-token`: lá não há proveniência do npm.
     permissions:
       contents: write
       packages: write
@@ -207,13 +198,10 @@ jobs:
             echo "nenhum projeto com Dockerfile"
           fi
 
-      # NOTE: `--yes` e `--skip-publish` são mutuamente exclusivos. O primeiro
-      # release não precisa de `--first-release`: sem tag o Nx cai no fallback
-      # `disk` configurado no nx.json.
-      # `LEFTHOOK=0`: o commit de release é do bot e o código já passou pela
-      # validação dos jobs anteriores; os hooks são para quem desenvolve.
-      # WHY: a `version` chega por variável de ambiente, e não interpolada no
-      # script, para que o texto digitado no disparo não vire comando.
+      # NOTE: `--yes` e `--skip-publish` são exclusivos; sem tag, o Nx usa a
+      # versão em disco (fallback `disk`). `LEFTHOOK=0`: o bot dispensa os hooks.
+      # WHY: a `version` vem por variável de ambiente, e não interpolada no
+      # script, para o texto digitado no disparo não virar comando.
       - name: Nx Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

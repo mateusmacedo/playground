@@ -92,12 +92,9 @@ jobs:
       - name: Verificar sync
         run: pnpm exec nx sync:check
 
-      # NOTE: nível rápido: só o afetado e testes sem coverage. O completo,
-      # com coverage e e2e em todos os browsers, roda no release.yml.
-      # `spotlessCheck` fica no release.yml: 26 a 52 s, caro para o PR. O `build` do
-      # core Java já roda o `check` do Gradle (spotless e testes).
-      # NOTE: `fmt` e `validate` só existem nos projetos de Terraform; o Nx pula
-      # os projetos sem o target.
+      # NOTE: nível rápido, só o afetado e sem coverage; o completo e o
+      # `spotlessCheck` rodam no release.yml (o `build` do core Java já roda o
+      # `check`). O Nx pula os projetos sem `fmt` e `validate`.
       - name: Lint, typecheck, test, build, fmt e validate
         run: pnpm exec nx affected -t lint typecheck test build fmt validate --parallel=3
 
