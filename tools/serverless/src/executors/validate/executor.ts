@@ -49,14 +49,12 @@ function runValidation(
   return { success: report.errors.length === 0 };
 }
 
-// WHY: o contrato do Nx exige uma Promise e a validação é síncrona; o
-// construtor da Promise converte um erro lançado em rejeição, como o `async`
-// fazia, em vez de lançá-lo antes de devolver a Promise.
+// WHY: o contrato do Nx exige uma Promise e a validação é síncrona; rodar
+// dentro do `then` converte um erro lançado em rejeição, como o `async` fazia,
+// em vez de lançá-lo antes de devolver a Promise.
 export default function validateExecutor(
   options: ValidateExecutorSchema,
   context: ExecutorContext,
 ): Promise<ExecutorResult> {
-  return new Promise((resolve) => {
-    resolve(runValidation(options, context));
-  });
+  return Promise.resolve().then(() => runValidation(options, context));
 }
