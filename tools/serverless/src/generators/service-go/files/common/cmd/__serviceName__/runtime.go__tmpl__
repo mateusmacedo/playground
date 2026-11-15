@@ -126,15 +126,6 @@ func (h requestIDHandler) WithGroup(name string) slog.Handler {
 	return requestIDHandler{h.Handler.WithGroup(name)}
 }
 
-// withLambdaRequestID põe no contexto o id da invocação da Lambda; fora da
-// Lambda devolve o contexto como veio.
-func withLambdaRequestID(ctx context.Context) context.Context {
-	if invocation, ok := lambdacontext.FromContext(ctx); ok {
-		return withRequestID(ctx, invocation.AwsRequestID)
-	}
-	return ctx
-}
-
 const (
 	requestIDHeader    = "X-Request-Id"
 	maxRequestIDLength = 64
