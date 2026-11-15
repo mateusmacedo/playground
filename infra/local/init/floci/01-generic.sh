@@ -16,13 +16,16 @@ source "$SCRIPT_DIR/_common.sh"
 QUEUE_VISIBILITY_TIMEOUT=180
 
 if [[ ! "$FLOCI_SEED_QUEUE_MAX_RECEIVES" =~ ^[1-9][0-9]{0,3}$ ]] ||
-  [ "$FLOCI_SEED_QUEUE_MAX_RECEIVES" -gt 1000 ]; then
+  [[ "$FLOCI_SEED_QUEUE_MAX_RECEIVES" -gt 1000 ]]; then
   echo "ERRO: FLOCI_SEED_QUEUE_MAX_RECEIVES deve ser um inteiro de 1 a 1000, recebido: '${FLOCI_SEED_QUEUE_MAX_RECEIVES}'" >&2
   exit 1
 fi
 
-# $1 recurso (já com o sufixo de tipo), $2 atributo, $3 valor.
-publish() { ssm_publish "$FLOCI_SEED_SSM_DOMAIN/$1/$2" "$3"; }
+# NOTE: o recurso já vem com o sufixo de tipo (ver ssm_resource).
+publish() {
+  local resource="$1" attribute="$2" value="$3"
+  ssm_publish "$FLOCI_SEED_SSM_DOMAIN/$resource/$attribute" "$value"
+}
 
 seed_bucket() {
   local bucket="$1" resource head_output
@@ -34,7 +37,7 @@ seed_bucket() {
     log "bucket já existe: $bucket"
   elif [[ "$head_output" == *"(404)"* ]]; then
     # NOTE: us-east-1 é a única região que rejeita LocationConstraint.
-    if [ "$AWS_REGION" != "us-east-1" ]; then
+    if [[ "$AWS_REGION" != "us-east-1" ]]; then
       args+=(--create-bucket-configuration "LocationConstraint=$AWS_REGION")
     fi
     try "criar bucket $bucket" awsl s3api create-bucket "${args[@]}" || return 0
@@ -59,7 +62,7 @@ seed_queue() {
     report_failure "consultar fila $dlq falhou" "$dlq_url"
     return 0
   fi
-  if [ -n "$dlq_url" ]; then
+  if [[ -n "$dlq_url" ]]; then
     log "fila já existe: $dlq"
   else
     if ! dlq_url=$(awsl sqs create-queue --queue-name "$dlq" --query QueueUrl --output text 2>&1); then
@@ -81,7 +84,7 @@ seed_queue() {
     report_failure "consultar fila $queue falhou" "$queue_url"
     return 0
   fi
-  if [ -n "$queue_url" ]; then
+  if [[ -n "$queue_url" ]]; then
     if try "sincronizar atributos de $queue" \
       awsl sqs set-queue-attributes --queue-url "$queue_url" --attributes "$attributes"; then
       log "fila já existe: $queue (redrive -> $dlq, max $FLOCI_SEED_QUEUE_MAX_RECEIVES, visibilidade ${QUEUE_VISIBILITY_TIMEOUT}s)"

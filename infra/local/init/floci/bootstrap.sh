@@ -10,6 +10,13 @@ export AWS_PAGER=""
 WAIT_TIMEOUT="${FLOCI_WAIT_TIMEOUT:-120}"
 WAIT_INTERVAL=2
 
+# WHY: o `[[ -ge ]]` avalia texto não numérico como 0, e o laço daria timeout
+# na hora; a validação falha antes, com a mensagem certa.
+if [[ ! "$WAIT_TIMEOUT" =~ ^[1-9][0-9]{0,3}$ ]]; then
+  echo "ERRO: FLOCI_WAIT_TIMEOUT deve ser um inteiro de 1 a 9999 segundos, recebido: '${WAIT_TIMEOUT}'" >&2
+  exit 1
+fi
+
 # WHY: a sonda tem teto de tempo por tentativa e sem retentativa do CLI
 # (AWS_MAX_ATTEMPTS=1): quem repete é o laço, e o WAIT_TIMEOUT conta o tempo
 # decorrido de verdade, não o número de voltas. O erro da última tentativa vai
@@ -21,7 +28,7 @@ wait_for_floci() {
   until last_error=$(AWS_MAX_ATTEMPTS=1 aws --cli-connect-timeout 3 --cli-read-timeout 5 \
     --endpoint-url "$AWS_ENDPOINT_URL" sts get-caller-identity 2>&1 >/dev/null); do
     elapsed=$((SECONDS - start))
-    if [ "$elapsed" -ge "$WAIT_TIMEOUT" ]; then
+    if [[ "$elapsed" -ge "$WAIT_TIMEOUT" ]]; then
       echo "ERRO: o Floci não respondeu em ${WAIT_TIMEOUT}s. Último erro:" >&2
       echo "${last_error#$'\n'}" >&2
       exit 1
@@ -37,13 +44,13 @@ wait_for_floci
 # outros, e o bootstrap só sai com erro depois de rodar todos.
 failed=()
 for script in "$SCRIPT_DIR"/[0-9][0-9]-*.sh; do
-  [ -e "$script" ] || continue
+  [[ -e "$script" ]] || continue
   if ! bash "$script"; then
     failed+=("$(basename "$script")")
   fi
 done
 
-if [ "${#failed[@]}" -gt 0 ]; then
+if [[ "${#failed[@]}" -gt 0 ]]; then
   echo "ERRO: bootstrap do Floci com falha em ${#failed[@]} seed(s): ${failed[*]}" >&2
   exit 1
 fi
