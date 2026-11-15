@@ -14,6 +14,11 @@ on:
         required: false
         default: false
         type: boolean
+      version:
+        description: 'Versão explícita (ex.: 1.0.0-rc.1) ou especificador do Nx (patch, minor, major, prerelease). Vazio calcula pelos commits'
+        required: false
+        default: ''
+        type: string
 
 # WHY: um release por vez e nunca cancelado no meio: cancelar entre o push das
 # tags e a publicação deixa o repositório com tag sem pacote.
@@ -184,15 +189,27 @@ jobs:
       # `disk` configurado no nx.json.
       # `LEFTHOOK=0`: o commit de release é do bot e o código já passou pela
       # validação dos jobs anteriores; os hooks são para quem desenvolve.
+      # WHY: a `version` chega por variável de ambiente, e não interpolada no
+      # script, para que o texto digitado no disparo não vire comando.
       - name: Nx Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LEFTHOOK: '0'
           DRY_RUN: ${{ inputs.dry-run }}
+          VERSION: ${{ inputs.version }}
           PUBLISHABLE: ${{ steps.publishable.outputs.count }}
         run: |
           args=()
+          if [ -n "${VERSION}" ]; then
+            semver='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
+            keyword='^(major|minor|patch|premajor|preminor|prepatch|prerelease)$'
+            if [[ ! "${VERSION}" =~ ${semver} && ! "${VERSION}" =~ ${keyword} ]]; then
+              echo '::error::version inválida. Use semver (1.0.0-rc.1) ou um especificador do Nx (patch, minor, major, prerelease).'
+              exit 1
+            fi
+            args+=("${VERSION}")
+          fi
           if [ "${DRY_RUN}" = 'true' ]; then args+=(--dry-run); fi
           if [ "${PUBLISHABLE}" = '0' ]; then args+=(--skip-publish); else args+=(--yes); fi
           pnpm exec nx release "${args[@]}"

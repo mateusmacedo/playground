@@ -56,10 +56,14 @@ Projetos **fora dos grupos** (`backoffice`, `nx-serverless` e `infra-local`) **n
 
 ### No GitHub
 
-Actions, **Release**, **Run workflow**, com a opção `dry-run`. O workflow não tem gatilho por tag.
+Actions, **Release**, **Run workflow**, com a opção `dry-run` e o campo opcional `version`. O workflow não tem gatilho por tag.
+
+Com o `version` vazio, o Nx calcula a versão pelos commits. Preenchido, o valor vai para o `nx release` como especificador e vale para todos os projetos dos grupos de release: uma versão explícita (`1.0.0-rc.1`) ou uma palavra do Nx (`patch`, `minor`, `major`, `prerelease`). Um valor fora desses formatos faz o job `release` falhar antes de versionar.
+
+**Release candidate**: use ponto antes do número (`1.0.0-rc.1`, `1.0.0-rc.2`). Com hífen (`1.0.0-rc-01`), o próximo `prerelease` calculado pelo Nx sai `1.0.0-rc.0`, que o semver ordena antes da versão anterior.
 
 ```text
- workflow_dispatch (dry-run: sim ou não)
+ workflow_dispatch (dry-run: sim ou não; version: vazio ou informado)
         |
         v
  jobs de validação, em paralelo
@@ -72,7 +76,7 @@ Actions, **Release**, **Run workflow**, com a opção `dry-run`. O workflow não
       - dry-run: roda em qualquer branch e não altera nada
       - de verdade: só a partir da main
       - nx release
-          - calcula as versões pelos commits
+          - calcula as versões pelos commits, ou usa a version informada
           - atualiza o changelog de cada projeto
           - cria o commit "chore(release): publish [skip ci]" e as tags {projeto}@{versão}
           - cria a GitHub Release de cada projeto e versão
