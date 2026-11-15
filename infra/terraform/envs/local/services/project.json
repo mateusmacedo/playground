@@ -1,0 +1,147 @@
+{
+  "name": "infra-local-services",
+  "$schema": "../../../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "infra/terraform/envs/local/services",
+  "tags": ["scope:infra", "type:tool"],
+  "implicitDependencies": ["infra-local-platform"],
+  "namedInputs": {
+    "terraform": [
+      "{projectRoot}/*.tf",
+      "{projectRoot}/*.tfvars",
+      "{projectRoot}/.terraform.lock.hcl",
+      "{workspaceRoot}/infra/terraform/modules/service-ec2/*.tf",
+      "{workspaceRoot}/infra/terraform/modules/service-ec2/templates/*",
+      "{workspaceRoot}/infra/terraform/modules/service-ecs/*.tf",
+      "{workspaceRoot}/infra/terraform/modules/service-eks/*.tf",
+      "{workspaceRoot}/infra/terraform/modules/service-route/*.tf",
+      { "runtime": "terraform version -json" }
+    ],
+    "terraformModuleTests": [
+      "{workspaceRoot}/infra/terraform/modules/service-route/*.tf",
+      "{workspaceRoot}/infra/terraform/modules/service-route/.terraform.lock.hcl",
+      "{workspaceRoot}/infra/terraform/modules/service-route/tests/*.tftest.hcl",
+      "{workspaceRoot}/infra/terraform/modules/service-ec2/*.tf",
+      "{workspaceRoot}/infra/terraform/modules/service-ec2/.terraform.lock.hcl",
+      "{workspaceRoot}/infra/terraform/modules/service-ec2/tests/*.tftest.hcl",
+      "{workspaceRoot}/infra/terraform/modules/service-ec2/templates/*",
+      "{workspaceRoot}/infra/terraform/modules/service-ecs/*.tf",
+      "{workspaceRoot}/infra/terraform/modules/service-ecs/.terraform.lock.hcl",
+      "{workspaceRoot}/infra/terraform/modules/service-ecs/tests/*.tftest.hcl",
+      "{workspaceRoot}/infra/terraform/modules/service-eks/*.tf",
+      "{workspaceRoot}/infra/terraform/modules/service-eks/.terraform.lock.hcl",
+      "{workspaceRoot}/infra/terraform/modules/service-eks/tests/*.tftest.hcl",
+      { "runtime": "terraform version -json" }
+    ]
+  },
+  "targets": {
+    "init": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "cwd": "{projectRoot}",
+        "env": {
+          "TF_DATA_DIR": "../../../../../tmp/terraform/infra-local-services"
+        },
+        "command": "terraform init -input=false"
+      }
+    },
+    "fmt": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["terraform"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "terraform fmt -check -recursive . ../../../modules/service-ec2 ../../../modules/service-ecs ../../../modules/service-eks ../../../modules/service-route"
+      }
+    },
+    "validate": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["terraform"],
+      "dependsOn": ["init"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "env": {
+          "TF_DATA_DIR": "../../../../../tmp/terraform/infra-local-services"
+        },
+        "command": "terraform validate"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "terraform",
+        "{workspaceRoot}/.tflint.hcl",
+        { "runtime": "tflint --version" }
+      ],
+      "dependsOn": ["init"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "env": {
+          "TF_DATA_DIR": "../../../../../tmp/terraform/infra-local-services"
+        },
+        "command": "tflint --config=../../../../../.tflint.hcl"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["terraformModuleTests"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "for m in service-route service-ec2 service-ecs service-eks; do export TF_DATA_DIR=../../../../tmp/terraform/infra-local-services-$m; terraform -chdir=../../../modules/$m init -backend=false -input=false -lockfile=readonly && terraform -chdir=../../../modules/$m test || exit 1; done"
+      }
+    },
+    "plan": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["init"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "env": {
+          "TF_DATA_DIR": "../../../../../tmp/terraform/infra-local-services"
+        },
+        "command": "terraform plan -input=false"
+      }
+    },
+    "apply": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        "init",
+        {
+          "projects": ["example-go", "example-quarkus"],
+          "target": "docker:push-floci"
+        }
+      ],
+      "options": {
+        "cwd": "{projectRoot}",
+        "env": {
+          "TF_DATA_DIR": "../../../../../tmp/terraform/infra-local-services"
+        },
+        "command": "terraform apply -input=false -auto-approve"
+      }
+    },
+    "destroy": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["init"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "env": {
+          "TF_DATA_DIR": "../../../../../tmp/terraform/infra-local-services"
+        },
+        "command": "terraform destroy -input=false -auto-approve"
+      }
+    },
+    "smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "bash infra/terraform/scripts/alb-smoke.sh"
+      }
+    }
+  }
+}
