@@ -52,4 +52,36 @@ subprojects {
   tasks.withType(Test).configureEach {
     useJUnitPlatform()
   }
+
+  // WHY: cobertura só com -Pcoverage, usada pela análise do SonarQube (ADR
+  // 0013); sem ela, os testes locais e os do CI rodam sem o agente do JaCoCo.
+  if (providers.gradleProperty('coverage').present) {
+    apply plugin: 'jacoco'
+    tasks.named('test') {
+      finalizedBy 'jacocoTestReport'
+      // WHY: sem o filtro, o agente instrumenta também o Quarkus e as
+      // dependências.
+      jacoco { includes = ['dev.playground.*'] }
+    }
+    tasks.named('jacocoTestReport') {
+      reports { xml.required = true }
+    }
+    plugins.withId('io.quarkus') {
+      // WHY: o @QuarkusTest carrega as classes no QuarkusClassLoader, que o
+      // agente do JaCoCo não mede; o quarkus-jacoco mede essas classes e grava
+      // no mesmo arquivo de dados que o jacocoTestReport lê.
+      dependencies { testImplementation 'io.quarkus:quarkus-jacoco' }
+      tasks.named('test') {
+        // WHY: os 512 MB padrão da JVM de teste não comportam o build da
+        // aplicação de teste com o quarkus-jacoco.
+        maxHeapSize = '1g'
+        systemProperty 'quarkus.jacoco.report', 'false'
+        jacoco {
+          excludeClassLoaders = ['*QuarkusClassLoader']
+          destinationFile = layout.buildDirectory
+              .file('jacoco-quarkus.exec').get().asFile
+        }
+      }
+    }
+  }
 }

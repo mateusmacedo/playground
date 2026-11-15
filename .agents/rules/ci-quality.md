@@ -37,6 +37,7 @@ Os arquivos executáveis (`package.json`, `nx.json`, `lefthook.yml`, `commitlint
 | `pre-push`           | `nx affected -t lint typecheck test` (sem build nem e2e)                                                                      |
 | `ci.yml` (PR e main) | `biome ci` (no PR, só nos alterados), `nx sync:check`, `nx affected -t lint typecheck test build`, e2e no Chromium se afetado |
 | `release.yml`        | tudo, com coverage e e2e em todos os browsers                                                                                 |
+| `sonar.yml`          | SonarQube Cloud com cobertura (no PR, só os afetados; semanal e manual na main), fora dos checks do PR (ADR 0013)              |
 
 - Use `nx affected` no dia a dia. `nx run-many` é para o release e para validar uma mudança que toca a configuração do workspace.
 - Terraform: os `infra-local-*` têm `fmt`, `validate`, `lint` (tflint com o `.tflint.hcl` da raiz) e `test` (o `terraform test` dos módulos que cada env usa), com cache, e entram no `nx affected` como os outros projetos; pedem `terraform` e `tflint` na máquina. `init`, `plan`, `apply`, `destroy` e `smoke` não usam cache ([`infra/terraform`](../../infra/terraform/README.md), [ADR 0011](../../docs/adr/0011-estrutura-profissional-do-terraform.md)).
