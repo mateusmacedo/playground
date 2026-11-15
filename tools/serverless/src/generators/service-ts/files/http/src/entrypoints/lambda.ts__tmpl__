@@ -36,19 +36,22 @@ const respond = (
 };
 
 // WHY: a linha-resumo sai depois do respond, que nunca lança, então cobre
-// sucesso e falha; o requestId é o da invocação da Lambda.
+// sucesso e falha; o requestId é o da invocação da Lambda. O trabalho é
+// síncrono, e o runtime nodejs24.x só aceita handler que devolve Promise.
 export const handler = (
   event: APIGatewayProxyEventV2,
   context: Context,
 ): Promise<APIGatewayProxyStructuredResultV2> =>
-  withRequestId(context.awsRequestId, async () => {
-    const startedAt = Date.now();
-    const result = respond(event, context.awsRequestId);
-    log('info', 'request_completed', {
-      method: event.requestContext.http.method,
-      route: event.routeKey,
-      status: result.statusCode,
-      durationMs: Date.now() - startedAt,
-    });
-    return result;
-  });
+  Promise.resolve(
+    withRequestId(context.awsRequestId, () => {
+      const startedAt = Date.now();
+      const result = respond(event, context.awsRequestId);
+      log('info', 'request_completed', {
+        method: event.requestContext.http.method,
+        route: event.routeKey,
+        status: result.statusCode,
+        durationMs: Date.now() - startedAt,
+      });
+      return result;
+    }),
+  );

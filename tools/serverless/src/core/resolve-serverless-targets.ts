@@ -1,11 +1,38 @@
 import { join } from 'node:path';
 
+import type { TargetConfiguration } from '@nx/devkit';
+
 import { resolveGoTargets } from '../languages/go/resolve-go-targets.js';
 import { resolveJavaTargets } from '../languages/java/resolve-java-targets.js';
 import { resolveTypescriptTargets } from '../languages/typescript/resolve-typescript-targets.js';
+import type { Stack } from '../shared/types.js';
 import { detectServerlessLanguage } from './detect-serverless-project.js';
 import { readServerlessManifest } from './serverless-manifest.js';
-import type { ResolvedTargets, TargetContext } from './types.js';
+import type {
+  ResolvedTargets,
+  ServerlessManifest,
+  TargetContext,
+} from './types.js';
+
+function resolveTargetsFor({
+  language,
+  ctx,
+  manifest,
+  absProjectRoot,
+}: {
+  language: Stack;
+  ctx: TargetContext;
+  manifest: ServerlessManifest;
+  absProjectRoot: string;
+}): Record<string, TargetConfiguration> {
+  if (language === 'typescript') {
+    return resolveTypescriptTargets(ctx);
+  }
+  if (language === 'go') {
+    return resolveGoTargets(ctx, manifest, absProjectRoot);
+  }
+  return resolveJavaTargets(ctx, manifest);
+}
 
 export function resolveServerlessTargets(
   workspaceRoot: string,
@@ -20,12 +47,12 @@ export function resolveServerlessTargets(
     manifest,
   );
 
-  const targets =
-    language === 'typescript'
-      ? resolveTypescriptTargets(ctx)
-      : language === 'go'
-        ? resolveGoTargets(ctx, manifest, absProjectRoot)
-        : resolveJavaTargets(ctx, manifest);
+  const targets = resolveTargetsFor({
+    language,
+    ctx,
+    manifest,
+    absProjectRoot,
+  });
 
   return {
     targets,

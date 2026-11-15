@@ -8,10 +8,10 @@ import type { ExecutorResult } from '../../shared/types.js';
 import { validateServerlessProject } from './rules.js';
 import type { ValidateExecutorSchema } from './schema.js';
 
-export default async function validateExecutor(
+function runValidation(
   options: ValidateExecutorSchema,
   context: ExecutorContext,
-): Promise<ExecutorResult> {
+): ExecutorResult {
   const projectName = context.projectName ?? '';
   const projectRoot =
     context.projectsConfigurations.projects[projectName]?.root;
@@ -47,4 +47,16 @@ export default async function validateExecutor(
   }
 
   return { success: report.errors.length === 0 };
+}
+
+// WHY: o contrato do Nx exige uma Promise e a validação é síncrona; o
+// construtor da Promise converte um erro lançado em rejeição, como o `async`
+// fazia, em vez de lançá-lo antes de devolver a Promise.
+export default function validateExecutor(
+  options: ValidateExecutorSchema,
+  context: ExecutorContext,
+): Promise<ExecutorResult> {
+  return new Promise((resolve) => {
+    resolve(runValidation(options, context));
+  });
 }

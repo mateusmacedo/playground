@@ -1,14 +1,12 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { trimTrailingSlashes } from '../../shared/normalize.js';
+
 const LEADING_DOT_SLASH = /^\.\//;
-const TRAILING_SLASH = /\/+$/;
 
 export function normalizeGoPackage(goPackage: string): string {
-  return goPackage
-    .trim()
-    .replace(LEADING_DOT_SLASH, '')
-    .replace(TRAILING_SLASH, '');
+  return trimTrailingSlashes(goPackage.trim().replace(LEADING_DOT_SLASH, ''));
 }
 
 export function findCmdPackages(absProjectRoot: string): string[] {

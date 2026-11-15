@@ -208,4 +208,17 @@ package:
     );
     expect(error).not.toHaveBeenCalled();
   });
+
+  it('devolve uma rejeição, e não lança, quando a leitura do manifesto falha', async () => {
+    // NOTE: um diretório no lugar do serverless.yml passa no existsSync e
+    // falha no readFileSync (EISDIR).
+    const root = workspaceWith({ 'serverless.yml/leia-me.txt': 'x' });
+
+    const result = validateExecutor(
+      { stack: 'typescript', stage: 'local' },
+      contextFor(root),
+    );
+
+    await expect(result).rejects.toThrow(/EISDIR/);
+  });
 });

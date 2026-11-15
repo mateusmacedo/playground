@@ -17,12 +17,20 @@ export function normalizeServiceName(raw: string): string {
   return name;
 }
 
+// WHY: uma regex ancorada no fim volta ao começo da sequência de barras a cada
+// tentativa e leva tempo quadrático numa entrada com milhares de barras
+// seguidas; ler do fim para o começo custa uma passada só.
+export function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === '/') {
+    end -= 1;
+  }
+  return value.slice(0, end);
+}
+
 export function normalizeProjectRoot(raw: string): string {
-  const normalized = raw
-    .replace(/\\/g, '/')
-    .replace(/^\.\//, '')
-    .replace(/\/+$/, '')
-    .replace(/\/+/g, '/');
+  const withoutPrefix = raw.replaceAll('\\', '/').replace(/^\.\//, '');
+  const normalized = trimTrailingSlashes(withoutPrefix).replace(/\/+/g, '/');
   return normalized === '.' ? '' : normalized;
 }
 
