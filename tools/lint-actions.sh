@@ -22,6 +22,13 @@ if [[ -f "${VERSIONS_FILE}" ]]; then
     case "${key}" in
     ACTIONLINT_VERSION) : "${ACTIONLINT_VERSION:=${value}}" ;;
     ACTIONLINT_REF_SHA) : "${ACTIONLINT_REF_SHA:=${value}}" ;;
+    # WHY: linha em branco e comentário não são chaves; qualquer outra coisa é
+    # erro de digitação no arquivo e falha aqui, em vez de sumir em silêncio.
+    '' | '#'*) ;;
+    *)
+      echo "ERRO: chave desconhecida em ${VERSIONS_FILE}: '${key}' (esperadas: ACTIONLINT_VERSION e ACTIONLINT_REF_SHA)." >&2
+      exit 2
+      ;;
     esac
   done <"${VERSIONS_FILE}"
 fi
