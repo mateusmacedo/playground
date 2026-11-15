@@ -1,21 +1,25 @@
 {
-  "editor.defaultFormatter": "biomejs.biome",
+  "editor.defaultFormatter": "fronterior.biome-monorepo",
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
     "source.fixAll.biome": "explicit",
     "source.organizeImports.biome": "explicit"
   },
-  "[typescript]": { "editor.defaultFormatter": "biomejs.biome" },
-  "[typescriptreact]": { "editor.defaultFormatter": "biomejs.biome" },
-  "[javascript]": { "editor.defaultFormatter": "biomejs.biome" },
-  "[javascriptreact]": { "editor.defaultFormatter": "biomejs.biome" },
-  "[json]": { "editor.defaultFormatter": "biomejs.biome" },
-  "[jsonc]": { "editor.defaultFormatter": "biomejs.biome" },
-  "[css]": { "editor.defaultFormatter": "biomejs.biome" },
-  "[scss]": { "editor.defaultFormatter": "biomejs.biome" },
-  "[yaml]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[typescript]": { "editor.defaultFormatter": "fronterior.biome-monorepo" },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "fronterior.biome-monorepo"
+  },
+  "[javascript]": { "editor.defaultFormatter": "fronterior.biome-monorepo" },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "fronterior.biome-monorepo"
+  },
+  "[json]": { "editor.defaultFormatter": "fronterior.biome-monorepo" },
+  "[jsonc]": { "editor.defaultFormatter": "fronterior.biome-monorepo" },
+  "[css]": { "editor.defaultFormatter": "fronterior.biome-monorepo" },
+  "[scss]": { "editor.defaultFormatter": "fronterior.biome-monorepo" },
+  "[yaml]": { "editor.defaultFormatter": "fronterior.biome-monorepo" },
   "[markdown]": {
-    "editor.defaultFormatter": "biomejs.biome"
+    "editor.defaultFormatter": "fronterior.biome-monorepo"
   },
   "java.compile.nullAnalysis.mode": "disabled",
   "terraform.languageServer.indexing.ignoreDirectoryNames": [
@@ -27,5 +31,6 @@
     ".gradle",
     ".next",
     ".serverless"
-  ]
+  ],
+  "java.configuration.updateBuildConfiguration": "automatic"
 }
