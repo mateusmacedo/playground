@@ -19,7 +19,7 @@ const ABSTRACT_MEMBERS = [
   'updateProjectDependencies',
 ];
 
-function newActions() {
+function newActions(finalConfigForProject = {}) {
   return new GitTagVersionActions(
     { name: 'services-git-tag' },
     {
@@ -27,7 +27,7 @@ function newActions() {
       type: 'app',
       data: { root: 'apps/services/example-go' },
     },
-    {},
+    finalConfigForProject,
   );
 }
 
@@ -60,10 +60,20 @@ describe('GitTagVersionActions', () => {
     expect(newActions().validManifestFilenames).toBeNull();
   });
 
-  it('valida sem procurar manifesto na árvore', async () => {
+  it('valida com o validate herdado do Nx, sem procurar manifesto na árvore', async () => {
     await expect(
       newActions().validate(treeThatMustNotBeTouched()),
     ).resolves.toBeUndefined();
+  });
+
+  it('percorre o init e o validate do Nx sem exigir manifesto no projeto', async () => {
+    const actions = newActions({ manifestRootsToUpdate: [] });
+    const tree = treeThatMustNotBeTouched();
+
+    await actions.init(tree);
+
+    expect(actions.manifestsToUpdate).toEqual([]);
+    await expect(actions.validate(tree)).resolves.toBeUndefined();
   });
 
   it('parte da versão 0.0.0 quando o projeto não tem manifesto', async () => {
