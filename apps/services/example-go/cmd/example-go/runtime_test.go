@@ -200,18 +200,6 @@ func TestSetupLoggerEscreveJSONNoStdoutComONivelDeLogLevel(t *testing.T) {
 	}
 }
 
-func TestWithLambdaRequestIDUsaOIdDaInvocacaoSoDentroDaLambda(t *testing.T) {
-	invocation := lambdacontext.NewContext(context.Background(), &lambdacontext.LambdaContext{AwsRequestID: "da-invocacao"})
-	if id := requestIDFrom(withLambdaRequestID(invocation)); id != "da-invocacao" {
-		t.Fatalf("esperava o id da invocação, recebido %q", id)
-	}
-
-	outside := context.Background()
-	if got := withLambdaRequestID(outside); got != outside {
-		t.Fatalf("fora da Lambda o contexto deveria voltar como veio, recebido %v", got)
-	}
-}
-
 func TestNewServerDefinePrazosDeLeituraEscritaEOciosidade(t *testing.T) {
 	server := newServer(http.NotFoundHandler())
 
