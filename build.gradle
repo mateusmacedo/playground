@@ -1,3 +1,11 @@
+// WHY: o lock vale também para os plugins do build (classpath do buildscript),
+// gravado no buildscript-gradle.lockfile da raiz.
+buildscript {
+  configurations.classpath {
+    resolutionStrategy.activateDependencyLocking()
+  }
+}
+
 plugins {
   id 'io.quarkus' apply false
   // WHY: relata projetos, dependências e tasks do Gradle ao @nx/gradle, que
@@ -8,6 +16,26 @@ plugins {
 
 allprojects {
   apply plugin: 'dev.nx.gradle.project-graph'
+
+  // WHY: o lock deixa as versões resolvidas previsíveis e revisáveis no PR, na
+  // raiz e em cada projeto; regenere com
+  // `./gradlew resolveAndLockAll --write-locks`.
+  dependencyLocking {
+    lockAllConfigurations()
+  }
+
+  tasks.register('resolveAndLockAll') {
+    description = 'Resolve todas as configurações para gravar o gradle.lockfile.'
+    notCompatibleWithConfigurationCache('resolve configurações em execução')
+    doFirst {
+      if (!gradle.startParameter.writeDependencyLocks) {
+        throw new GradleException('Rode com --write-locks.')
+      }
+    }
+    doLast {
+      configurations.findAll { it.canBeResolved }.each { it.resolve() }
+    }
+  }
 }
 
 subprojects {
@@ -53,12 +81,6 @@ subprojects {
     useJUnitPlatform()
   }
 
-  // WHY: o lock deixa as versões resolvidas previsíveis e revisáveis no PR;
-  // regenere com `./gradlew resolveAndLockAll --write-locks`.
-  dependencyLocking {
-    lockAllConfigurations()
-  }
-
   // WHY: cobertura só com -Pcoverage, usada pela análise do SonarQube (ADR
   // 0013). O JaCoCo e o quarkus-jacoco entram sempre, desligados sem a flag,
   // para o grafo de dependências e o lock serem os mesmos nos dois modos.
@@ -72,11 +94,28 @@ subprojects {
       includes = ['dev.playground.*']
     }
     if (coverage) {
-      finalizedBy 'jacocoTestReport'
+      finalizedBy 'jacocoTestReport', 'jacocoTestCoverageVerification'
     }
   }
   tasks.named('jacocoTestReport') {
     reports { xml.required = true }
+  }
+  // WHY: a meta do projeto é cobertura acima de 90% em linhas e ramos; 0,9001
+  // é o menor valor que o JaCoCo aceita como "acima de 0,9".
+  tasks.named('jacocoTestCoverageVerification') {
+    mustRunAfter 'jacocoTestReport'
+    violationRules {
+      rule {
+        limit {
+          counter = 'LINE'
+          minimum = 0.9001
+        }
+        limit {
+          counter = 'BRANCH'
+          minimum = 0.9001
+        }
+      }
+    }
   }
   plugins.withId('io.quarkus') {
     // WHY: o @QuarkusTest carrega as classes no QuarkusClassLoader, que o
@@ -96,19 +135,6 @@ subprojects {
         // aplicação de teste com o quarkus-jacoco ligado.
         maxHeapSize = '1g'
       }
-    }
-  }
-
-  tasks.register('resolveAndLockAll') {
-    description = 'Resolve todas as configurações para gravar o gradle.lockfile.'
-    notCompatibleWithConfigurationCache('resolve configurações em execução')
-    doFirst {
-      if (!gradle.startParameter.writeDependencyLocks) {
-        throw new GradleException('Rode com --write-locks.')
-      }
-    }
-    doLast {
-      configurations.findAll { it.canBeResolved }.each { it.resolve() }
     }
   }
 }
