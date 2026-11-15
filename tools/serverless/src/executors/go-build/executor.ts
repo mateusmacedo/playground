@@ -28,14 +28,12 @@ function runGoBuild(
   });
 }
 
-// WHY: o contrato do Nx exige uma Promise e o build é síncrono; o construtor da
-// Promise converte um erro lançado em rejeição, como o `async` fazia, em vez de
+// WHY: o contrato do Nx exige uma Promise e o build é síncrono; rodar dentro do
+// `then` converte um erro lançado em rejeição, como o `async` fazia, em vez de
 // lançá-lo antes de devolver a Promise.
 export default function goBuildExecutor(
   options: GoBuildExecutorSchema,
   context: ExecutorContext,
 ): Promise<ExecutorResult> {
-  return new Promise((resolve) => {
-    resolve(runGoBuild(options, context));
-  });
+  return Promise.resolve().then(() => runGoBuild(options, context));
 }
