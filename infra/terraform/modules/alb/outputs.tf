@@ -20,5 +20,10 @@ output "https_listener_port" {
 
 output "access_logs_bucket" {
   description = "Bucket S3 que recebe os access logs do ALB."
-  value       = aws_s3_bucket.access_logs.id
+  value       = aws_s3_bucket.logs["alb"].id
+}
+
+output "server_access_logs_bucket" {
+  description = "Bucket S3 que recebe o registro de acesso do bucket dos access logs."
+  value       = aws_s3_bucket.logs["s3"].id
 }

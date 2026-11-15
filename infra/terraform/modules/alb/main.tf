@@ -1,5 +1,14 @@
 data "aws_elb_service_account" "this" {}
 
+locals {
+  # NOTE: `alb` recebe os access logs do ALB; `s3` recebe o registro de acesso
+  # (server access logging) do bucket `alb`. Os dois têm as mesmas proteções.
+  log_buckets = {
+    alb = "${var.name}-alb-access-logs"
+    s3  = "${var.name}-s3-access-logs"
+  }
+}
+
 resource "aws_lb" "this" {
   name               = var.name
   load_balancer_type = "application"
@@ -12,14 +21,14 @@ resource "aws_lb" "this" {
   # WHY: o registro de cada requisição é a trilha de auditoria do tráfego que
   # entra pela borda (ADR 0014).
   access_logs {
-    bucket  = aws_s3_bucket.access_logs.id
+    bucket  = aws_s3_bucket.logs["alb"].id
     prefix  = var.name
     enabled = true
   }
 
   tags = merge(var.tags, { Name = var.name })
 
-  depends_on = [aws_s3_bucket_policy.access_logs]
+  depends_on = [aws_s3_bucket_policy.logs]
 }
 
 # WHY: o listener nasce com 404 padrão; cada serviço (L4) acrescenta as próprias
@@ -71,15 +80,29 @@ resource "aws_lb_listener" "http_redirect" {
   tags = var.tags
 }
 
-resource "aws_s3_bucket" "access_logs" {
-  bucket        = "${var.name}-alb-access-logs"
+resource "aws_s3_bucket" "logs" {
+  for_each = local.log_buckets
+
+  bucket        = each.value
   force_destroy = var.access_logs_force_destroy
 
-  tags = merge(var.tags, { Name = "${var.name}-alb-access-logs" })
+  tags = merge(var.tags, { Name = each.value })
 }
 
-resource "aws_s3_bucket_public_access_block" "access_logs" {
-  bucket = aws_s3_bucket.access_logs.id
+# WHY: quem lê ou apaga os access logs também fica registrado; o destino é um
+# bucket próprio para o registro não gerar registro de si mesmo.
+resource "aws_s3_bucket_logging" "alb" {
+  bucket        = aws_s3_bucket.logs["alb"].id
+  target_bucket = aws_s3_bucket.logs["s3"].id
+  target_prefix = "${local.log_buckets.alb}/"
+
+  depends_on = [aws_s3_bucket_policy.logs]
+}
+
+resource "aws_s3_bucket_public_access_block" "logs" {
+  for_each = aws_s3_bucket.logs
+
+  bucket = each.value.id
 
   block_public_acls       = true
   block_public_policy     = true
@@ -87,8 +110,10 @@ resource "aws_s3_bucket_public_access_block" "access_logs" {
   restrict_public_buckets = true
 }
 
-resource "aws_s3_bucket_ownership_controls" "access_logs" {
-  bucket = aws_s3_bucket.access_logs.id
+resource "aws_s3_bucket_ownership_controls" "logs" {
+  for_each = aws_s3_bucket.logs
+
+  bucket = each.value.id
 
   rule {
     object_ownership = "BucketOwnerEnforced"
@@ -96,8 +121,10 @@ resource "aws_s3_bucket_ownership_controls" "access_logs" {
 }
 
 # NOTE: o access log do ALB só aceita SSE-S3 no bucket de destino.
-resource "aws_s3_bucket_server_side_encryption_configuration" "access_logs" {
-  bucket = aws_s3_bucket.access_logs.id
+resource "aws_s3_bucket_server_side_encryption_configuration" "logs" {
+  for_each = aws_s3_bucket.logs
+
+  bucket = each.value.id
 
   rule {
     apply_server_side_encryption_by_default {
@@ -106,19 +133,23 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "access_logs" {
   }
 }
 
-resource "aws_s3_bucket_versioning" "access_logs" {
-  bucket = aws_s3_bucket.access_logs.id
+resource "aws_s3_bucket_versioning" "logs" {
+  for_each = aws_s3_bucket.logs
+
+  bucket = each.value.id
 
   versioning_configuration {
     status = "Enabled"
   }
 }
 
-resource "aws_s3_bucket_lifecycle_configuration" "access_logs" {
-  bucket = aws_s3_bucket.access_logs.id
+resource "aws_s3_bucket_lifecycle_configuration" "logs" {
+  for_each = aws_s3_bucket.logs
+
+  bucket = each.value.id
 
   rule {
-    id     = "expire-access-logs"
+    id     = "expire-logs"
     status = "Enabled"
 
     filter {}
@@ -132,18 +163,49 @@ resource "aws_s3_bucket_lifecycle_configuration" "access_logs" {
     }
   }
 
-  depends_on = [aws_s3_bucket_versioning.access_logs]
+  depends_on = [aws_s3_bucket_versioning.logs]
 }
 
-data "aws_iam_policy_document" "access_logs" {
+locals {
+  log_writers = {
+    alb = {
+      sid        = "AllowAlbLogDelivery"
+      type       = "AWS"
+      identifier = data.aws_elb_service_account.this.arn
+      resource   = "${aws_s3_bucket.logs["alb"].arn}/${var.name}/AWSLogs/*"
+      source_arn = null
+    }
+    s3 = {
+      sid        = "AllowS3ServerAccessLogDelivery"
+      type       = "Service"
+      identifier = "logging.s3.amazonaws.com"
+      resource   = "${aws_s3_bucket.logs["s3"].arn}/*"
+      source_arn = aws_s3_bucket.logs["alb"].arn
+    }
+  }
+}
+
+data "aws_iam_policy_document" "logs" {
+  for_each = local.log_writers
+
   statement {
-    sid       = "AllowAlbLogDelivery"
+    sid       = each.value.sid
     actions   = ["s3:PutObject"]
-    resources = ["${aws_s3_bucket.access_logs.arn}/${var.name}/AWSLogs/*"]
+    resources = [each.value.resource]
 
     principals {
-      type        = "AWS"
-      identifiers = [data.aws_elb_service_account.this.arn]
+      type        = each.value.type
+      identifiers = [each.value.identifier]
+    }
+
+    dynamic "condition" {
+      for_each = each.value.source_arn == null ? [] : [each.value.source_arn]
+
+      content {
+        test     = "ArnLike"
+        variable = "aws:SourceArn"
+        values   = [condition.value]
+      }
     }
   }
 
@@ -152,8 +214,8 @@ data "aws_iam_policy_document" "access_logs" {
     effect  = "Deny"
     actions = ["s3:*"]
     resources = [
-      aws_s3_bucket.access_logs.arn,
-      "${aws_s3_bucket.access_logs.arn}/*",
+      aws_s3_bucket.logs[each.key].arn,
+      "${aws_s3_bucket.logs[each.key].arn}/*",
     ]
 
     principals {
@@ -169,9 +231,11 @@ data "aws_iam_policy_document" "access_logs" {
   }
 }
 
-resource "aws_s3_bucket_policy" "access_logs" {
-  bucket = aws_s3_bucket.access_logs.id
-  policy = data.aws_iam_policy_document.access_logs.json
+resource "aws_s3_bucket_policy" "logs" {
+  for_each = aws_s3_bucket.logs
 
-  depends_on = [aws_s3_bucket_public_access_block.access_logs]
+  bucket = each.value.id
+  policy = data.aws_iam_policy_document.logs[each.key].json
+
+  depends_on = [aws_s3_bucket_public_access_block.logs]
 }

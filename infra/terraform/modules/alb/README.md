@@ -14,6 +14,6 @@ module "alb" {
 ```
 
 - **TLS**: porta `https_port` (443) com a política `ssl_policy` (`ELBSecurityPolicy-TLS13-1-2-2021-06`). O certificado vem de fora do módulo: no ambiente local, autoassinado e importado no ACM do Floci pelo env `platform`.
-- **Bucket de logs** (`<nome>-alb-access-logs`): acesso público bloqueado, SSE-S3 (o único aceito pelo ALB), versionado, com expiração em `access_logs_retention_days` (90) e política que só aceita a entrega do ELB e só por HTTPS. `access_logs_force_destroy` (falso por padrão) deixa o destroy levar os logs, o que só faz sentido em ambiente descartável.
+- **Buckets de log**: `<nome>-alb-access-logs` recebe os access logs do ALB e registra os próprios acessos (S3 server access logging) em `<nome>-s3-access-logs`, separado para o registro não gerar registro de si mesmo. Os dois têm acesso público bloqueado, SSE-S3 (o único aceito pelo ALB), versionamento, expiração em `access_logs_retention_days` (90) e política que só aceita o serviço que entrega os logs, e só por HTTPS. `access_logs_force_destroy` (falso por padrão) deixa o destroy levar os logs, o que só faz sentido em ambiente descartável.
 - WAF e deletion protection entram com usuários externos e conta AWS ([ADR 0011](../../../../docs/adr/0011-estrutura-profissional-do-terraform.md)).
 - No Floci os listeners abrem as portas **dentro do container do emulador**; o `infra/local` publica a 443 em `127.0.0.1:8443` e a 80 em `127.0.0.1:8088`.
