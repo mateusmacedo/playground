@@ -71,28 +71,44 @@ run "access_logs_in_protected_bucket" {
   }
 
   assert {
+    condition     = aws_s3_bucket.logs["alb"].bucket == "playground-local-alb-access-logs" && aws_s3_bucket.logs["s3"].bucket == "playground-local-s3-access-logs"
+    error_message = "Um bucket recebe os access logs do ALB e outro, o registro de acesso dele."
+  }
+
+  assert {
     condition = (
-      aws_s3_bucket_public_access_block.access_logs.block_public_acls &&
-      aws_s3_bucket_public_access_block.access_logs.block_public_policy &&
-      aws_s3_bucket_public_access_block.access_logs.ignore_public_acls &&
-      aws_s3_bucket_public_access_block.access_logs.restrict_public_buckets
+      aws_s3_bucket_logging.alb.target_prefix == "playground-local-alb-access-logs/"
     )
-    error_message = "O bucket de logs bloqueia todo acesso público."
+    error_message = "O bucket dos access logs registra os próprios acessos no bucket s3."
   }
 
   assert {
-    condition     = one(one(aws_s3_bucket_server_side_encryption_configuration.access_logs.rule).apply_server_side_encryption_by_default).sse_algorithm == "AES256"
-    error_message = "O bucket de logs criptografa com SSE-S3, o único aceito pelo ALB."
+    condition = alltrue([
+      for block in values(aws_s3_bucket_public_access_block.logs) :
+      block.block_public_acls && block.block_public_policy && block.ignore_public_acls && block.restrict_public_buckets
+    ])
+    error_message = "Os dois buckets de log bloqueiam todo acesso público."
   }
 
   assert {
-    condition     = aws_s3_bucket_versioning.access_logs.versioning_configuration[0].status == "Enabled"
-    error_message = "O bucket de logs é versionado."
+    condition = alltrue([
+      for config in values(aws_s3_bucket_server_side_encryption_configuration.logs) :
+      one(one(config.rule).apply_server_side_encryption_by_default).sse_algorithm == "AES256"
+    ])
+    error_message = "Os dois buckets de log criptografam com SSE-S3, o único aceito pelo ALB."
   }
 
   assert {
-    condition     = !aws_s3_bucket.access_logs.force_destroy
-    error_message = "Por padrão o bucket de logs não é apagado com objetos dentro."
+    condition = alltrue([
+      for versioning in values(aws_s3_bucket_versioning.logs) :
+      versioning.versioning_configuration[0].status == "Enabled"
+    ])
+    error_message = "Os dois buckets de log são versionados."
+  }
+
+  assert {
+    condition     = alltrue([for bucket in values(aws_s3_bucket.logs) : !bucket.force_destroy])
+    error_message = "Por padrão os buckets de log não são apagados com objetos dentro."
   }
 }
 
