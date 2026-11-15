@@ -52,7 +52,7 @@ export function useColorMode(storageKey: string): {
   colorMode: ColorMode;
   setColorMode: (mode: ColorMode) => void;
 } {
-  const [colorMode, setColorModeState] = useState<ColorMode>(() =>
+  const [colorMode, setColorMode] = useState<ColorMode>(() =>
     readStoredMode(storageKey),
   );
 
@@ -67,13 +67,13 @@ export function useColorMode(storageKey: string): {
     return () => systemScheme.removeEventListener('change', followSystem);
   }, [colorMode]);
 
-  const setColorMode = useCallback(
+  const selectColorMode = useCallback(
     (mode: ColorMode) => {
-      setColorModeState(mode);
+      setColorMode(mode);
       writeStoredMode(storageKey, mode);
     },
     [storageKey],
   );
 
-  return { colorMode, setColorMode };
+  return { colorMode, setColorMode: selectColorMode };
 }

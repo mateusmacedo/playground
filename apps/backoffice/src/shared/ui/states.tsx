@@ -60,14 +60,16 @@ export function LoadingState({
   label = 'Carregando…',
 }: Readonly<{ rows?: number; label?: string }>) {
   return (
-    <div aria-busy="true" className="py-2" role="status">
+    // WHY: o <output> já tem o papel `status` implícito; é inline por padrão, então o `d-block` mantém o bloco da div
+    // que ele substitui, e as linhas são <span> em bloco porque o <output> só aceita conteúdo de fraseado.
+    <output aria-busy="true" className="d-block py-2">
       <span className="visually-hidden">{label}</span>
       {Array.from({ length: rows }, (_, index) => (
         <CPlaceholder
           animation="glow"
           aria-hidden="true"
-          as="p"
-          className="mb-2"
+          as="span"
+          className="d-block mb-2"
           // biome-ignore lint/suspicious/noArrayIndexKey: as linhas do esqueleto são estáticas e não têm identidade própria
           key={index}
         >
@@ -76,6 +78,6 @@ export function LoadingState({
           />
         </CPlaceholder>
       ))}
-    </div>
+    </output>
   );
 }
