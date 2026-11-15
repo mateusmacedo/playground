@@ -6,9 +6,9 @@
 const { VersionActions } = require('nx/release');
 
 class GitTagVersionActions extends VersionActions {
+  // NOTE: sem nomes de manifesto, o `validate` herdado do Nx retorna na hora e
+  // não procura arquivo na árvore; por isso a classe não o sobrescreve.
   validManifestFilenames = null;
-
-  async validate() {}
 
   async readCurrentVersionFromRegistry() {
     return null;
