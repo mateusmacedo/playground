@@ -289,3 +289,101 @@ functions:
     ]);
   });
 });
+
+describe('validateServerlessProject com valores ausentes no manifesto', () => {
+  const rawWith = ({
+    service = 'service: my-service\n',
+    provider,
+    extra = '',
+  }: {
+    service?: string;
+    provider: string;
+    extra?: string;
+  }) => `${service}custom:
+  nxServerless:
+    type: http
+${provider}${extra}`;
+
+  const AWS_WITHOUT_RUNTIME = 'provider:\n  name: aws\n';
+
+  it('diz que o provider.name está indefinido quando ele falta', () => {
+    expect(
+      validate({
+        raw: rawWith({ provider: 'provider:\n  runtime: nodejs24.x\n' }),
+      }).errors,
+    ).toEqual(['provider.name deve ser "aws", recebido "indefinido".']);
+  });
+
+  it('exige a chave service e aponta o serverless.yml do projeto', () => {
+    expect(
+      validate({
+        raw: rawWith({
+          service: '',
+          provider: 'provider:\n  name: aws\n  runtime: nodejs24.x\n',
+        }),
+      }).errors,
+    ).toEqual([
+      'Falta a chave "service" em apps/services/my-service/serverless.yml.',
+    ]);
+  });
+
+  it('não exige o stage na operação invoke-local', () => {
+    expect(validate({ operation: 'invoke-local', stage: '' }).errors).toEqual(
+      [],
+    );
+  });
+
+  it('diz que o runtime está indefinido em TypeScript, Go e Java', () => {
+    const raw = rawWith({ provider: AWS_WITHOUT_RUNTIME });
+
+    expect(validate({ raw }).errors).toEqual([
+      'O runtime TypeScript deve começar com "nodejs", recebido "indefinido".',
+    ]);
+    expect(
+      validate({ stack: 'go', raw, operation: 'remove', files: {} }).errors,
+    ).toEqual([
+      'O runtime Go deve ser "provided.al2023", recebido "indefinido".',
+      'Falta go.mod na raiz do projeto.',
+    ]);
+    expect(
+      validate({
+        stack: 'java',
+        raw,
+        operation: 'remove',
+        files: { 'build.gradle.kts': '' },
+      }).errors,
+    ).toEqual([
+      'O runtime Java deve ser um de java21, provided.al2023, recebido "indefinido".',
+    ]);
+  });
+
+  describe('runtime vindo de params', () => {
+    const javaRaw = (params: string) =>
+      rawWith({
+        provider: 'provider:\n  name: aws\n  runtime: ${param:runtime}\n',
+        extra: params,
+      });
+    const validateJava = (raw: string, stage: string) =>
+      validate({
+        stack: 'java',
+        raw,
+        stage,
+        operation: 'invoke-local',
+        files: { 'build.gradle.kts': '' },
+      });
+
+    it('cai no default quando não há stage', () => {
+      const raw = javaRaw('params:\n  default:\n    runtime: java21\n');
+
+      expect(validateJava(raw, '').errors).toEqual([]);
+    });
+
+    it('recusa o param que não é texto e mostra a referência original', () => {
+      const raw = javaRaw('params:\n  default:\n    runtime: 21\n');
+
+      expect(validateJava(raw, 'local').errors).toEqual([
+        'O runtime Java deve ser um de java21, provided.al2023, recebido "${param:runtime}".',
+      ]);
+    });
+  });
+});

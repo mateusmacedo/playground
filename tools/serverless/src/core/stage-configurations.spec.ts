@@ -1,12 +1,22 @@
-import { describe, expect, it } from 'vitest';
+import { arch } from 'node:os';
+
+import { describe, expect, it, vi } from 'vitest';
 
 import { defaultOptions } from './plugin-options.js';
 import {
   buildCommandConfigurations,
   buildValidateConfigurations,
+  detectHostGoArch,
   pickDefaultConfiguration,
   stageDefinitions,
 } from './stage-configurations.js';
+
+// NOTE: o `arch` segue o do sistema, salvo quando o teste troca o retorno;
+// assim os demais testes do arquivo não dependem da máquina.
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>();
+  return { ...actual, arch: vi.fn(actual.arch) };
+});
 
 describe('stageDefinitions', () => {
   it('injeta endpoint, credenciais test e arquitetura do host só na configuration floci', () => {
@@ -86,4 +96,19 @@ describe('pickDefaultConfiguration', () => {
     expect(pickDefaultConfiguration(['floci', 'dev'], 'floci')).toBe('floci');
     expect(pickDefaultConfiguration(['floci', 'dev'], 'prod')).toBeUndefined();
   });
+});
+
+describe('detectHostGoArch', () => {
+  it.each([
+    ['arm64', 'arm64'],
+    ['x64', 'amd64'],
+    ['ia32', 'amd64'],
+  ] as const)(
+    'traduz a arquitetura %s do Node para %s do Go',
+    (nodeArch, goArch) => {
+      vi.mocked(arch).mockReturnValueOnce(nodeArch);
+
+      expect(detectHostGoArch()).toBe(goArch);
+    },
+  );
 });

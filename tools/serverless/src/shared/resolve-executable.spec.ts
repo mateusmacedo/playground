@@ -126,4 +126,13 @@ describe('resolveExecutable', () => {
     expect(resolved).toBe(binary);
     vi.unstubAllEnvs();
   });
+
+  it('não encontra nada quando o processo não tem PATH', () => {
+    vi.stubEnv('PATH', undefined);
+
+    const resolved = resolveExecutable({ name: 'go', platform: 'linux' });
+
+    expect(resolved).toBeUndefined();
+    vi.unstubAllEnvs();
+  });
 });

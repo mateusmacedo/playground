@@ -1,11 +1,39 @@
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: os specs comparam a sintaxe ${...} de variáveis do Serverless.
-import { readJson, readProjectConfiguration, type Tree } from '@nx/devkit';
+import { join } from 'node:path';
+
+import {
+  addDependenciesToPackageJson,
+  formatFiles,
+  readJson,
+  readProjectConfiguration,
+  type Tree,
+} from '@nx/devkit';
 import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { parseServerlessManifest } from '../../core/serverless-manifest.js';
 import { getObject, parseYamlObject } from '../../core/yaml.js';
 import { serviceGoGenerator } from './generator.js';
+import { goModTidyTask } from './go-mod-tidy.js';
+
+// WHY: o formatador real depende do que o workspace tem instalado e escreve
+// aviso quando falta; o que importa aqui é o gerador chamá-lo ou não. A
+// instalação das dependências delega à implementação real e só os testes de
+// tarefas pós-geração trocam o retorno, para não instalar pacote nem rodar o go.
+vi.mock('@nx/devkit', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@nx/devkit')>();
+  return {
+    ...actual,
+    formatFiles: vi.fn(async () => undefined),
+    addDependenciesToPackageJson: vi.fn(actual.addDependenciesToPackageJson),
+  };
+});
+
+// WHY: o `go mod tidy` real tem spec próprio; aqui só importa quando o gerador
+// o agenda e em que ordem ele roda.
+vi.mock('./go-mod-tidy.js', () => ({
+  goModTidyTask: vi.fn(() => vi.fn()),
+}));
 
 describe('serviceGoGenerator', () => {
   let tree: Tree;
@@ -261,4 +289,82 @@ describe('serviceGoGenerator', () => {
       expect(raw).not.toContain(absent);
     },
   );
+});
+
+describe('serviceGoGenerator: formatação e tarefas depois da geração', () => {
+  let tree: Tree;
+
+  beforeEach(() => {
+    tree = createTreeWithEmptyWorkspace();
+    vi.clearAllMocks();
+  });
+
+  it('formata os arquivos gerados quando skipFormat não é informado', async () => {
+    await serviceGoGenerator(tree, { name: 'a', skipGoModTidy: true });
+
+    expect(formatFiles).toHaveBeenCalledWith(tree);
+  });
+
+  it('não formata com skipFormat', async () => {
+    await serviceGoGenerator(tree, {
+      name: 'a',
+      skipFormat: true,
+      skipGoModTidy: true,
+    });
+
+    expect(formatFiles).not.toHaveBeenCalled();
+  });
+
+  it('agenda o go mod tidy na pasta do serviço e o roda depois da instalação', async () => {
+    const install = vi.fn();
+    const tidy = vi.fn();
+    vi.mocked(addDependenciesToPackageJson).mockReturnValueOnce(install);
+    vi.mocked(goModTidyTask).mockReturnValueOnce(tidy);
+
+    const afterGenerate = await serviceGoGenerator(tree, {
+      name: 'a',
+      skipFormat: true,
+    });
+
+    expect(goModTidyTask).toHaveBeenCalledWith(
+      join(tree.root, 'apps/services/a'),
+    );
+    expect(install).not.toHaveBeenCalled();
+    expect(tidy).not.toHaveBeenCalled();
+
+    await afterGenerate();
+
+    expect(install).toHaveBeenCalledOnce();
+    expect(tidy).toHaveBeenCalledOnce();
+    expect(install.mock.invocationCallOrder[0]).toBeLessThan(
+      tidy.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('não agenda o go mod tidy com skipGoModTidy e só instala as dependências', async () => {
+    const install = vi.fn();
+    vi.mocked(addDependenciesToPackageJson).mockReturnValueOnce(install);
+
+    const afterGenerate = await serviceGoGenerator(tree, {
+      name: 'a',
+      skipFormat: true,
+      skipGoModTidy: true,
+    });
+    await afterGenerate();
+
+    expect(goModTidyTask).not.toHaveBeenCalled();
+    expect(install).toHaveBeenCalledOnce();
+  });
+
+  it('não instala nada com skipPackageJson e skipGoModTidy', async () => {
+    const afterGenerate = await serviceGoGenerator(tree, {
+      name: 'a',
+      skipFormat: true,
+      skipGoModTidy: true,
+      skipPackageJson: true,
+    });
+
+    await expect(afterGenerate()).resolves.toBeUndefined();
+    expect(addDependenciesToPackageJson).not.toHaveBeenCalled();
+  });
 });
