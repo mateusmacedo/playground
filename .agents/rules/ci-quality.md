@@ -41,4 +41,4 @@ Os arquivos executáveis (`package.json`, `nx.json`, `lefthook.yml`, `commitlint
 
 - Use `nx affected` no dia a dia. `nx run-many` é para o release e para validar uma mudança que toca a configuração do workspace.
 - Terraform: os `infra-local-*` têm `fmt`, `validate`, `lint` (tflint com o `.tflint.hcl` da raiz) e `test` (o `terraform test` dos módulos que cada env usa), com cache, e entram no `nx affected` como os outros projetos; pedem `terraform` e `tflint` na máquina. `init`, `plan`, `apply`, `destroy` e `smoke` não usam cache ([`infra/terraform`](../../infra/terraform/README.md), [ADR 0011](../../docs/adr/0011-estrutura-profissional-do-terraform.md)).
-- Cobertura só quando pedida (`VITEST_COVERAGE=1` ou `pnpm check:full`).
+- Cobertura só quando pedida (`VITEST_COVERAGE=1` ou `pnpm check:full`); com ela ligada, cada projeto reprova abaixo de 90% em linhas ou ramos (rule `testing-conventions`).
