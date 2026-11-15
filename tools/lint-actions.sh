@@ -77,7 +77,9 @@ download_actionlint() {
     local installer="${bin_dir}/download-actionlint.bash"
     # WHY: baixar para um arquivo (e não `bash <(curl ...)`) deixa o curl falhar
     # com timeout e retentativa, e permite conferir o conteúdo antes de executar.
-    if ! curl -fsSL --connect-timeout 10 --max-time 60 --retry 3 -o "${installer}" "${url}" ||
+    # O `--proto` e o `--proto-redir` impedem que um redirecionamento leve o
+    # instalador para HTTP.
+    if ! curl -fsSL --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 60 --retry 3 -o "${installer}" "${url}" ||
       [[ ! -s "${installer}" || "$(head -c 2 "${installer}")" != '#!' ]]; then
       echo "ERRO: falha ao baixar o instalador do actionlint (ref ${ACTIONLINT_REF_SHA:0:7})." >&2
       exit 1

@@ -10,10 +10,9 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# WHY: `actions: read` é exigido pelo nx-set-shas para achar o último CI
-# verde; os jobs que não precisam dele reduzem para `contents: read`.
+# WHY: o workflow só lê o código; o `actions: read`, que o nx-set-shas exige
+# para achar o último CI verde, fica nos jobs que o usam.
 permissions:
-  actions: read
   contents: read
 
 # WHY: o runner tem 4 vCPU e 16 GB e o tsc/Next estouram o heap padrão do Node
@@ -68,6 +67,9 @@ jobs:
     name: Checks
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -109,6 +111,9 @@ jobs:
     name: E2E
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
