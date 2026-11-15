@@ -12,12 +12,14 @@ FROM eclipse-temurin:21-jdk-noble@sha256:06c1f157dacf6b68198bd9a4186dd4c34ef24e6
 WORKDIR /workspace
 
 # WHY: o Gradle da raiz e os build.gradle vêm antes do código-fonte; mudar um
-# .java não invalida a camada do wrapper nem a resolução do build.
-COPY gradlew settings.gradle build.gradle gradle.properties ./
+# .java não invalida a camada do wrapper nem a resolução do build. Os locks e
+# a verificação de dependências (em gradle/) vêm junto para a imagem usar as
+# mesmas versões e os mesmos checksums do repositório.
+COPY gradlew settings.gradle build.gradle gradle.properties buildscript-gradle.lockfile ./
 COPY gradle ./gradle
 COPY tools/java/eclipse-formatter.xml ./tools/java/eclipse-formatter.xml
-COPY apps/services/example-quarkus/build.gradle ./apps/services/example-quarkus/build.gradle
-COPY apps/services/example-quarkus/core/build.gradle ./apps/services/example-quarkus/core/build.gradle
+COPY apps/services/example-quarkus/build.gradle apps/services/example-quarkus/gradle-container.lockfile ./apps/services/example-quarkus/
+COPY apps/services/example-quarkus/core/build.gradle apps/services/example-quarkus/core/gradle.lockfile ./apps/services/example-quarkus/core/
 COPY apps/services/example-quarkus/core/src ./apps/services/example-quarkus/core/src
 COPY apps/services/example-quarkus/src ./apps/services/example-quarkus/src
 
