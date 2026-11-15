@@ -52,7 +52,8 @@ cmd_build() {
 }
 
 cmd_run() {
-  resolve_image "$1"
+  local project="$1"
+  resolve_image "${project}"
   docker run --rm --publish "127.0.0.1:${HOST_PORT:-8080}:8080" "${LOCAL_REF}"
 }
 
@@ -79,26 +80,28 @@ floci_aws() {
 # tentativas com backoff exponencial e jitter. Registra só o desfecho: uma
 # linha ao desistir ou ao precisar de mais de uma tentativa.
 retry() {
-  local max_attempts=3 delay=2 attempt
+  local max_attempts=3 delay=2 attempt command_name="$1"
   for ((attempt = 1; attempt <= max_attempts; attempt++)); do
     if "$@"; then
-      ((attempt == 1)) || echo "aviso: '$1' passou na tentativa ${attempt} de ${max_attempts}." >&2
+      ((attempt == 1)) || echo "aviso: '${command_name}' passou na tentativa ${attempt} de ${max_attempts}." >&2
       return 0
     fi
     ((attempt == max_attempts)) || sleep "$((delay + RANDOM % 2))"
     delay=$((delay * 2))
   done
-  echo "erro: '$1' falhou nas ${max_attempts} tentativas, desistindo." >&2
+  echo "erro: '${command_name}' falhou nas ${max_attempts} tentativas, desistindo." >&2
   return 1
 }
 
 ecr_login() {
+  local registry="$1"
   floci_aws ecr get-login-password |
-    docker login --username AWS --password-stdin "$1"
+    docker login --username AWS --password-stdin "${registry}"
 }
 
 docker_push() {
-  docker push "$1"
+  local image_ref="$1"
+  docker push "${image_ref}"
 }
 
 cmd_push_floci() {
