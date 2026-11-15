@@ -192,6 +192,16 @@ function goRules(
   artifactRules(input, errors, warnings, LAMBDA_ARTIFACT_PATH);
 }
 
+function artifactsToVerify(
+  manifest: ServerlessManifest,
+  fallback: string | undefined,
+): string[] {
+  if (manifest.artifacts.length > 0) {
+    return manifest.artifacts;
+  }
+  return fallback ? [fallback] : [];
+}
+
 function artifactRules(
   input: ValidationInput,
   errors: string[],
@@ -208,12 +218,7 @@ function artifactRules(
     return;
   }
 
-  const artifacts =
-    manifest.artifacts.length > 0
-      ? manifest.artifacts
-      : fallback
-        ? [fallback]
-        : [];
+  const artifacts = artifactsToVerify(manifest, fallback);
   if (artifacts.length === 0) {
     errors.push(
       'Declare o artefato em package.artifact (do serviço ou da função).',

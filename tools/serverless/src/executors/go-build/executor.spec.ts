@@ -100,4 +100,14 @@ describe('goBuildExecutor', () => {
       success: false,
     });
   });
+
+  it('devolve uma rejeição, e não lança, quando o build lança um erro', async () => {
+    vi.mocked(buildGoLambdaArtifact).mockImplementationOnce(() => {
+      throw new Error('falha inesperada no build');
+    });
+
+    const result = goBuildExecutor({}, contextFor('svc'));
+
+    await expect(result).rejects.toThrow('falha inesperada no build');
+  });
 });

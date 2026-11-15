@@ -6,10 +6,10 @@ import { buildGoLambdaArtifact } from '../../languages/go/build-go-lambda-artifa
 import type { ExecutorResult } from '../../shared/types.js';
 import type { GoBuildExecutorSchema } from './schema.js';
 
-export default async function goBuildExecutor(
+function runGoBuild(
   options: GoBuildExecutorSchema,
   context: ExecutorContext,
-): Promise<ExecutorResult> {
+): ExecutorResult {
   const projectName = context.projectName ?? '';
   const projectRoot =
     context.projectsConfigurations.projects[projectName]?.root;
@@ -25,5 +25,17 @@ export default async function goBuildExecutor(
     ldflags: options.ldflags ?? '-s -w',
     tags: options.tags ?? 'lambda.norpc',
     packagePath: options.packagePath,
+  });
+}
+
+// WHY: o contrato do Nx exige uma Promise e o build é síncrono; o construtor da
+// Promise converte um erro lançado em rejeição, como o `async` fazia, em vez de
+// lançá-lo antes de devolver a Promise.
+export default function goBuildExecutor(
+  options: GoBuildExecutorSchema,
+  context: ExecutorContext,
+): Promise<ExecutorResult> {
+  return new Promise((resolve) => {
+    resolve(runGoBuild(options, context));
   });
 }

@@ -67,18 +67,23 @@ function parseExtraTags(raw: string | undefined): string[] {
     .filter((tag) => tag.length > 0);
 }
 
-export function normalizeServiceOptions(
-  tree: Tree,
-  options: BaseServiceSchema,
-  stack: Stack,
-): NormalizedService {
+function resolveServiceType(options: BaseServiceSchema): ServiceType {
   const type = options.type ?? 'http';
   if (!SERVICE_TYPES.includes(type)) {
     throw new Error(
       `Tipo "${type}" não suportado. Use: ${SERVICE_TYPES.join(', ')}.`,
     );
   }
+  return type;
+}
 
+function resolveQueueOwnership({
+  options,
+  type,
+}: {
+  options: BaseServiceSchema;
+  type: ServiceType;
+}): QueueOwnership {
   if (options.queue !== undefined && type !== 'sqs') {
     throw new Error('A opção "queue" só se aplica ao tipo sqs.');
   }
@@ -88,31 +93,42 @@ export function normalizeServiceOptions(
       `Valor "${queue}" inválido para "queue". Use: ${QUEUE_OWNERSHIPS.join(', ')}.`,
     );
   }
+  return queue;
+}
 
-  if (
-    options.queueParam !== undefined &&
-    (type !== 'sqs' || queue !== 'external')
-  ) {
+function assertQueueParam({
+  queueParam,
+  type,
+  queue,
+}: {
+  queueParam: string | undefined;
+  type: ServiceType;
+  queue: QueueOwnership;
+}): void {
+  if (queueParam === undefined) {
+    return;
+  }
+  if (type !== 'sqs' || queue !== 'external') {
     throw new Error(
       'A opção "queueParam" só se aplica ao tipo sqs com queue external.',
     );
   }
-  if (
-    options.queueParam !== undefined &&
-    !QUEUE_PARAM.test(options.queueParam)
-  ) {
+  if (!QUEUE_PARAM.test(queueParam)) {
     throw new Error(
-      `queueParam "${options.queueParam}" inválido. Use <domínio>/<recurso> em kebab-case, por exemplo shared/sample-events-queue.`,
+      `queueParam "${queueParam}" inválido. Use <domínio>/<recurso> em kebab-case, por exemplo shared/sample-events-queue.`,
     );
   }
+}
 
-  const serviceName = normalizeServiceName(options.name);
-  const projectRoot = normalizeProjectRoot(
-    options.directory ??
-      joinPathFragments(DEFAULT_SERVICES_DIRECTORY, serviceName),
-  );
-  assertRelativeProjectRoot(projectRoot);
-
+function assertProjectRootAvailable({
+  tree,
+  serviceName,
+  projectRoot,
+}: {
+  tree: Tree;
+  serviceName: string;
+  projectRoot: string;
+}): void {
   for (const [name, project] of getProjects(tree)) {
     if (name === serviceName) {
       throw new Error(
@@ -128,7 +144,9 @@ export function normalizeServiceOptions(
   if (tree.exists(projectRoot) && tree.children(projectRoot).length > 0) {
     throw new Error(`O diretório "${projectRoot}" já existe e não está vazio.`);
   }
+}
 
+function buildTags(options: BaseServiceSchema, stack: Stack): string[] {
   const tags = [
     'type:app',
     STACK_TAG[stack],
@@ -136,12 +154,31 @@ export function normalizeServiceOptions(
     ...(options.domain ? [`scope:${options.domain}`] : []),
     ...parseExtraTags(options.tags),
   ];
+  return [...new Set(tags)];
+}
+
+export function normalizeServiceOptions(
+  tree: Tree,
+  options: BaseServiceSchema,
+  stack: Stack,
+): NormalizedService {
+  const type = resolveServiceType(options);
+  const queue = resolveQueueOwnership({ options, type });
+  assertQueueParam({ queueParam: options.queueParam, type, queue });
+
+  const serviceName = normalizeServiceName(options.name);
+  const projectRoot = normalizeProjectRoot(
+    options.directory ??
+      joinPathFragments(DEFAULT_SERVICES_DIRECTORY, serviceName),
+  );
+  assertRelativeProjectRoot(projectRoot);
+  assertProjectRootAvailable({ tree, serviceName, projectRoot });
 
   return {
     serviceName,
     type,
     projectRoot,
-    tags: [...new Set(tags)],
+    tags: buildTags(options, stack),
     templateModel: {
       serviceName,
       type,

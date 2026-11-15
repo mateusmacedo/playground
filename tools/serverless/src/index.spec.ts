@@ -110,6 +110,26 @@ describe('pluginSourceHash', () => {
       original,
     );
   });
+
+  it('considera só os arquivos que terminam em .ts ou .json', () => {
+    const base = { 'a.ts': 'x', 'b.json': '{}' };
+    const original = pluginSourceHash(pluginWith(base));
+
+    expect(
+      pluginSourceHash(
+        pluginWith({
+          ...base,
+          'notas.md': 'texto',
+          'c.jsonc': '{}',
+          'a.ts.map': '{}',
+          ts: 'sem ponto',
+        }),
+      ),
+    ).toBe(original);
+    expect(pluginSourceHash(pluginWith({ ...base, 'b.json': '[]' }))).not.toBe(
+      original,
+    );
+  });
 });
 
 describe('pluginSourceHash do próprio plugin', () => {

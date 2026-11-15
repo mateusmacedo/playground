@@ -32,8 +32,8 @@ export type { NxServerlessPluginOptions } from './core/types.js';
 const serverlessConfigGlob = '**/serverless.yml';
 const pluginRoot = join(import.meta.dirname, '..');
 
-const PLUGIN_SOURCE = /\.(ts|json)$/;
-const PLUGIN_SPEC = /\.spec\.ts$/;
+const PLUGIN_SOURCE_SUFFIXES = ['.ts', '.json'];
+const PLUGIN_SPEC_SUFFIX = '.spec.ts';
 
 let cachedSourceHash: string | undefined;
 
@@ -53,7 +53,11 @@ export function pluginSourceHash(root: string = pluginRoot): string {
   }
   const files = readdirSync(join(root, 'src'), { recursive: true })
     .map(String)
-    .filter((file) => PLUGIN_SOURCE.test(file) && !PLUGIN_SPEC.test(file))
+    .filter(
+      (file) =>
+        PLUGIN_SOURCE_SUFFIXES.some((suffix) => file.endsWith(suffix)) &&
+        !file.endsWith(PLUGIN_SPEC_SUFFIX),
+    )
     .sort(compareByCodeUnit);
   const hash = hashArray(
     files.flatMap((file) => [
