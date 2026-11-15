@@ -71,14 +71,12 @@ run "access_logs_in_protected_bucket" {
   }
 
   assert {
-    condition     = aws_s3_bucket.logs["alb"].bucket == "playground-local-alb-access-logs" && aws_s3_bucket.logs["s3"].bucket == "playground-local-s3-access-logs"
+    condition     = aws_s3_bucket.alb_access_logs.bucket == "playground-local-alb-access-logs" && aws_s3_bucket.s3_access_logs.bucket == "playground-local-s3-access-logs"
     error_message = "Um bucket recebe os access logs do ALB e outro, o registro de acesso dele."
   }
 
   assert {
-    condition = (
-      aws_s3_bucket_logging.alb.target_prefix == "playground-local-alb-access-logs/"
-    )
+    condition     = aws_s3_bucket_logging.alb_access_logs.target_prefix == "playground-local-alb-access-logs/"
     error_message = "O bucket dos access logs registra os próprios acessos no bucket s3."
   }
 
@@ -107,7 +105,7 @@ run "access_logs_in_protected_bucket" {
   }
 
   assert {
-    condition     = alltrue([for bucket in values(aws_s3_bucket.logs) : !bucket.force_destroy])
+    condition     = !aws_s3_bucket.alb_access_logs.force_destroy && !aws_s3_bucket.s3_access_logs.force_destroy
     error_message = "Por padrão os buckets de log não são apagados com objetos dentro."
   }
 }
