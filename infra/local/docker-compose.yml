@@ -1,0 +1,76 @@
+name: playground-infra-local
+
+services:
+  floci:
+    # Tag e digest do índice multi-arch: atualizar os dois juntos.
+    image: docker.io/floci/floci:2.4.0@sha256:5ee85db604c4aa74ac76e07ea5cc83086f37bb472bf3dbb97e34019e48efae9c
+    ports:
+      - '127.0.0.1:4566:4566'
+      # WHY: o socket do listener HTTP (porta 80) do ALB abre dentro do container
+      # do Floci. 8088 e não 8080, que é a porta padrão dos serviços no host.
+      - '127.0.0.1:${FLOCI_ALB_HTTP_PORT:-8088}:80'
+    environment:
+      # WHY: vazio mantém localhost:4566 nas URLs devolvidas; as Lambdas
+      # recebem do Floci o próprio endpoint (ver README, seção Rede).
+      FLOCI_HOSTNAME: ${FLOCI_HOSTNAME-}
+      FLOCI_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
+      FLOCI_DEFAULT_ACCOUNT_ID: '000000000000'
+      FLOCI_STORAGE_MODE: ${FLOCI_STORAGE_MODE:-persistent}
+      FLOCI_STORAGE_PERSISTENT_PATH: /app/data
+      # WHY: rede nomeada fixa os containers filhos (Lambda, RDS) na rede do
+      # Floci; o prefixo evita colisão com órfãos de outros projetos Floci.
+      FLOCI_SERVICES_DOCKER_NETWORK: playground-floci
+      FLOCI_DOCKER_RESOURCE_NAMESPACE: playground
+      FLOCI_SERVICES_LAMBDA_DEFAULT_TIMEOUT_SECONDS: ${FLOCI_LAMBDA_TIMEOUT:-60}
+      FLOCI_SERVICES_LAMBDA_HOT_RELOAD_ENABLED: ${FLOCI_LAMBDA_HOT_RELOAD:-false}
+      FLOCI_SERVICES_CLOUDFORMATION_ALLOW_STUB_UNSUPPORTED_RESOURCE_TYPES: ${FLOCI_CFN_ALLOW_STUBS:-true}
+      # Tag e digest do índice multi-arch: atualizar os dois juntos. O Floci
+      # aceita `tag@digest` (testado no 2.4.0, com a imagem local e com pull).
+      FLOCI_SERVICES_UI_IMAGE: floci/floci-ui:0.7.0@sha256:90dcaa588f9b3cd3cb5ccc98559286574391001e46735b7be4373364d51f7dfe
+      FLOCI_SERVICES_UI_CONTAINER_NAME: playground-floci-ui
+      # WHY: o console não tem autenticação; sem isto publica a 4500 em todas
+      # as interfaces.
+      FLOCI_SERVICES_UI_BIND_ADDRESS: 127.0.0.1
+    volumes:
+      - floci-data:/app/data
+      # NOTE: acesso ao socket equivale a root no host; o Floci o usa para
+      # criar os containers de Lambda, RDS e do console.
+      - /var/run/docker.sock:/var/run/docker.sock
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  floci-bootstrap:
+    # Tag e digest do índice multi-arch: atualizar os dois juntos.
+    image: docker.io/amazon/aws-cli:2.40.3@sha256:33a16c53ea442e918b58df67301ad76a8fb57082c39f7e78753b898c3f3e87c2
+    depends_on:
+      floci:
+        condition: service_healthy
+    environment:
+      AWS_ENDPOINT_URL: http://floci:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_PAGER: ''
+      FLOCI_WAIT_TIMEOUT: ${FLOCI_WAIT_TIMEOUT:-120}
+      LOCAL_APP: ${LOCAL_APP:-playground}
+      LOCAL_STAGE: ${LOCAL_STAGE:-local}
+      FLOCI_SEED_SSM_DOMAIN: ${FLOCI_SEED_SSM_DOMAIN:-shared}
+      # WHY: `${VAR-padrão}` (sem dois pontos) deixa o .env desligar um seed
+      # com variável vazia, em vez de cair no padrão.
+      FLOCI_SEED_BUCKETS: ${FLOCI_SEED_BUCKETS-playground-local-uploads}
+      FLOCI_SEED_QUEUES: ${FLOCI_SEED_QUEUES-playground-local-sample-events}
+      FLOCI_SEED_QUEUE_MAX_RECEIVES: ${FLOCI_SEED_QUEUE_MAX_RECEIVES:-5}
+      FLOCI_SEED_TABLES: ${FLOCI_SEED_TABLES-}
+      FLOCI_SEED_SSM_PARAMETERS: ${FLOCI_SEED_SSM_PARAMETERS-backoffice/app/name=Playground Backoffice}
+    entrypoint: ['/bin/sh', '-c']
+    command: ['bash /init/floci/bootstrap.sh']
+    volumes:
+      - ./init/floci/:/init/floci/:ro,z
+    restart: 'no'
+
+volumes:
+  floci-data:
+
+networks:
+  default:
+    name: playground-floci
