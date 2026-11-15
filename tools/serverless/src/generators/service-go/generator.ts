@@ -18,6 +18,7 @@ import {
   SERVERLESS_LOCALSTACK_VERSION,
   SERVERLESS_VERSION,
 } from '../../shared/constants.js';
+import { resolveExecutable } from '../../shared/resolve-executable.js';
 import {
   addRootDevDependencies,
   addServiceProject,
@@ -29,11 +30,15 @@ const templatesDir = join(import.meta.dirname, 'files');
 
 function goModTidyTask(absProjectRoot: string): GeneratorCallback {
   return () => {
-    const result = spawnSync('go', ['mod', 'tidy'], {
-      cwd: absProjectRoot,
-      stdio: 'inherit',
-    });
-    if (result.status !== 0) {
+    const goBinary = resolveExecutable({ name: 'go' });
+    const result =
+      goBinary === undefined
+        ? undefined
+        : spawnSync(goBinary, ['mod', 'tidy'], {
+            cwd: absProjectRoot,
+            stdio: 'inherit',
+          });
+    if (result?.status !== 0) {
       logger.warn(
         `Não foi possível rodar "go mod tidy" em ${absProjectRoot}; rode manualmente para gerar o go.sum.`,
       );
