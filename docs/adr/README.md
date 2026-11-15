@@ -41,3 +41,4 @@ Cada ADR registra **uma** decisão que o time precisa entender daqui a seis mese
 | [0010](./0010-versionamento-e-publicacao-no-github.md)  | Versionamento e publicação no GitHub com nx release            | Aceito   |
 | [0011](./0011-estrutura-profissional-do-terraform.md)   | Terraform enxuto e evolutivo                                   | Aceito   |
 | [0012](./0012-instrucoes-de-ia-por-projeto.md)          | Instruções de IA por projeto                                   | Aceito   |
+| [0013](./0013-analise-sonarqube-cloud.md)               | Análise do SonarQube Cloud com a cobertura dos testes          | Aceito   |

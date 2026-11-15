@@ -1,0 +1,130 @@
+name: SonarQube
+
+# NOTE: análise do SonarQube Cloud com a cobertura dos testes (ADR 0013). Fica
+# fora dos checks do PR: o quality gate chega ao PR pelo app do SonarQube
+# Cloud, e uma indisponibilidade do serviço não bloqueia o merge. No PR, só os
+# projetos afetados rodam os testes; a análise completa da main é semanal ou
+# manual.
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+  schedule:
+    - cron: '41 9 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  NODE_OPTIONS: --max-old-space-size=3072
+  NX_DAEMON: 'false'
+  # WHY: a cobertura sai da execução dos testes; um acerto do cache remoto
+  # devolveria o resultado sem os relatórios.
+  NX_NO_CLOUD: 'true'
+
+jobs:
+  analysis:
+    name: Análise
+    # WHY: o PR vindo de fork não recebe o SONAR_TOKEN, e o scan falharia sem
+    # ele.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # WHY: o SonarQube usa o histórico completo, com os blobs, para
+          # separar o código novo e atribuir os achados; sem o `filter` do
+          # ci.yml, o blame não depende de buscar objetos sob demanda.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          go-version-file: apps/services/example-go/go.mod
+          java-version: '21'
+      # NOTE: define NX_BASE e NX_HEAD, que o `nx affected` lê sozinho.
+      - name: Definir SHAs base e head
+        if: github.event_name == 'pull_request'
+        uses: nrwl/nx-set-shas@e602fada7ad5987b0f7b1905e7a99ea1c661514c # v5.1.0
+      - name: Projetos a testar
+        id: projects
+        env:
+          PULL_REQUEST: ${{ github.event_name == 'pull_request' }}
+        run: |
+          set -euo pipefail
+          scope=()
+          if [ "${PULL_REQUEST}" = 'true' ]; then scope=(--affected); fi
+          list() { pnpm exec nx show projects "${scope[@]}" --withTarget test "$@" --json | jq -r 'join(",")'; }
+          {
+            echo "java=$(list -p 'tag:stack:java')"
+            echo "go=$(list -p 'tag:stack:go')"
+            echo "ts=$(list -p '*' '!tag:stack:java' '!tag:stack:go' '!tag:scope:infra')"
+          } | tee -a "$GITHUB_OUTPUT"
+      # WHY: a análise do Java exige o bytecode de todos os módulos, inclusive
+      # dos que o PR não toca.
+      - name: Compilação Java
+        run: ./gradlew --no-daemon classes testClasses
+      # NOTE: o `-Pcoverage` é propriedade do build do Gradle (build.gradle da
+      # raiz), por isso o Gradle direto; os nomes dos projetos Java do Nx são
+      # os mesmos do Gradle.
+      - name: Testes Java com cobertura
+        if: steps.projects.outputs.java != ''
+        env:
+          PROJECTS: ${{ steps.projects.outputs.java }}
+        run: |
+          set -euo pipefail
+          mapfile -t tasks < <(tr ',' '\n' <<<"${PROJECTS}" | sed 's/.*/:&:test/')
+          ./gradlew --no-daemon -Pcoverage "${tasks[@]}"
+      - name: Testes Go com cobertura
+        if: steps.projects.outputs.go != ''
+        env:
+          PROJECTS: ${{ steps.projects.outputs.go }}
+        run: |
+          set -euo pipefail
+          for project in ${PROJECTS//,/ }; do
+            root="$(pnpm exec nx show project "${project}" --json | jq -r '.root')"
+            (cd "${root}" && go test -race -coverprofile=coverage.out ./...)
+          done
+      # NOTE: o `--coverage.enabled` liga a cobertura nos projetos cujo
+      # vitest.config não lê o VITEST_COVERAGE.
+      - name: Testes TypeScript com cobertura
+        if: steps.projects.outputs.ts != ''
+        env:
+          PROJECTS: ${{ steps.projects.outputs.ts }}
+        run: pnpm exec nx run-many -t test -p "${PROJECTS}" -- --coverage.enabled --coverage.reporter=lcov
+      - name: Caminhos da análise
+        id: paths
+        run: |
+          set -euo pipefail
+          # WHY: o Vitest grava no lcov os caminhos relativos ao projeto, e o
+          # SonarQube os resolve a partir da raiz do repositório.
+          find apps tools -path '*/test-output/vitest/coverage/lcov.info' | while read -r report; do
+            root="${report%/test-output/vitest/coverage/lcov.info}"
+            sed -i "s#^SF:src/#SF:${root}/src/#" "${report}"
+          done
+          {
+            echo "binaries=$(find apps -type d -path '*/build/classes/java/main' | sort | paste -sd, -)"
+            echo "test-binaries=$(find apps -type d -path '*/build/classes/java/test' | sort | paste -sd, -)"
+            echo "libraries=${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1/**/*.jar"
+            echo "go-reports=$(find apps -name coverage.out | sort | paste -sd, -)"
+          } | tee -a "$GITHUB_OUTPUT"
+      - name: Análise do SonarQube
+        uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65 # v8.4.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >-
+            -Dsonar.java.binaries=${{ steps.paths.outputs.binaries }}
+            -Dsonar.java.test.binaries=${{ steps.paths.outputs.test-binaries }}
+            -Dsonar.java.libraries=${{ steps.paths.outputs.libraries }}
+            -Dsonar.java.test.libraries=${{ steps.paths.outputs.libraries }}
+            -Dsonar.go.coverage.reportPaths=${{ steps.paths.outputs.go-reports }}
