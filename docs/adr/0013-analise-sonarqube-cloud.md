@@ -1,6 +1,6 @@
 # ADR 0013: Análise do SonarQube Cloud com a cobertura dos testes
 
-- **Status**: Aceito
+- **Status**: Aceito; o check deixou de ser opcional no [ADR 0015](./0015-metas-de-qualidade-e-gate-obrigatorio.md)
 - **Data**: 2026-11-14
 
 ## Contexto
