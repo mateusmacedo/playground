@@ -12,6 +12,15 @@ if (!(runtime in ['lambda', 'container'])) {
       "Propriedade runtime inválida: '${runtime}'. Use lambda ou container.")
 }
 
+// WHY: cada runtime resolve um grafo diferente (com ou sem a extensão da
+// Lambda); um lock por runtime mantém os dois estritos. O da Lambda, o padrão,
+// fica no gradle.lockfile.
+if (runtime == 'container') {
+  dependencyLocking {
+    lockFile = file('gradle-container.lockfile')
+  }
+}
+
 dependencies {
   implementation enforcedPlatform(
       "${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
