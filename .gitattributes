@@ -1,0 +1,7 @@
+# WHY: o repositório vive em LF; só o .bat do Windows exige CRLF. Sem isto, o
+# checkout no Windows muda o fim de linha de scripts (gradlew quebra no bash).
+* text=auto eol=lf
+*.bat text eol=crlf
+gradlew text eol=lf
+*.jar binary
+*.zip binary
