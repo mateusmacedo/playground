@@ -1,11 +1,9 @@
 name: actionlint
 
+# WHY: sem filtro de caminho, porque é check obrigatório da main (ADR 0015) e
+# um check que não roda deixa o PR bloqueado esperando por ele.
 on:
   pull_request:
-    paths:
-      - '.github/**'
-      - 'tools/lint-actions.sh'
-      - 'renovate.json'
 
 concurrency:
   group: actionlint-${{ github.workflow }}-${{ github.ref }}
