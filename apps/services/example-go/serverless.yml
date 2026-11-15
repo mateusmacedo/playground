@@ -1,0 +1,49 @@
+service: example-go
+
+frameworkVersion: '4'
+
+# WHY: o núcleo do Serverless v4 fala com CloudFormation e S3 pelo AWS SDK v2,
+# que ignora AWS_ENDPOINT_URL; o plugin redireciona essas chamadas ao Floci.
+plugins:
+  - serverless-localstack
+
+custom:
+  localstack:
+    stages:
+      - local
+    host: http://localhost
+    edgePort: 4566
+    autostart: false
+  # WHY: sem retenção o grupo de logs da função nunca expira e o custo de
+  # armazenamento só cresce; prod guarda mais para investigação.
+  logRetentionInDays:
+    prod: 30
+  nxServerless:
+    language: go
+    type: http
+    goPackage: cmd/example-go
+
+provider:
+  name: aws
+  stage: ${opt:stage, 'local'}
+  region: ${env:AWS_REGION, 'us-east-1'}
+  runtime: provided.al2023
+  architecture: ${env:SLS_ARCH, 'arm64'}
+  memorySize: 256
+  timeout: 29
+  logRetentionInDays: ${self:custom.logRetentionInDays.${sls:stage}, 7}
+  environment:
+    LOG_LEVEL: ${ssm:/playground/${sls:stage}/${aws:region}/example-go/config/log-level, 'info'}
+
+package:
+  individually: true
+
+functions:
+  handler:
+    handler: bootstrap
+    package:
+      artifact: .bin/bootstrap.zip
+    events:
+      - httpApi:
+          path: /example-go
+          method: get
