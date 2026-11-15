@@ -85,7 +85,13 @@ function fail(ctx, file, message) {
   ctx.errors.push(`${path.relative(ctx.root, file) || '.'}: ${message}`);
 }
 
-function walk(dir, found = { agentsMd: [], agentsDirs: [], claudeDirs: [] }) {
+function walk(root) {
+  const found = { agentsMd: [], agentsDirs: [], claudeDirs: [] };
+  collectScopeEntries(root, found);
+  return found;
+}
+
+function collectScopeEntries(dir, found) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isSymbolicLink()) continue;
@@ -93,12 +99,11 @@ function walk(dir, found = { agentsMd: [], agentsDirs: [], claudeDirs: [] }) {
       if (SKIPPED_DIRS.has(entry.name)) continue;
       if (entry.name === '.agents') found.agentsDirs.push(full);
       if (entry.name === '.claude') found.claudeDirs.push(full);
-      walk(full, found);
+      collectScopeEntries(full, found);
     } else if (entry.name === 'AGENTS.md') {
       found.agentsMd.push(full);
     }
   }
-  return found;
 }
 
 function walkMarkdown(dir) {
@@ -121,6 +126,80 @@ function checkSize(ctx, file, kind) {
   return text;
 }
 
+// WHY: o `.` do JavaScript não casa estes quatro caracteres, e as linhas do
+// frontmatter só os trazem quando o arquivo tem fim de linha CRLF.
+const LINE_TERMINATOR = /[\n\r\u2028\u2029]/;
+const FRONTMATTER_KEY = /^[A-Za-z_][\w-]*$/;
+
+// WHY: equivale a `/^\s+-\s+(.+)$/` e devolve o texto capturado ou null. Com o
+// `\s+` colado no `.+`, uma linha longa de espaços que falha no fim fazia o
+// motor testar cada ponto de corte (tempo quadrático). Aqui cada trecho de
+// espaço é consumido uma vez, com `trimStart`, que usa o mesmo conjunto de
+// caracteres do `\s`.
+function parseListItem(line) {
+  const indented = line.trimStart();
+  if (indented.length === line.length || !indented.startsWith('-')) return null;
+  const afterDash = indented.slice(1);
+  const value = afterDash.trimStart();
+  const gap = afterDash.length - value.length;
+  if (gap === 0) return null;
+  if (value === '') {
+    // NOTE: com só espaços depois do traço, o `.+` da regex original ficava com
+    // o último espaço, desde que houvesse dois ou mais e ele não fosse
+    // terminador de linha; o item vale, com valor em branco.
+    const last = afterDash.at(-1);
+    return gap >= 2 && !LINE_TERMINATOR.test(last) ? last : null;
+  }
+  return LINE_TERMINATOR.test(value) ? null : value;
+}
+
+// WHY: equivale a `/^([A-Za-z_][\w-]*):(?:\s+(.*))?$/` e devolve `{ key, raw }`
+// ou null; pelo mesmo motivo de `parseListItem`, sem o `\s+` colado no `.*`.
+function parseKeyValue(line) {
+  const colon = line.indexOf(':');
+  if (colon === -1) return null;
+  const key = line.slice(0, colon);
+  if (!FRONTMATTER_KEY.test(key)) return null;
+  const rest = line.slice(colon + 1);
+  if (rest === '') return { key, raw: '' };
+  const raw = rest.trimStart();
+  if (raw.length === rest.length || LINE_TERMINATOR.test(raw)) return null;
+  return { key, raw };
+}
+
+function applyIndentedLine(ctx, file, state, line, where) {
+  const item = parseListItem(line);
+  if (state.current === null) {
+    fail(ctx, file, `${where}: linha indentada sem chave`);
+  } else if (item !== null && !state.block) {
+    const value = unquote(ctx, file, where, item);
+    const previous = state.data[state.current];
+    state.data[state.current] = [
+      ...(Array.isArray(previous) ? previous : []),
+      value,
+    ];
+  } else if (state.block) {
+    const previous = state.data[state.current];
+    state.data[state.current] = `${previous} ${line.trim()}`.trim();
+  } else {
+    fail(ctx, file, `${where}: indentação inesperada`);
+  }
+}
+
+function applyKeyLine(ctx, file, state, line, where) {
+  const pair = parseKeyValue(line);
+  if (pair === null) {
+    fail(ctx, file, `${where}: esperado \`chave: valor\``);
+    return;
+  }
+  const { key, raw } = pair;
+  if (key in state.data) fail(ctx, file, `${where}: chave \`${key}\` repetida`);
+  state.current = key;
+  state.block = /^[>|][-+]?$/.test(raw);
+  state.data[key] =
+    state.block || raw === '' ? '' : unquote(ctx, file, where, raw);
+}
+
 // Valida o subconjunto de YAML usado no frontmatter: `chave: valor`, listas
 // `- item` e blocos `>-`/`|`. Devolve null quando não há frontmatter.
 function parseFrontmatter(ctx, file, text) {
@@ -130,43 +209,19 @@ function parseFrontmatter(ctx, file, text) {
     fail(ctx, file, 'frontmatter sem o `---` de fechamento');
     return {};
   }
-  const data = {};
-  let current = null;
-  let block = false;
+  const state = { data: {}, current: null, block: false };
   for (const [index, line] of text.slice(4, end).split('\n').entries()) {
     const where = `frontmatter, linha ${index + 2}`;
     if (line.includes('\t'))
       fail(ctx, file, `${where}: tabulação não vale em YAML`);
     if (line.trim() === '' || line.trimStart().startsWith('#')) continue;
-    const item = /^\s+-\s+(.+)$/.exec(line);
     if (/^\s/.test(line)) {
-      if (current === null) {
-        fail(ctx, file, `${where}: linha indentada sem chave`);
-      } else if (item && !block) {
-        const value = unquote(ctx, file, where, item[1]);
-        data[current] = [
-          ...(Array.isArray(data[current]) ? data[current] : []),
-          value,
-        ];
-      } else if (block) {
-        data[current] = `${data[current]} ${line.trim()}`.trim();
-      } else {
-        fail(ctx, file, `${where}: indentação inesperada`);
-      }
-      continue;
+      applyIndentedLine(ctx, file, state, line, where);
+    } else {
+      applyKeyLine(ctx, file, state, line, where);
     }
-    const pair = /^([A-Za-z_][\w-]*):(?:\s+(.*))?$/.exec(line);
-    if (!pair) {
-      fail(ctx, file, `${where}: esperado \`chave: valor\``);
-      continue;
-    }
-    const [, key, raw = ''] = pair;
-    if (key in data) fail(ctx, file, `${where}: chave \`${key}\` repetida`);
-    current = key;
-    block = /^[>|][-+]?$/.test(raw);
-    data[key] = block || raw === '' ? '' : unquote(ctx, file, where, raw);
   }
-  return data;
+  return state.data;
 }
 
 function unquote(ctx, file, where, raw) {
@@ -224,17 +279,33 @@ function checkLinks(ctx, file, text) {
   }
 }
 
+function addEntryNames(dir, names) {
+  for (const entry of fs.readdirSync(dir)) names.add(entry);
+}
+
+function addMarkdownNames(dir, names) {
+  for (const file of fs.readdirSync(dir)) {
+    if (file.endsWith('.md')) names.add(file.slice(0, -3));
+  }
+}
+
+function isPluginDirToScan(entry) {
+  return (
+    entry.isDirectory() &&
+    !entry.name.startsWith('.') &&
+    !PLUGIN_SCAN_SKIPPED_DIRS.has(entry.name)
+  );
+}
+
 function scanPluginCache(dir, depth, names) {
   if (depth > PLUGIN_SCAN_MAX_DEPTH || !isDir(dir)) return;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
-    if (PLUGIN_SCAN_SKIPPED_DIRS.has(entry.name)) continue;
+    if (!isPluginDirToScan(entry)) continue;
     const full = path.join(dir, entry.name);
     if (entry.name === 'agents') {
-      for (const f of fs.readdirSync(full))
-        if (f.endsWith('.md')) names.agents.add(f.slice(0, -3));
+      addMarkdownNames(full, names.agents);
     } else if (entry.name === 'skills') {
-      for (const f of fs.readdirSync(full)) names.skills.add(f);
+      addEntryNames(full, names.skills);
     } else {
       scanPluginCache(full, depth + 1, names);
     }
@@ -245,15 +316,9 @@ function readExternalNames(claudeHome) {
   const skills = new Set();
   const agents = new Set(RESERVED_AGENTS);
   const userSkills = path.join(claudeHome, 'skills');
-  if (isDir(userSkills)) {
-    for (const name of fs.readdirSync(userSkills)) skills.add(name);
-  }
+  if (isDir(userSkills)) addEntryNames(userSkills, skills);
   const userAgents = path.join(claudeHome, 'agents');
-  if (isDir(userAgents)) {
-    for (const name of fs.readdirSync(userAgents)) {
-      if (name.endsWith('.md')) agents.add(name.slice(0, -3));
-    }
-  }
+  if (isDir(userAgents)) addMarkdownNames(userAgents, agents);
   const cache = path.join(claudeHome, 'plugins/cache');
   scanPluginCache(cache, 0, { skills, agents });
   return { skills, agents };

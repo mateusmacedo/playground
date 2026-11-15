@@ -445,6 +445,120 @@ describe('checkInstructions', () => {
         `${SKILL_FILE}: frontmatter precisa de \`name\` e \`description\``,
       ]);
     });
+
+    describe('bordas do item de lista e do par chave: valor', () => {
+      const NBSP = String.fromCharCode(0xa0);
+      const LINE_SEPARATOR = String.fromCharCode(0x2028);
+
+      it.each([
+        ['item com vários espaços depois do traço', 'extra:\n  -    valor\n'],
+        ['item só com espaços depois do traço', 'extra:\n  -  \n'],
+        ['chave com só espaços depois dos dois pontos', 'extra:   \n'],
+        ['chave com hífen e sublinhado', 'x-y_z: ok\n'],
+        ['espaço sem quebra depois dos dois pontos', `extra:${NBSP}valor\n`],
+      ])('aceita %s', (_caso, extra) => {
+        expect(skillErrors(`${BASE_FRONT}${extra}`)).toEqual([]);
+      });
+
+      it.each([
+        [
+          'item com um espaço só depois do traço',
+          'extra:\n  - \n',
+          'linha 5: indentação inesperada',
+        ],
+        [
+          'item colado no traço',
+          'extra:\n  -valor\n',
+          'linha 5: indentação inesperada',
+        ],
+        [
+          'item com retorno de carro no fim',
+          'extra:\n  - valor\r\n',
+          'linha 5: indentação inesperada',
+        ],
+        [
+          'item sem indentação',
+          '- valor\n',
+          'linha 4: esperado `chave: valor`',
+        ],
+        [
+          'chave colada no valor',
+          'extra:valor\n',
+          'linha 4: esperado `chave: valor`',
+        ],
+        [
+          'chave com retorno de carro no fim',
+          'extra: valor\r\n',
+          'linha 4: esperado `chave: valor`',
+        ],
+        [
+          'chave com separador de linha no valor',
+          `extra: va${LINE_SEPARATOR}lor\n`,
+          'linha 4: esperado `chave: valor`',
+        ],
+        [
+          'chave que começa por dígito',
+          '1extra: x\n',
+          'linha 4: esperado `chave: valor`',
+        ],
+        ['chave com ponto', 'a.b: x\n', 'linha 4: esperado `chave: valor`'],
+        ['chave vazia', ': x\n', 'linha 4: esperado `chave: valor`'],
+      ])('recusa %s', (_caso, extra, message) => {
+        expect(skillErrors(`${BASE_FRONT}${extra}`)).toEqual([
+          `${SKILL_FILE}: frontmatter, ${message}`,
+        ]);
+      });
+    });
+
+    describe('linhas longas', () => {
+      const LONG = 100_000;
+
+      // WHY: a linha passa de 40000 caracteres, então o tamanho do arquivo
+      // também é apontado; o que se confere aqui é o frontmatter.
+      function oversized(frontBody) {
+        const size = `---\n${frontBody}---\n`.length;
+        return `${SKILL_FILE}: ${size} caracteres (máximo 40000)`;
+      }
+
+      // WHY: o teste espera o resultado em até 2 segundos. As regex antigas
+      // levavam mais de 10 segundos já com 40000 espaços, então um retorno ao
+      // tempo quadrático faz o teste estourar o tempo.
+      it('recusa em tempo linear a chave com espaços e retorno de carro no fim', {
+        timeout: 2000,
+      }, () => {
+        const body = `${BASE_FRONT}extra:${' '.repeat(LONG)}x\r\n`;
+
+        expect(skillErrors(body)).toEqual([
+          oversized(body),
+          `${SKILL_FILE}: frontmatter, linha 4: esperado \`chave: valor\``,
+        ]);
+      });
+
+      it('recusa em tempo linear o item com espaços e retorno de carro no fim', {
+        timeout: 2000,
+      }, () => {
+        const body = `${BASE_FRONT}extra:\n  -${' '.repeat(LONG)}x\r\n`;
+
+        expect(skillErrors(body)).toEqual([
+          oversized(body),
+          `${SKILL_FILE}: frontmatter, linha 5: indentação inesperada`,
+        ]);
+      });
+
+      it('aceita a chave com valor longo', { timeout: 2000 }, () => {
+        const body = `${BASE_FRONT}extra: ${'a'.repeat(LONG)}\n`;
+
+        expect(skillErrors(body)).toEqual([oversized(body)]);
+      });
+
+      it('aceita o item com traços e espaços alternados', {
+        timeout: 2000,
+      }, () => {
+        const body = `${BASE_FRONT}extra:\n  -${' -'.repeat(LONG / 2)}\n`;
+
+        expect(skillErrors(body)).toEqual([oversized(body)]);
+      });
+    });
   });
 
   describe('rules', () => {
