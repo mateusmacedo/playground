@@ -38,7 +38,7 @@ func TestListenAddressUsaPortOuPadrao(t *testing.T) {
 func logLines(t *testing.T, output *bytes.Buffer) []map[string]any {
 	t.Helper()
 	var lines []map[string]any
-	for _, line := range strings.Split(strings.TrimSpace(output.String()), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(output.String()), "\n") {
 		if line == "" {
 			continue
 		}
@@ -95,6 +95,19 @@ func TestNewLoggerAcrescentaORequestIDDoContexto(t *testing.T) {
 	}
 	if _, ok := lines[2]["requestId"]; ok {
 		t.Fatalf("sem contexto não deveria haver requestId: %v", lines[2])
+	}
+}
+
+func TestNewLoggerMantemORequestIDDentroDeGrupo(t *testing.T) {
+	var output bytes.Buffer
+	logger := newLogger(&output, "info").WithGroup("job")
+	ctx := withRequestID(context.Background(), "req-1")
+
+	logger.InfoContext(ctx, "no_grupo", "messageId", "m1")
+
+	group, ok := logLines(t, &output)[0]["job"].(map[string]any)
+	if !ok || group["messageId"] != "m1" || group["requestId"] != "req-1" {
+		t.Fatalf("o grupo deveria levar o messageId e o requestId: %v", group)
 	}
 }
 
@@ -171,6 +184,31 @@ func TestAssignRequestIDEscolheInvocacaoDepoisCabecalhoDepoisGerado(t *testing.T
 	inLambda = inLambda.WithContext(lambdacontext.NewContext(inLambda.Context(), &lambdacontext.LambdaContext{AwsRequestID: "da-invocacao"}))
 	if id := serve(inLambda); id != "da-invocacao" {
 		t.Fatalf("esperava o id da invocação, recebido %q", id)
+	}
+}
+
+func TestSetupLoggerEscreveJSONNoStdoutComONivelDeLogLevel(t *testing.T) {
+	t.Setenv("LOG_LEVEL", "debug")
+	lines := stdoutLogs(t)
+
+	setupLogger()
+	slog.Debug("debug_event", "messageId", "m1")
+
+	entry := awaitMessage(t, lines, "debug_event")
+	if entry["level"] != "debug" || entry["messageId"] != "m1" {
+		t.Fatalf("log inesperado: %v", entry)
+	}
+}
+
+func TestWithLambdaRequestIDUsaOIdDaInvocacaoSoDentroDaLambda(t *testing.T) {
+	invocation := lambdacontext.NewContext(context.Background(), &lambdacontext.LambdaContext{AwsRequestID: "da-invocacao"})
+	if id := requestIDFrom(withLambdaRequestID(invocation)); id != "da-invocacao" {
+		t.Fatalf("esperava o id da invocação, recebido %q", id)
+	}
+
+	outside := context.Background()
+	if got := withLambdaRequestID(outside); got != outside {
+		t.Fatalf("fora da Lambda o contexto deveria voltar como veio, recebido %v", got)
 	}
 }
 
@@ -290,9 +328,7 @@ func TestRunServerDevolveErroQuandoOServidorFalha(t *testing.T) {
 	}
 	_ = listener.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	err = runServer(ctx, &http.Server{}, listener, time.Second)
+	err = runServer(t.Context(), &http.Server{}, listener, time.Second)
 
 	if err == nil {
 		t.Fatal("esperava erro com o listener fechado")

@@ -166,3 +166,15 @@ func TestRecoverPanicNaoEngoleErrAbortHandler(t *testing.T) {
 	}()
 	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
 }
+
+func TestStatusRecorderDeixaOResponseControllerAlcancarOWriterOriginal(t *testing.T) {
+	original := httptest.NewRecorder()
+	recorder := &statusRecorder{ResponseWriter: original, status: http.StatusOK}
+
+	if err := http.NewResponseController(recorder).Flush(); err != nil {
+		t.Fatalf("o Flush deveria chegar ao ResponseWriter original: %v", err)
+	}
+	if !original.Flushed {
+		t.Fatal("o ResponseWriter original deveria ter recebido o Flush")
+	}
+}
