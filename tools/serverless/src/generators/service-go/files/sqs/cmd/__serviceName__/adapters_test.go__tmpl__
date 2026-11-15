@@ -1,0 +1,151 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambdacontext"
+)
+
+func TestHandleSQSReportaApenasMensagensComFalha(t *testing.T) {
+	event := events.SQSEvent{Records: []events.SQSMessage{
+		{MessageId: "msg-ok", Body: `{"action":"a"}`},
+		{MessageId: "msg-ruim", Body: "não é json"},
+	}}
+
+	response, err := handleSQS(context.Background(), event)
+	if err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	if len(response.BatchItemFailures) != 1 || response.BatchItemFailures[0].ItemIdentifier != "msg-ruim" {
+		t.Fatalf("falhas esperadas [msg-ruim], recebidas %+v", response.BatchItemFailures)
+	}
+}
+
+func TestHandleSQSLogaAFalhaPermanenteEmWarnEResumeOLote(t *testing.T) {
+	previous := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(previous) })
+	var output bytes.Buffer
+	slog.SetDefault(newLogger(&output, "debug"))
+	ctx := lambdacontext.NewContext(context.Background(), &lambdacontext.LambdaContext{AwsRequestID: "req-1"})
+	event := events.SQSEvent{Records: []events.SQSMessage{
+		{MessageId: "msg-ok", Body: `{"action":"a"}`},
+		{
+			MessageId:  "msg-ruim",
+			Body:       "Bearer eyJhbGciOiJIUzI1NiJ9.segredo",
+			Attributes: map[string]string{"ApproximateReceiveCount": "3"},
+		},
+	}}
+
+	if _, err := handleSQS(ctx, event); err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+
+	if strings.Contains(output.String(), "Bearer") || strings.Contains(output.String(), "eyJ") {
+		t.Fatalf("o log vazou o corpo da mensagem: %s", output.String())
+	}
+	lines := logLines(t, &output)
+	if len(lines) != 3 {
+		t.Fatalf("esperava 3 linhas (sucesso em DEBUG, falha e resumo): %v", lines)
+	}
+	if lines[0]["level"] != "debug" || lines[0]["message"] != "message_processed" {
+		t.Fatalf("o sucesso por mensagem deveria ir para DEBUG: %v", lines[0])
+	}
+	failed := lines[1]
+	if failed["level"] != "warn" || failed["message"] != "message_failed" || failed["permanent"] != true ||
+		failed["receiveCount"] != float64(3) || failed["messageId"] != "msg-ruim" {
+		t.Fatalf("falha inesperada: %v", failed)
+	}
+	summary := lines[2]
+	if summary["level"] != "warn" || summary["message"] != "batch_completed" || summary["total"] != float64(2) ||
+		summary["failed"] != float64(1) || summary["status"] != "partial" {
+		t.Fatalf("resumo inesperado: %v", summary)
+	}
+	if _, ok := summary["durationMs"]; !ok {
+		t.Fatalf("o resumo deveria ter durationMs: %v", summary)
+	}
+	for _, line := range lines {
+		if line["requestId"] != "req-1" {
+			t.Fatalf("toda linha deveria levar o requestId da invocação: %v", line)
+		}
+	}
+}
+
+func TestBatchStatus(t *testing.T) {
+	cases := []struct {
+		total, failed int
+		want          string
+	}{{3, 0, "completed"}, {3, 1, "partial"}, {3, 3, "failed"}}
+	for _, c := range cases {
+		if got := batchStatus(c.total, c.failed); got != c.want {
+			t.Fatalf("batchStatus(%d, %d): esperado %s, recebido %s", c.total, c.failed, c.want, got)
+		}
+	}
+}
+
+func TestRouterAceitaMensagemValidaERecusaInvalida(t *testing.T) {
+	cases := map[string]int{
+		`{"action":"a"}`: http.StatusAccepted,
+		"não é json":     http.StatusUnprocessableEntity,
+	}
+	for body, want := range cases {
+		recorder := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodPost, "/messages", strings.NewReader(body))
+		request.Header.Set("X-Message-Id", "msg-1")
+		newRouter().ServeHTTP(recorder, request)
+
+		if recorder.Code != want {
+			t.Fatalf("corpo %q: status esperado %d, recebido %d", body, want, recorder.Code)
+		}
+	}
+}
+
+func decodeErrorBody(t *testing.T, recorder *httptest.ResponseRecorder) errorDetail {
+	t.Helper()
+	var body errorResponse
+	if err := json.NewDecoder(recorder.Body).Decode(&body); err != nil {
+		t.Fatalf("corpo não é JSON válido: %v", err)
+	}
+	return body.Error
+}
+
+func TestRouterRecusaMensagemSemId(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/messages", strings.NewReader(`{"action":"a"}`))
+	request.Header.Set("X-Request-Id", "req-1")
+	newRouter().ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("status esperado 400, recebido %d", recorder.Code)
+	}
+	want := errorDetail{Code: "invalid_request", Message: "Cabeçalho X-Message-Id ausente", RequestID: "req-1"}
+	if got := decodeErrorBody(t, recorder); got != want {
+		t.Fatalf("corpo de erro esperado %+v, recebido %+v", want, got)
+	}
+}
+
+func TestRouterDevolveCorpoDeErroSemOConteudoDaMensagem(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/messages", strings.NewReader("Bearer eyJhbGciOiJIUzI1NiJ9.segredo"))
+	request.Header.Set("X-Message-Id", "msg-1")
+	request.Header.Set("X-Request-Id", "req-1")
+	newRouter().ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status esperado 422, recebido %d", recorder.Code)
+	}
+	if strings.Contains(recorder.Body.String(), "Bearer") || strings.Contains(recorder.Body.String(), "eyJ") {
+		t.Fatalf("a resposta vazou o corpo da mensagem: %s", recorder.Body.String())
+	}
+	want := errorDetail{Code: "invalid_input", Message: "Mensagem com corpo inválido", RequestID: "req-1"}
+	if got := decodeErrorBody(t, recorder); got != want {
+		t.Fatalf("corpo de erro esperado %+v, recebido %+v", want, got)
+	}
+}

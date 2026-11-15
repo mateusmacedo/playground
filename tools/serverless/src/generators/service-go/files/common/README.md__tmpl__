@@ -1,0 +1,77 @@
+# <%= serviceName %>
+
+Serviço serverless em Go, <%= typeDescription %>, no runtime `<%= runtime %>`.
+
+## Estrutura
+
+- `internal/core/`: regras do serviço, sem dependência de runtime.
+- `cmd/<%= serviceName %>/`: ponto de entrada. Com `AWS_LAMBDA_RUNTIME_API`
+  definida (runtime da Lambda), usa `lambda.Start`; sem ela, sobe um servidor
+  `net/http` na porta `PORT` (padrão `8080`) para rodar em container.
+- Os logs saem em JSON no stdout (`slog` com `NewJSONHandler`), com o nível de
+  `LOG_LEVEL` (`debug`, `info`, `warn` ou `error`). Só `cmd/` loga; o núcleo
+  devolve erros. O `requestId` vem do contexto (use `slog.InfoContext` e
+  variantes), e campo fora de `safeKeys`, em `runtime.go`, sai como
+  `[redacted]`: para logar um campo novo, inclua a chave na lista.
+
+## Modo container
+
+```bash
+PORT=8080 go run ./cmd/<%= serviceName %>
+curl -i localhost:8080/health
+<% if (type === 'http') { %>curl localhost:8080/<%= serviceName %>
+<% } else if (type === 'sqs') { %>curl -i -X POST -H 'X-Message-Id: m1' -d '{"action":"a"}' localhost:8080/messages
+<% } else { %>curl -i -X POST -H 'X-Scheduled-At: 2026-01-01T00:00:00Z' localhost:8080/run
+<% } %>```
+<% if (type === 'http') { %>
+Na Lambda, o mesmo router atende o HTTP API pelo adaptador
+`aws-lambda-go-api-proxy`.
+<% } else if (type === 'sqs') { %>
+Em produção, um consumidor em container faria long polling da fila; o endpoint
+`POST /messages` recebe uma mensagem por requisição e exige o cabeçalho
+`X-Message-Id`.
+<% } else { %>
+Em container, o agendamento fica com um scheduler externo chamando `POST /run`
+com o cabeçalho `X-Scheduled-At` (RFC 3339), que vira o horário agendado do job.
+<% } %>
+## Comandos
+
+```bash
+pnpm nx test <%= serviceName %>
+pnpm nx build <%= serviceName %>                       # arquitetura do host, para o Floci
+pnpm nx build <%= serviceName %> -c prod               # linux/<%= awsArchitecture %> em .bin/bootstrap.zip
+pnpm nx run <%= serviceName %>:pre-deploy
+pnpm nx run <%= serviceName %>:deploy                  # Floci (configuration padrão)
+pnpm nx run <%= serviceName %>:deploy -c dev           # conta AWS, stage dev
+pnpm nx run <%= serviceName %>:remove                  # Floci
+```
+
+O `build` compila `cmd/<%= serviceName %>` (declarado em
+`custom.nxServerless.goPackage`) com `GOOS=linux CGO_ENABLED=0 -tags
+lambda.norpc -trimpath -ldflags "-s -w"`. Na configuration `floci` (a padrão),
+o binário usa a arquitetura do host, porque o Floci executa a Lambda em
+container local; em `dev`, `homolog` e `prod`, vale a arquitetura de
+`provider.architecture`.
+
+Sem `-c`, os targets do Serverless usam a configuration `floci`, que aponta o
+`AWS_ENDPOINT_URL` para `http://localhost:4566` com credenciais `test`. A
+remoção em `prod` é bloqueada pelo plugin. O deploy em `prod` só roda no pipeline (`CI=true`) ou com `NX_SERVERLESS_ALLOW_PROD_DEPLOY=1`.
+
+## Parâmetros
+
+Os parâmetros por ambiente vêm do SSM, no caminho
+`<%= ssmPrefix %>/<stage>/<região>/<%= serviceName %>/<recurso>/<atributo>`, com valor padrão
+no próprio `serverless.yml`.
+<%_ if (type === 'sqs' && queue === 'external') { _%>
+
+A fila é do Terraform ([ADR 0004](<%= offsetFromRoot %>docs/adr/0004-serverless-e-terraform.md)):
+o serviço só declara o gatilho. O deploy exige os parâmetros
+`<%= ssmPrefix %>/<stage>/<região>/<%= queueParam %>/arn` e
+`<%= ssmPrefix %>/<stage>/<região>/<%= queueParam %>/url`; no Floci,
+quem os publica é o bootstrap de `infra/local`.
+<%_ } else if (type === 'sqs') { _%>
+
+A fila e a DLQ são criadas pelo próprio `serverless.yml` (`queue: owned`), o
+que só serve para fila descartável de um único consumidor: o `remove` apaga a
+fila e as mensagens pendentes.
+<%_ } _%>

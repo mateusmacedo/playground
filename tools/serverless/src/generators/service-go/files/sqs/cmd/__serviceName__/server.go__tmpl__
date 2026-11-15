@@ -1,0 +1,56 @@
+package main
+
+import (
+	"errors"
+	"io"
+	"log/slog"
+	"net/http"
+
+	"<%= modulePath %>/internal/core"
+)
+
+// maxMessageBytes acompanha o limite de tamanho de mensagem do SQS (256 KiB).
+const maxMessageBytes = 256 * 1024
+
+// NOTE: em container, um consumidor de produção faz long polling da fila
+// (ReceiveMessage); este endpoint recebe uma mensagem por requisição e serve
+// para testes locais e integrações que entregam a mensagem por HTTP.
+//
+// WHY: o id da mensagem é exigido, e não gerado, porque ele identifica a
+// mensagem no log e na checagem de repetição; um id novo por requisição
+// faria de cada reentrega uma mensagem diferente.
+func newRouter() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", health)
+	mux.HandleFunc("POST /messages", func(w http.ResponseWriter, r *http.Request) {
+		id := r.Header.Get("X-Message-Id")
+		if id == "" {
+			slog.WarnContext(r.Context(), "message_id_missing")
+			writeError(w, r, http.StatusBadRequest, "invalid_request", "Cabeçalho X-Message-Id ausente")
+			return
+		}
+
+		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxMessageBytes))
+		if err != nil {
+			slog.WarnContext(r.Context(), "request_body_rejected", "error", err)
+			writeError(w, r, http.StatusBadRequest, "invalid_request", "Corpo da requisição inválido")
+			return
+		}
+
+		if err := core.ProcessMessage(r.Context(), core.Message{ID: id, Body: string(body)}); err != nil {
+			// WHY: entrada inválida é falha esperada (422); qualquer outro erro do
+			// núcleo é inesperado e vira 500, sem o detalhe na resposta.
+			if errors.Is(err, core.ErrInvalidInput) {
+				slog.WarnContext(r.Context(), "message_failed", "messageId", id, "permanent", true, "error", err)
+				writeError(w, r, http.StatusUnprocessableEntity, "invalid_input", "Mensagem com corpo inválido")
+				return
+			}
+			slog.ErrorContext(r.Context(), "message_failed", "messageId", id, "permanent", false, "error", err)
+			writeError(w, r, http.StatusInternalServerError, "internal", "Erro interno")
+			return
+		}
+		slog.InfoContext(r.Context(), "message_processed", "messageId", id)
+		w.WriteHeader(http.StatusAccepted)
+	})
+	return assignRequestID(mux)
+}

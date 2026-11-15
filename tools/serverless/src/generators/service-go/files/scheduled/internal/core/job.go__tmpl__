@@ -1,0 +1,18 @@
+// Package core concentra as regras do serviço, sem dependência de runtime.
+package core
+
+import (
+	"context"
+	"time"
+)
+
+// JobResult descreve uma execução concluída do job agendado.
+type JobResult struct {
+	ScheduledAt time.Time `json:"scheduledAt"`
+	Status      string    `json:"status"`
+}
+
+// RunJob executa o job referente ao horário agendado.
+func RunJob(_ context.Context, scheduledAt time.Time) (JobResult, error) {
+	return JobResult{ScheduledAt: scheduledAt, Status: "completed"}, nil
+}

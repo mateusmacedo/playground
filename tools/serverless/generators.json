@@ -1,0 +1,14 @@
+{
+  "generators": {
+    "service-ts": {
+      "factory": "./src/generators/service-ts/generator",
+      "schema": "./src/generators/service-ts/schema.json",
+      "description": "Cria um serviço serverless em TypeScript."
+    },
+    "service-go": {
+      "factory": "./src/generators/service-go/generator",
+      "schema": "./src/generators/service-go/schema.json",
+      "description": "Cria um serviço serverless em Go."
+    }
+  }
+}

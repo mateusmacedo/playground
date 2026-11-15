@@ -1,0 +1,58 @@
+# <%= serviceName %>
+
+Serviço serverless em TypeScript, <%= typeDescription %>.
+
+## Estrutura
+
+- `src/core/`: caso de uso puro, sem tipos de `aws-lambda` nem de outro runtime.
+- `src/entrypoints/lambda.ts`: handler da Lambda; só traduz o evento em chamada
+  do núcleo e o resultado em resposta. O `serverless.yml` aponta para ele.
+- `src/entrypoints/logger.ts`: log em JSON, uma linha por evento no stdout, com
+  o nível de `LOG_LEVEL`. Só os entrypoints logam; o núcleo não. O `requestId`
+  vem do logger (`withRequestId`), e campo fora da lista `safeKeys` sai como
+  `[redacted]`: para logar um campo novo, inclua a chave na lista.
+
+Um runtime novo (container, por exemplo) entra como outro arquivo em
+`src/entrypoints/`, reaproveitando o mesmo núcleo.
+
+## Comandos
+
+```bash
+pnpm nx test <%= serviceName %>
+pnpm nx typecheck <%= serviceName %>
+pnpm nx run <%= serviceName %>:pre-deploy
+pnpm nx run <%= serviceName %>:deploy                  # Floci (configuration padrão)
+pnpm nx run <%= serviceName %>:deploy -c dev           # conta AWS, stage dev
+pnpm nx run <%= serviceName %>:invoke-local --function=handler
+pnpm nx run <%= serviceName %>:remove                  # Floci
+```
+
+Sem `-c`, os targets do Serverless usam a configuration `floci`, que aponta o
+`AWS_ENDPOINT_URL` para `http://localhost:4566` com credenciais `test`. As
+configurations `dev`, `homolog` e `prod` usam as credenciais AWS do ambiente.
+A remoção em `prod` é bloqueada pelo plugin. O deploy em `prod` só roda no pipeline (`CI=true`) ou com `NX_SERVERLESS_ALLOW_PROD_DEPLOY=1`.
+
+## Parâmetros
+
+Os parâmetros por ambiente vêm do SSM, no caminho
+`<%= ssmPrefix %>/<stage>/<região>/<%= serviceName %>/<recurso>/<atributo>`, com valor padrão
+no próprio `serverless.yml`. No Floci, crie o parâmetro com:
+
+```bash
+aws --endpoint-url http://localhost:4566 ssm put-parameter \
+  --name <%= ssmPrefix %>/local/us-east-1/<%= serviceName %>/config/log-level \
+  --type String --value debug
+```
+<%_ if (type === 'sqs' && queue === 'external') { _%>
+
+A fila é do Terraform ([ADR 0004](<%= offsetFromRoot %>docs/adr/0004-serverless-e-terraform.md)):
+o serviço só declara o gatilho. O deploy exige os parâmetros
+`<%= ssmPrefix %>/<stage>/<região>/<%= queueParam %>/arn` e
+`<%= ssmPrefix %>/<stage>/<região>/<%= queueParam %>/url`; no Floci,
+quem os publica é o bootstrap de `infra/local`.
+<%_ } else if (type === 'sqs') { _%>
+
+A fila e a DLQ são criadas pelo próprio `serverless.yml` (`queue: owned`), o
+que só serve para fila descartável de um único consumidor: o `remove` apaga a
+fila e as mensagens pendentes.
+<%_ } _%>

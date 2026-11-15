@@ -1,0 +1,78 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"strconv"
+	"time"
+
+	"github.com/aws/aws-lambda-go/events"
+
+	"<%= modulePath %>/internal/core"
+)
+
+func batchStatus(total, failed int) string {
+	switch {
+	case failed == 0:
+		return "completed"
+	case failed == total:
+		return "failed"
+	default:
+		return "partial"
+	}
+}
+
+// receiveCount devolve quantas vezes a fila entregou a mensagem; 0 quando o
+// atributo não vem no evento.
+func receiveCount(record events.SQSMessage) int {
+	count, err := strconv.Atoi(record.Attributes["ApproximateReceiveCount"])
+	if err != nil {
+		return 0
+	}
+	return count
+}
+
+// handleSQS devolve as falhas em BatchItemFailures (ReportBatchItemFailures),
+// para a fila reprocessar só as mensagens que falharam.
+func handleSQS(ctx context.Context, event events.SQSEvent) (events.SQSEventResponse, error) {
+	ctx = withLambdaRequestID(ctx)
+	startedAt := time.Now()
+	total := len(event.Records)
+	failures := []events.SQSBatchItemFailure{}
+
+	// WHY: o resumo sai no defer para cobrir também um panic no meio do lote,
+	// que devolve o lote inteiro à fila; o status então é "failed", e não
+	// "partial".
+	status := "failed"
+	defer func() {
+		level := slog.LevelInfo
+		if status != "completed" {
+			level = slog.LevelWarn
+		}
+		slog.Log(ctx, level, "batch_completed",
+			"total", total, "failed", len(failures),
+			"durationMs", time.Since(startedAt).Milliseconds(), "status", status)
+	}()
+
+	for _, record := range event.Records {
+		message := core.Message{ID: record.MessageId, Body: record.Body}
+		if err := core.ProcessMessage(ctx, message); err != nil {
+			// WHY: entrada inválida é falha esperada e não se resolve repetindo; a
+			// mensagem volta para a fila e segue para a DLQ pelo maxReceiveCount.
+			permanent := errors.Is(err, core.ErrInvalidInput)
+			level := slog.LevelError
+			if permanent {
+				level = slog.LevelWarn
+			}
+			slog.Log(ctx, level, "message_failed",
+				"messageId", record.MessageId, "receiveCount", receiveCount(record),
+				"permanent", permanent, "error", err)
+			failures = append(failures, events.SQSBatchItemFailure{ItemIdentifier: record.MessageId})
+			continue
+		}
+		slog.DebugContext(ctx, "message_processed", "messageId", record.MessageId)
+	}
+	status = batchStatus(total, len(failures))
+	return events.SQSEventResponse{BatchItemFailures: failures}, nil
+}

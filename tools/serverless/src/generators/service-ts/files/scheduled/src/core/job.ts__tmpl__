@@ -1,0 +1,13 @@
+export type JobTrigger = {
+  scheduledAt: string;
+};
+
+export type JobResult = {
+  scheduledAt: string;
+  status: 'completed';
+};
+
+export const runJob = async (trigger: JobTrigger): Promise<JobResult> => ({
+  scheduledAt: trigger.scheduledAt,
+  status: 'completed',
+});
