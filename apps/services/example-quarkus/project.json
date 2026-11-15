@@ -1,0 +1,33 @@
+{
+  "name": "example-quarkus",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "tags": ["type:app", "stack:java", "platform:serverless"],
+  "targets": {
+    "docker:build": {
+      "executor": "nx:run-commands",
+      "dependsOn": [],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "bash tools/container/image.sh build {projectName} {projectRoot}/Dockerfile"
+      }
+    },
+    "docker:run": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["docker:build"],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "bash tools/container/image.sh run {projectName}"
+      }
+    },
+    "docker:push-floci": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["docker:build"],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "bash tools/container/image.sh push-floci {projectName}"
+      }
+    }
+  }
+}
