@@ -19,6 +19,20 @@ runtime, e ela é garantida pelo classpath. A aplicação fica na mesma pasta do
 `serverless.yml` para os targets do Gradle e os do plugin serverless caírem no
 mesmo projeto do Nx, `example-quarkus`.
 
+## Lock de dependências
+
+Os dois projetos travam as versões resolvidas no `gradle.lockfile` de cada
+pasta (dependency locking do Gradle, ligado no `build.gradle` da raiz). O build
+falha se uma dependência resolvida não bater com o lock. Depois de acrescentar
+ou atualizar uma dependência, regenere os locks e inclua os arquivos no PR:
+
+```bash
+./gradlew resolveAndLockAll --write-locks
+```
+
+O JaCoCo e o `quarkus-jacoco` estão sempre no grafo, desligados sem
+`-Pcoverage`, para o lock ser o mesmo com e sem cobertura.
+
 ## Adapter de runtime
 
 O mesmo código JAX-RS roda como Lambda ou como servidor HTTP. A escolha é no
