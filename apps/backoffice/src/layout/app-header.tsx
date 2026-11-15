@@ -71,10 +71,14 @@ export function AppHeader() {
   }, []);
 
   return (
+    // WHY: o CHeader renderiza uma div sem landmark, e envolvê-lo num <header>
+    // quebraria o position="sticky"; o role dá ao cabeçalho a semântica de
+    // <header> para leitores de tela, como o rodapé faz com contentinfo.
     <CHeader
       className="mb-4 p-0 d-print-none"
       position="sticky"
       ref={headerRef}
+      role="banner"
     >
       <CContainer className="border-bottom px-4" fluid>
         <CHeaderToggler

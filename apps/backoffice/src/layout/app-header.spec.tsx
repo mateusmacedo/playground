@@ -83,6 +83,17 @@ describe('AppHeader', () => {
     vi.unstubAllGlobals();
   });
 
+  it('expõe o cabeçalho como landmark banner, com o botão do menu dentro dele', () => {
+    renderHeader();
+
+    const banner = screen.getByRole('banner');
+    const toggler = screen.getByRole('button', {
+      name: 'Mostrar ou esconder o menu lateral',
+    });
+
+    expect(banner.contains(toggler)).toBe(true);
+  });
+
   describe('menu lateral', () => {
     it('esconde e volta a mostrar o menu pelo botão do cabeçalho', () => {
       renderHeader();
