@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -8,14 +9,51 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { logger } from '@nx/devkit';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  LAMBDA_BINARY_NAME,
+  LAMBDA_OUTPUT_DIR,
+} from '../../shared/constants.js';
 import {
   buildGoLambdaArtifact,
   goBuildArgs,
   normalizePackagePath,
   writeFileAtomic,
 } from './build-go-lambda-artifact.js';
+
+// NOTE: o go falso responde ao `version` e ao `build` (gravando o binário no
+// `-o`), com o código de saída de cada um vindo do ambiente do teste.
+const FAKE_GO = `#!/bin/sh
+if [ "$1" = "version" ]; then exit "\${FAKE_GO_VERSION_EXIT:-0}"; fi
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "-o" ]; then printf 'binario' > "$2"; fi
+  shift
+done
+exit "\${FAKE_GO_BUILD_EXIT:-0}"
+`;
+
+const BUILD_OPTIONS = {
+  architecture: 'arm64',
+  trimpath: true,
+  ldflags: '-s -w',
+  tags: 'lambda.norpc',
+};
+
+function goProject(): string {
+  const projectDir = mkdtempSync(join(tmpdir(), 'nx-serverless-go-project-'));
+  writeFileSync(join(projectDir, 'go.mod'), 'module example\n');
+  return projectDir;
+}
+
+function pathWithFakeGo(): string {
+  const binDir = mkdtempSync(join(tmpdir(), 'nx-serverless-fake-go-'));
+  const goPath = join(binDir, 'go');
+  writeFileSync(goPath, FAKE_GO);
+  chmodSync(goPath, 0o755);
+  return binDir;
+}
 
 describe('goBuildArgs', () => {
   it('monta as flags de build reprodutível da Lambda', () => {
@@ -74,6 +112,73 @@ describe('buildGoLambdaArtifact', () => {
         tags: 'lambda.norpc',
       }),
     ).toEqual({ success: false });
+  });
+});
+
+describe('buildGoLambdaArtifact com o Go do PATH', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it('falha quando não há go numa pasta confiável do PATH', () => {
+    vi.stubEnv('PATH', mkdtempSync(join(tmpdir(), 'nx-serverless-empty-')));
+    const error = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+
+    const result = buildGoLambdaArtifact({
+      absProjectRoot: goProject(),
+      ...BUILD_OPTIONS,
+    });
+
+    expect(result).toEqual({ success: false });
+    expect(error).toHaveBeenCalledWith(expect.stringContaining('PATH'));
+  });
+
+  it('falha quando o go version falha', () => {
+    vi.stubEnv('PATH', pathWithFakeGo());
+    vi.stubEnv('FAKE_GO_VERSION_EXIT', '1');
+    vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+
+    const result = buildGoLambdaArtifact({
+      absProjectRoot: goProject(),
+      ...BUILD_OPTIONS,
+    });
+
+    expect(result).toEqual({ success: false });
+  });
+
+  it('falha com o código de saída quando o go build falha', () => {
+    vi.stubEnv('PATH', pathWithFakeGo());
+    vi.stubEnv('FAKE_GO_BUILD_EXIT', '2');
+    const error = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+
+    const result = buildGoLambdaArtifact({
+      absProjectRoot: goProject(),
+      ...BUILD_OPTIONS,
+    });
+
+    expect(result).toEqual({ success: false });
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining('código de saída 2'),
+    );
+  });
+
+  it('gera o zip com o binário quando o build passa', () => {
+    vi.stubEnv('PATH', pathWithFakeGo());
+    vi.spyOn(logger, 'info').mockImplementation(() => undefined);
+    const projectDir = goProject();
+
+    const result = buildGoLambdaArtifact({
+      absProjectRoot: projectDir,
+      ...BUILD_OPTIONS,
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(
+      existsSync(
+        join(projectDir, LAMBDA_OUTPUT_DIR, `${LAMBDA_BINARY_NAME}.zip`),
+      ),
+    ).toBe(true);
   });
 });
 

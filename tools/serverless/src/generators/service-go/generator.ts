@@ -1,11 +1,9 @@
-import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 
 import {
   formatFiles,
   type GeneratorCallback,
   generateFiles,
-  logger,
   type Tree,
 } from '@nx/devkit';
 
@@ -18,33 +16,15 @@ import {
   SERVERLESS_LOCALSTACK_VERSION,
   SERVERLESS_VERSION,
 } from '../../shared/constants.js';
-import { resolveExecutable } from '../../shared/resolve-executable.js';
 import {
   addRootDevDependencies,
   addServiceProject,
   normalizeServiceOptions,
 } from '../shared/service-project.js';
+import { goModTidyTask } from './go-mod-tidy.js';
 import type { ServiceGoGeneratorSchema } from './schema.js';
 
 const templatesDir = join(import.meta.dirname, 'files');
-
-function goModTidyTask(absProjectRoot: string): GeneratorCallback {
-  return () => {
-    const goBinary = resolveExecutable({ name: 'go' });
-    const result =
-      goBinary === undefined
-        ? undefined
-        : spawnSync(goBinary, ['mod', 'tidy'], {
-            cwd: absProjectRoot,
-            stdio: 'inherit',
-          });
-    if (result?.status !== 0) {
-      logger.warn(
-        `Não foi possível rodar "go mod tidy" em ${absProjectRoot}; rode manualmente para gerar o go.sum.`,
-      );
-    }
-  };
-}
 
 export async function serviceGoGenerator(
   tree: Tree,
