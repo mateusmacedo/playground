@@ -22,16 +22,30 @@ mesmo projeto do Nx, `example-quarkus`.
 ## Lock de dependências
 
 Os dois projetos travam as versões resolvidas no `gradle.lockfile` de cada
-pasta (dependency locking do Gradle, ligado no `build.gradle` da raiz). O build
-falha se uma dependência resolvida não bater com o lock. Depois de acrescentar
-ou atualizar uma dependência, regenere os locks e inclua os arquivos no PR:
+pasta (dependency locking do Gradle, ligado no `build.gradle` da raiz), e os
+plugins do build ficam no `buildscript-gradle.lockfile` da raiz. Como o runtime
+`container` resolve outro grafo (sem a extensão da Lambda), o `example-quarkus`
+tem um lock por runtime: `gradle.lockfile` (`lambda`, o padrão) e
+`gradle-container.lockfile`. Além disso, o `gradle/verification-metadata.xml`
+guarda o checksum SHA-256 de cada artefato baixado, e o Gradle recusa artefato
+que não bata.
+
+O build falha se uma dependência resolvida não bater com o lock ou com o
+checksum. Depois de acrescentar ou atualizar uma dependência, regenere tudo e
+inclua os arquivos no PR:
 
 ```bash
 ./gradlew resolveAndLockAll --write-locks
+./gradlew -Pruntime=container :example-quarkus:resolveAndLockAll --write-locks
+./gradlew --write-verification-metadata sha256 classes testClasses spotlessCheck :example-quarkus:quarkusBuild
+./gradlew --write-verification-metadata sha256 -Pcoverage test :example-quarkus:quarkusBuild -Pruntime=container
 ```
 
 O JaCoCo e o `quarkus-jacoco` estão sempre no grafo, desligados sem
-`-Pcoverage`, para o lock ser o mesmo com e sem cobertura.
+`-Pcoverage`, para o lock ser o mesmo com e sem cobertura. O build nativo
+(stages `dev`, `homolog` e `prod`) ainda não foi exercitado com a verificação:
+se ele baixar artefato novo, rode o mesmo `--write-verification-metadata` com o
+build nativo.
 
 ## Adapter de runtime
 
