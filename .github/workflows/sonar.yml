@@ -90,9 +90,19 @@ jobs:
           PROJECTS: ${{ steps.projects.outputs.go }}
         run: |
           set -euo pipefail
+          # WHY: o Go não tem limite de cobertura no próprio `go test`; a meta
+          # do projeto (cobertura acima de 90%) é conferida aqui, sobre o total
+          # de statements, que é o que o Sonar mede em Go.
+          minimum=90
           for project in ${PROJECTS//,/ }; do
             root="$(pnpm exec nx show project "${project}" --json | jq -r '.root')"
             (cd "${root}" && go test -race -coverprofile=coverage.out ./...)
+            total="$(cd "${root}" && go tool cover -func=coverage.out | awk '/^total:/ { sub("%", "", $3); print $3 }')"
+            echo "${project}: cobertura de statements ${total}%"
+            if ! awk -v total="${total}" -v minimum="${minimum}" 'BEGIN { exit !(total > minimum) }'; then
+              echo "::error::${project} com cobertura de ${total}%, abaixo da meta de mais de ${minimum}%."
+              exit 1
+            fi
           done
       # NOTE: o `--coverage.enabled` liga a cobertura nos projetos cujo
       # vitest.config não lê o VITEST_COVERAGE.
@@ -106,10 +116,11 @@ jobs:
         run: |
           set -euo pipefail
           # WHY: o Vitest grava no lcov os caminhos relativos ao projeto, e o
-          # SonarQube os resolve a partir da raiz do repositório.
+          # SonarQube os resolve a partir da raiz do repositório; só o caminho
+          # relativo (sem `/` no início) ganha o prefixo.
           find apps tools -path '*/test-output/vitest/coverage/lcov.info' | while read -r report; do
             root="${report%/test-output/vitest/coverage/lcov.info}"
-            sed -i "s#^SF:src/#SF:${root}/src/#" "${report}"
+            sed -i "s#^SF:\([^/]\)#SF:${root}/\1#" "${report}"
           done
           {
             echo "binaries=$(find apps -type d -path '*/build/classes/java/main' | sort | paste -sd, -)"
