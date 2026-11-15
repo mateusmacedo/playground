@@ -18,7 +18,7 @@ required=(
   init/floci/01-generic.sh
 )
 for file in "${required[@]}"; do
-  [ -f "$file" ] || fail "arquivo ausente: $file"
+  [[ -f "$file" ]] || fail "arquivo ausente: $file"
 done
 
 docker compose config -q
@@ -32,7 +32,7 @@ echo "ok: sintaxe dos scripts"
 # WHY: além de `image:`, o compose passa imagem ao Floci por variável
 # (FLOCI_SERVICES_UI_IMAGE); as duas formas precisam do digest.
 unpinned=$(awk '/^[[:space:]]*(image|[A-Z0-9_]+_IMAGE):/ && !/@sha256:/ {print "  linha " FNR ": " $0}' docker-compose.yml)
-if [ -n "$unpinned" ]; then
+if [[ -n "$unpinned" ]]; then
   fail "imagem sem digest fixado em docker-compose.yml:"$'\n'"$unpinned"
 fi
 echo "ok: imagens fixadas por digest"
@@ -46,7 +46,7 @@ while read -r name; do
     missing=1
   fi
 done < <(grep -vE '^\s*#' docker-compose.yml | grep -oE '\$\{[A-Za-z_][A-Za-z0-9_]*' | sed 's/^\${//' | sort -u)
-[ "$missing" -eq 0 ] || exit 1
+[[ "$missing" -eq 0 ]] || exit 1
 echo "ok: .env.example cobre as variáveis do compose"
 
 if git check-ignore -q .env 2>/dev/null; then
