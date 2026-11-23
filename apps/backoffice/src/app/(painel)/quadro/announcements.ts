@@ -11,7 +11,7 @@ export function announcementText(params: {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
 }): string {
-  const location = findCard(params.lanes, params.cardId);
+  const location = findCard({ lanes: params.lanes, cardId: params.cardId });
   if (!location) {
     return '';
   }

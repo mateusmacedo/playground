@@ -40,20 +40,28 @@ function slotFromPointer(
 export function useDragAndDrop(params: {
   readonly lanes: readonly BoardLane[];
   readonly onDragStart: () => void;
-  readonly onDrop: (next: readonly BoardLane[], cardId: string) => void;
+  readonly onDrop: (drop: {
+    readonly lanes: readonly BoardLane[];
+    readonly cardId: string;
+  }) => void;
 }): DragAndDrop {
   const { lanes } = params;
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
 
   /** Quadro depois de soltar o card na fenda; o próprio `lanes` quando soltar ali não muda nada. */
-  function lanesAfterDrop(cardId: string, target: DropTarget) {
-    const toIndex = slotToIndex(lanes, {
+  function lanesAfterDrop(drop: {
+    readonly cardId: string;
+    readonly target: DropTarget;
+  }) {
+    const { cardId, target } = drop;
+    const toIndex = slotToIndex({
+      lanes,
       cardId,
       laneId: target.laneId,
       slot: target.slot,
     });
-    return moveCard(lanes, { cardId, toLaneId: target.laneId, toIndex });
+    return moveCard({ lanes, cardId, toLaneId: target.laneId, toIndex });
   }
 
   function clearDrag() {
@@ -97,18 +105,21 @@ export function useDragAndDrop(params: {
       return;
     }
     event.preventDefault();
-    const next = lanesAfterDrop(draggedId, {
+    const target = {
       laneId: lane.id,
       slot: slotFromPointer(event, lane.cards.length),
-    });
+    };
+    const next = lanesAfterDrop({ cardId: draggedId, target });
     if (next !== lanes) {
-      params.onDrop(next, draggedId);
+      params.onDrop({ lanes: next, cardId: draggedId });
     }
     clearDrag();
   }
 
   const visibleDrop =
-    draggedId && dropTarget && lanesAfterDrop(draggedId, dropTarget) !== lanes
+    draggedId &&
+    dropTarget &&
+    lanesAfterDrop({ cardId: draggedId, target: dropTarget }) !== lanes
       ? dropTarget
       : null;
 

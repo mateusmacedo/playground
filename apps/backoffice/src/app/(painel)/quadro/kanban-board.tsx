@@ -24,10 +24,14 @@ export function KanbanBoard({
   const drag = useDragAndDrop({
     lanes,
     onDragStart: keyboard.release,
-    onDrop: (next, cardId) => {
-      setLanes(next);
+    onDrop: (drop) => {
+      setLanes(drop.lanes);
       setAnnouncement(
-        announcementText({ kind: 'dropped', lanes: next, cardId }),
+        announcementText({
+          kind: 'dropped',
+          lanes: drop.lanes,
+          cardId: drop.cardId,
+        }),
       );
     },
   });

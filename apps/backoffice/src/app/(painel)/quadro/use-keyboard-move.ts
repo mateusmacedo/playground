@@ -14,10 +14,10 @@ export interface KeyboardMove {
     cardId: string,
   ) => void;
   readonly onHandleBlur: (cardId: string) => void;
-  readonly registerHandle: (
-    cardId: string,
-    element: HTMLButtonElement | null,
-  ) => void;
+  readonly registerHandle: (handle: {
+    readonly cardId: string;
+    readonly element: HTMLButtonElement | null;
+  }) => void;
 }
 
 interface KeyboardGrab {
@@ -60,7 +60,11 @@ export function useKeyboardMove(params: {
     announce(announcementText({ kind: 'grabbed', lanes, cardId }));
   }
 
-  function cancel(snapshot: readonly BoardLane[], cardId: string) {
+  function cancel(grabbed: {
+    readonly snapshot: readonly BoardLane[];
+    readonly cardId: string;
+  }) {
+    const { snapshot, cardId } = grabbed;
     flushSync(() => {
       setLanes(snapshot);
       setGrab(null);
@@ -69,8 +73,12 @@ export function useKeyboardMove(params: {
     announce(announcementText({ kind: 'cancelled', lanes: snapshot, cardId }));
   }
 
-  function step(cardId: string, direction: StepDirection) {
-    const next = stepCard(lanes, { cardId, direction });
+  function step(move: {
+    readonly cardId: string;
+    readonly direction: StepDirection;
+  }) {
+    const { cardId, direction } = move;
+    const next = stepCard({ lanes, cardId, direction });
     if (next === lanes) {
       return;
     }
@@ -89,13 +97,13 @@ export function useKeyboardMove(params: {
     }
     if (event.key === 'Escape') {
       event.preventDefault();
-      cancel(grab.snapshot, cardId);
+      cancel({ snapshot: grab.snapshot, cardId });
       return;
     }
     const direction = STEP_KEYS[event.key];
     if (direction) {
       event.preventDefault();
-      step(cardId, direction);
+      step({ cardId, direction });
     }
   }
 
@@ -112,9 +120,12 @@ export function useKeyboardMove(params: {
     });
   }
 
-  function registerHandle(cardId: string, element: HTMLButtonElement | null) {
-    if (element) {
-      handles.current.set(cardId, element);
+  function registerHandle(handle: {
+    readonly cardId: string;
+    readonly element: HTMLButtonElement | null;
+  }) {
+    if (handle.element) {
+      handles.current.set(handle.cardId, handle.element);
     }
   }
 

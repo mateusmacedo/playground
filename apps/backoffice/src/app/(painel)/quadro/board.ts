@@ -19,19 +19,13 @@ export interface CardLocation {
   readonly cardIndex: number;
 }
 
-export interface CardMove {
-  readonly cardId: string;
-  readonly toLaneId: string;
-  /** Posição final na coluna de destino, contada sem o próprio card; fora da faixa, vai para a ponta mais próxima. */
-  readonly toIndex: number;
-}
-
 export type StepDirection = 'up' | 'down' | 'left' | 'right';
 
-export function findCard(
-  lanes: readonly BoardLane[],
-  cardId: string,
-): CardLocation | undefined {
+export function findCard(params: {
+  readonly lanes: readonly BoardLane[];
+  readonly cardId: string;
+}): CardLocation | undefined {
+  const { lanes, cardId } = params;
   for (const [laneIndex, lane] of lanes.entries()) {
     const cardIndex = lane.cards.findIndex((card) => card.id === cardId);
     const card = lane.cards[cardIndex];
@@ -46,18 +40,22 @@ export function findCard(
  * Devolve o quadro com o card na nova posição, sem alterar o original. Card ou coluna inexistente e movimento para o
  * mesmo lugar devolvem o próprio `lanes`, então repetir um movimento não muda nada.
  */
-export function moveCard(
-  lanes: readonly BoardLane[],
-  move: CardMove,
-): readonly BoardLane[] {
-  const origin = findCard(lanes, move.cardId);
-  const destination = lanes.find((lane) => lane.id === move.toLaneId);
+export function moveCard(params: {
+  readonly lanes: readonly BoardLane[];
+  readonly cardId: string;
+  readonly toLaneId: string;
+  /** Posição final na coluna de destino, contada sem o próprio card; fora da faixa, vai para a ponta mais próxima. */
+  readonly toIndex: number;
+}): readonly BoardLane[] {
+  const { lanes, cardId, toLaneId } = params;
+  const origin = findCard({ lanes, cardId });
+  const destination = lanes.find((lane) => lane.id === toLaneId);
   if (!origin || !destination) {
     return lanes;
   }
 
-  const remaining = destination.cards.filter((card) => card.id !== move.cardId);
-  const toIndex = Math.min(Math.max(move.toIndex, 0), remaining.length);
+  const remaining = destination.cards.filter((card) => card.id !== cardId);
+  const toIndex = Math.min(Math.max(params.toIndex, 0), remaining.length);
   const sameLane = origin.lane.id === destination.id;
   if (sameLane && origin.cardIndex === toIndex) {
     return lanes;
@@ -75,7 +73,7 @@ export function moveCard(
     if (lane.id === origin.lane.id) {
       return {
         ...lane,
-        cards: lane.cards.filter((card) => card.id !== move.cardId),
+        cards: lane.cards.filter((card) => card.id !== cardId),
       };
     }
     return lane;
@@ -86,39 +84,36 @@ export function moveCard(
  * Converte a fenda onde o card foi solto (antes do card que está na posição `slot` da coluna, como aparece na tela)
  * na posição final do `moveCard`. Na mesma coluna, abaixo da origem, a fenda conta o próprio card e perde uma posição.
  */
-export function slotToIndex(
-  lanes: readonly BoardLane[],
-  drop: {
-    readonly cardId: string;
-    readonly laneId: string;
-    readonly slot: number;
-  },
-): number {
-  const origin = findCard(lanes, drop.cardId);
-  if (
-    origin &&
-    origin.lane.id === drop.laneId &&
-    drop.slot > origin.cardIndex
-  ) {
-    return drop.slot - 1;
+export function slotToIndex(params: {
+  readonly lanes: readonly BoardLane[];
+  readonly cardId: string;
+  readonly laneId: string;
+  readonly slot: number;
+}): number {
+  const { lanes, cardId, laneId, slot } = params;
+  const origin = findCard({ lanes, cardId });
+  if (origin && origin.lane.id === laneId && slot > origin.cardIndex) {
+    return slot - 1;
   }
-  return drop.slot;
+  return slot;
 }
 
 /** Um passo do teclado: acima ou abaixo na mesma coluna, ou para a coluna vizinha mantendo a altura possível. */
-export function stepCard(
-  lanes: readonly BoardLane[],
-  step: { readonly cardId: string; readonly direction: StepDirection },
-): readonly BoardLane[] {
-  const origin = findCard(lanes, step.cardId);
+export function stepCard(params: {
+  readonly lanes: readonly BoardLane[];
+  readonly cardId: string;
+  readonly direction: StepDirection;
+}): readonly BoardLane[] {
+  const { lanes, cardId, direction } = params;
+  const origin = findCard({ lanes, cardId });
   if (!origin) {
     return lanes;
   }
 
-  const { cardId, direction } = step;
   if (direction === 'up' || direction === 'down') {
     const offset = direction === 'up' ? -1 : 1;
-    return moveCard(lanes, {
+    return moveCard({
+      lanes,
       cardId,
       toLaneId: origin.lane.id,
       toIndex: origin.cardIndex + offset,
@@ -131,7 +126,8 @@ export function stepCard(
   if (!neighbor) {
     return lanes;
   }
-  return moveCard(lanes, {
+  return moveCard({
+    lanes,
     cardId,
     toLaneId: neighbor.id,
     toIndex: origin.cardIndex,

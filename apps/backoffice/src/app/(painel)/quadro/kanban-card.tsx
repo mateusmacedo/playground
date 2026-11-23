@@ -14,10 +14,10 @@ export interface KanbanCardActions {
     cardId: string,
   ) => void;
   readonly onHandleBlur: (cardId: string) => void;
-  readonly registerHandle: (
-    cardId: string,
-    element: HTMLButtonElement | null,
-  ) => void;
+  readonly registerHandle: (handle: {
+    readonly cardId: string;
+    readonly element: HTMLButtonElement | null;
+  }) => void;
 }
 
 export interface KanbanCardProps {
@@ -75,7 +75,9 @@ export function KanbanCard({
           aria-label={`Mover ${card.title}`}
           aria-describedby={instructionsId}
           aria-pressed={grabbed}
-          ref={(element) => actions.registerHandle(card.id, element)}
+          ref={(element) =>
+            actions.registerHandle({ cardId: card.id, element })
+          }
           onClick={() => actions.onHandleClick(card.id)}
           onKeyDown={(event) => actions.onHandleKeyDown(event, card.id)}
           onBlur={() => actions.onHandleBlur(card.id)}
