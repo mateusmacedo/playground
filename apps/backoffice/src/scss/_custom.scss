@@ -14,3 +14,35 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
 }
+
+// WHY: as colunas do quadro têm largura fixa e o quadro rola na horizontal, em vez de espremer os cards até ficarem
+// ilegíveis no celular.
+.kanban-lane {
+  flex: 0 0 18rem;
+}
+
+// WHY: a coluna vazia ainda precisa de área para receber o drop.
+.kanban-lane__body {
+  min-height: 6rem;
+}
+
+.kanban-card--dragging {
+  opacity: 0.5;
+}
+
+.kanban-card--grabbed {
+  outline: 2px solid var(--cui-primary);
+  outline-offset: 2px;
+}
+
+// Linha de inserção do arraste: acima do card que ficará abaixo do solto, ou depois do último card da coluna.
+.kanban-card--drop-before {
+  box-shadow: 0 -0.3rem 0 -0.1rem var(--cui-primary);
+}
+
+.kanban-lane__body--drop-end::after {
+  display: block;
+  border-top: 3px solid var(--cui-primary);
+  border-radius: 2px;
+  content: '';
+}

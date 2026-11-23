@@ -1,4 +1,4 @@
-import { cilHome } from '@coreui/icons';
+import { cilColumns, cilHome } from '@coreui/icons';
 
 /** Ícone no formato do `@coreui/icons` (`[viewBox, svg]`), passado direto ao `CIcon`. */
 export type NavIcon = string[];
@@ -43,6 +43,7 @@ export type NavItem = NavTitle | NavLink | NavGroup;
 /** Menu lateral do painel. As páginas novas entram aqui e em `routes.ts`, para o breadcrumb. */
 export const navItems: readonly NavItem[] = [
   { kind: 'link', name: 'Início', href: '/', icon: cilHome },
+  { kind: 'link', name: 'Quadro', href: '/quadro', icon: cilColumns },
 ];
 
 /** Tira do menu o que a sessão não libera, os grupos que ficaram sem filhos e os títulos que ficaram sem itens. */
