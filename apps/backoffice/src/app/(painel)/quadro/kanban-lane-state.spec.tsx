@@ -111,7 +111,7 @@ describe('KanbanBoard: colunas ocultas e bloqueadas', () => {
     expect(cardTitles('Em andamento')).toEqual(['Item C']);
   });
 
-  it('bloqueia a coluna: não recebe nem solta cards até ser liberada', () => {
+  it('ao bloquear a coluna, trava os cards dela e tira "Adicionar card"; liberar desfaz', () => {
     render(<KanbanBoard initialLanes={lanes} />);
 
     fireEvent.click(laneMenu('Em andamento', 'Bloquear coluna'));
@@ -129,6 +129,15 @@ describe('KanbanBoard: colunas ocultas e bloqueadas', () => {
     ).toBeNull();
     expect(laneMenu('Em andamento', 'Excluir coluna').disabled).toBe(true);
 
+    fireEvent.click(laneMenu('Em andamento', 'Liberar coluna'));
+    expect(announcement()).toBe('Coluna Em andamento liberada.');
+    expect(button('Mover Item C').disabled).toBe(false);
+  });
+
+  it('a coluna bloqueada não recebe card pelo teclado nem pelo arraste', () => {
+    render(<KanbanBoard initialLanes={lanes} />);
+    fireEvent.click(laneMenu('Em andamento', 'Bloquear coluna'));
+
     let handle = button('Mover Item A');
     fireEvent.click(handle);
     fireEvent.keyDown(handle, { key: 'ArrowRight' });
@@ -141,8 +150,13 @@ describe('KanbanBoard: colunas ocultas e bloqueadas', () => {
       true,
     );
     fireDrag({ kind: 'dragEnd', element: cardItem('Item A') });
+  });
 
+  it('a coluna bloqueada não solta o card pelo painel: nem mover, nem arquivar', () => {
+    render(<KanbanBoard initialLanes={lanes} />);
+    fireEvent.click(laneMenu('Em andamento', 'Bloquear coluna'));
     openCard('Item C');
+
     fireEvent.change(within(panel()).getByLabelText('Coluna'), {
       target: { value: 'done' },
     });
@@ -152,14 +166,11 @@ describe('KanbanBoard: colunas ocultas e bloqueadas', () => {
       ),
     ).toBeTruthy();
     expect(cardTitles('Em andamento')).toEqual(['Item C']);
+
     fireEvent.click(
       within(panel()).getByRole('button', { name: 'Arquivar card' }),
     );
     expect(cardTitles('Em andamento')).toEqual(['Item C']);
-
-    fireEvent.click(laneMenu('Em andamento', 'Liberar coluna'));
-    expect(announcement()).toBe('Coluna Em andamento liberada.');
-    expect(button('Mover Item C').disabled).toBe(false);
   });
 });
 

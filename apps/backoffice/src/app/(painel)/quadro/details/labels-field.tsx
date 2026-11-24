@@ -1,8 +1,7 @@
 import { CFormCheck } from '@coreui/react';
 import { useId } from 'react';
-
+import type { BoardCommands } from '../board-commands';
 import type { BoardCard, BoardLabel } from '../model/board';
-import type { BoardCommands } from '../use-board';
 import { NewLabelForm } from './new-label-form';
 
 export interface LabelsFieldProps {

@@ -1,17 +1,21 @@
-import type { BoardLane } from './board';
+import { type BoardLane, findCard } from './board';
 
 /** Colunas na tela, sem as ocultas. */
 export function visibleLanes(
   lanes: readonly BoardLane[],
 ): readonly BoardLane[] {
-  // NOTE: sem coluna oculta, devolve a mesma lista, para quem compara por referência não ver mudança onde não houve.
-  return lanes.some((lane) => lane.hidden)
-    ? lanes.filter((lane) => !lane.hidden)
-    : lanes;
+  const hasHidden = lanes.some((lane) => lane.hidden);
+  if (!hasHidden) {
+    // NOTE: devolve a mesma lista, para quem compara por referência não ver mudança onde não houve.
+    return lanes;
+  }
+  return lanes.filter((lane) => !lane.hidden);
 }
 
 export interface MergeVisibleParams {
+  /** Todas as colunas do quadro, na ordem gravada. */
   readonly all: readonly BoardLane[];
+  /** As colunas visíveis, na ordem em que ficaram na tela. */
   readonly visible: readonly BoardLane[];
 }
 
@@ -20,38 +24,26 @@ export interface MergeVisibleParams {
  * Coluna visível a mais vai para o fim.
  */
 export function mergeVisible(params: MergeVisibleParams): readonly BoardLane[] {
-  if (!params.all.some((lane) => lane.hidden)) {
-    return params.visible;
+  const { all, visible } = params;
+  const hasHidden = all.some((lane) => lane.hidden);
+  if (!hasHidden) {
+    return visible;
   }
-  const queue = [...params.visible];
-  const merged = params.all.flatMap((lane) => {
+  const merged: BoardLane[] = [];
+  let nextVisible = 0;
+  for (const lane of all) {
     if (lane.hidden) {
-      return [lane];
+      merged.push(lane);
+      continue;
     }
-    const next = queue.shift();
-    return next ? [next] : [];
-  });
-  return [...merged, ...queue];
-}
-
-interface PatchLaneParams {
-  readonly lanes: readonly BoardLane[];
-  readonly laneId: string;
-  readonly patch: Partial<Pick<BoardLane, 'hidden' | 'locked'>>;
-}
-
-function patchLane(params: PatchLaneParams): readonly BoardLane[] {
-  const { lanes, laneId, patch } = params;
-  const lane = lanes.find((candidate) => candidate.id === laneId);
-  const key = Object.keys(patch)[0] as 'hidden' | 'locked' | undefined;
-  if (!lane || !key || Boolean(lane[key]) === Boolean(patch[key])) {
-    return lanes;
+    const replacement = visible[nextVisible];
+    nextVisible += 1;
+    if (replacement) {
+      merged.push(replacement);
+    }
   }
-  return lanes.map((candidate) =>
-    candidate.id === laneId
-      ? { ...candidate, [key]: patch[key] ? true : undefined }
-      : candidate,
-  );
+  const extras = visible.slice(nextVisible);
+  return [...merged, ...extras];
 }
 
 export interface SetLaneHiddenParams {
@@ -65,19 +57,34 @@ export function setLaneHidden(
   params: SetLaneHiddenParams,
 ): readonly BoardLane[] {
   const { lanes, laneId, hidden } = params;
-  if (hidden && visibleLanes(lanes).every((lane) => lane.id === laneId)) {
+  const lane = lanes.find((candidate) => candidate.id === laneId);
+  if (!lane || Boolean(lane.hidden) === hidden) {
     return lanes;
   }
-  return patchLane({ lanes, laneId, patch: { hidden } });
+  const otherVisible = visibleLanes(lanes).filter(
+    (candidate) => candidate.id !== laneId,
+  );
+  if (hidden && otherVisible.length === 0) {
+    return lanes;
+  }
+  return lanes.map((candidate) =>
+    candidate.id === laneId
+      ? { ...candidate, hidden: hidden ? true : undefined }
+      : candidate,
+  );
 }
 
 /** Mostra todas as colunas ocultas. */
 export function showAllLanes(
   lanes: readonly BoardLane[],
 ): readonly BoardLane[] {
-  return lanes.some((lane) => lane.hidden)
-    ? lanes.map((lane) => (lane.hidden ? { ...lane, hidden: undefined } : lane))
-    : lanes;
+  const hasHidden = lanes.some((lane) => lane.hidden);
+  if (!hasHidden) {
+    return lanes;
+  }
+  return lanes.map((lane) =>
+    lane.hidden ? { ...lane, hidden: undefined } : lane,
+  );
 }
 
 export interface SetLaneLockedParams {
@@ -90,48 +97,69 @@ export interface SetLaneLockedParams {
 export function setLaneLocked(
   params: SetLaneLockedParams,
 ): readonly BoardLane[] {
-  return patchLane({
-    lanes: params.lanes,
-    laneId: params.laneId,
-    patch: { locked: params.locked },
-  });
+  const { lanes, laneId, locked } = params;
+  const lane = lanes.find((candidate) => candidate.id === laneId);
+  if (!lane || Boolean(lane.locked) === locked) {
+    return lanes;
+  }
+  return lanes.map((candidate) =>
+    candidate.id === laneId
+      ? { ...candidate, locked: locked ? true : undefined }
+      : candidate,
+  );
 }
 
+/** Ids dos cards da coluna, na ordem, para comparar duas versões da mesma coluna. */
 function cardOrder(lane: BoardLane): string {
   return lane.cards.map((card) => card.id).join('\n');
 }
 
-export interface RespectsLocksParams {
+/** As colunas antes e depois de uma mudança. */
+export interface LanesChange {
   readonly before: readonly BoardLane[];
   readonly after: readonly BoardLane[];
 }
 
 /**
- * A mudança respeita os bloqueios: toda coluna bloqueada antes e depois continua com os mesmos cards, na mesma ordem,
- * e nenhuma coluna bloqueada some. Mudar o conteúdo de um card não conta.
+ * Coluna bloqueada que a mudança alterou: sumiu, ou ficou com outros cards ou com outra ordem. Mudar o conteúdo de um
+ * card não conta, e liberar a coluna na própria mudança também não.
  */
-export function respectsLocks(params: RespectsLocksParams): boolean {
-  return params.before.every((lane) => {
+export function brokenLock(change: LanesChange): BoardLane | undefined {
+  for (const lane of change.before) {
     if (!lane.locked) {
-      return true;
+      continue;
     }
-    const next = params.after.find((candidate) => candidate.id === lane.id);
-    return (
-      next !== undefined &&
-      (!next.locked || cardOrder(next) === cardOrder(lane))
-    );
-  });
+    const next = change.after.find((candidate) => candidate.id === lane.id);
+    if (!next) {
+      return lane;
+    }
+    if (next.locked && cardOrder(next) !== cardOrder(lane)) {
+      return lane;
+    }
+  }
+  return undefined;
 }
 
-export interface BrokenLockParams {
-  readonly before: readonly BoardLane[];
-  readonly after: readonly BoardLane[];
+/** A mudança respeita os bloqueios: não altera nenhuma coluna bloqueada. */
+export function respectsLocks(change: LanesChange): boolean {
+  return brokenLock(change) === undefined;
 }
 
-/** Coluna bloqueada que a mudança tentou alterar, para avisar quem tentou. */
-export function brokenLock(params: BrokenLockParams): BoardLane | undefined {
-  return params.before.find(
-    (lane) =>
-      lane.locked && !respectsLocks({ before: [lane], after: params.after }),
-  );
+export interface LockedLaneOfParams {
+  readonly lanes: readonly BoardLane[];
+  readonly cardId: string;
+  /** Coluna de destino, quando o card muda de coluna. */
+  readonly laneId?: string;
+}
+
+/** Coluna bloqueada que impede mexer no card: a coluna onde ele está ou, se não, a de destino. */
+export function lockedLaneOf(
+  params: LockedLaneOfParams,
+): BoardLane | undefined {
+  const source = findCard({ lanes: params.lanes, cardId: params.cardId })?.lane;
+  if (source?.locked) {
+    return source;
+  }
+  const target = params.lanes.find((lane) => lane.id === params.laneId);
+  return target?.locked ? target : undefined;
 }

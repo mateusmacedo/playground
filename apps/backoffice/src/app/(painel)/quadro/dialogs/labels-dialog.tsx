@@ -11,11 +11,10 @@ import {
   CModalTitle,
 } from '@coreui/react';
 import { useId, useState } from 'react';
-
+import type { BoardCommands } from '../board-commands';
 import { NewLabelForm } from '../details/new-label-form';
 import type { BoardLabel, LabelColor } from '../model/board';
 import { LABEL_COLORS } from '../model/labels';
-import type { BoardCommands } from '../use-board';
 import { OnClosed } from './on-closed';
 
 type LabelCommands = Pick<

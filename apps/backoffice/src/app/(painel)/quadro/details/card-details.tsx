@@ -2,13 +2,12 @@ import { cilClone, cilInbox, cilLink, cilTrash } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
 import { CButton, CFormInput, CFormSelect, CFormTextarea } from '@coreui/react';
 import { useId, useState } from 'react';
-
+import type { BoardCommands } from '../board-commands';
 import { InlineAddForm } from '../inline-add-form';
 import { type Board, type CardLocation, findCard } from '../model/board';
 import { cardKey } from '../model/card-key';
 import { childProgress, progressText } from '../model/completion';
 import { ancestorsOf, childrenOf, parentCandidates } from '../model/hierarchy';
-import type { BoardCommands } from '../use-board';
 import { ActivityList } from './activity-list';
 import { AttachmentsSection } from './attachments-section';
 import { ChecklistSection } from './checklist-section';

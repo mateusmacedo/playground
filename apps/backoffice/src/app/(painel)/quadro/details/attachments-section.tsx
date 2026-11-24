@@ -2,7 +2,7 @@ import { cilFile, cilLink } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
 import { CButton, CFormInput } from '@coreui/react';
 import { type ChangeEvent, type FormEvent, useId, useState } from 'react';
-
+import type { BoardCommands } from '../board-commands';
 import {
   formatBytes,
   isStoredFile,
@@ -10,7 +10,6 @@ import {
   MAX_ATTACHMENT_BYTES,
 } from '../model/attachments';
 import type { BoardCard } from '../model/board';
-import type { BoardCommands } from '../use-board';
 
 /** Lê o arquivo como `data:` URL. */
 function readAsDataUrl(file: File): Promise<string> {

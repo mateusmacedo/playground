@@ -1,9 +1,9 @@
 import { cilMove } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
-import type { DragEvent, KeyboardEvent } from 'react';
+import type { DragEvent, KeyboardEvent, ReactNode } from 'react';
 
 import { KanbanCardMeta } from './kanban-card-meta';
-import type { BoardCard, BoardLabel } from './model/board';
+import type { BoardCard, BoardLabel, BoardLane } from './model/board';
 import { cardKey } from './model/card-key';
 import type { ChildProgress } from './model/completion';
 import type { HandleRegistration } from './use-keyboard-move';
@@ -53,6 +53,17 @@ export interface KanbanCardProps {
   readonly instructionsId: string;
   readonly actions: KanbanCardActions;
 }
+
+/** Card a desenhar: a coluna e a posição em que ele está, e se a linha de inserção do arraste fica acima dele. */
+export interface CardPlacement {
+  readonly card: BoardCard;
+  readonly lane: BoardLane;
+  readonly index: number;
+  readonly dropBefore: boolean;
+}
+
+/** Desenha o card do quadro; as visões (colunas e linhas por card pai) recebem esta função pronta. */
+export type RenderCard = (placement: CardPlacement) => ReactNode;
 
 function cardClassName(
   state: Pick<

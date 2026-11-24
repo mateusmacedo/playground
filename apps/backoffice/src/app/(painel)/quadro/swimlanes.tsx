@@ -1,27 +1,40 @@
-import { type DragEvent, type ReactNode, useId } from 'react';
+import { type DragEvent, useId } from 'react';
 
+import type { RenderCard } from './kanban-card';
 import type { BoardCard, BoardLane } from './model/board';
 import { cardKey } from './model/card-key';
 import { type ChildProgress, progressText } from './model/completion';
 import type { ParentGroup } from './model/views';
 
-export interface SwimlanesProps {
-  readonly groups: readonly ParentGroup[];
-  readonly keyPrefix: string;
-  readonly progress: ReadonlyMap<string, ChildProgress>;
-  /** Célula sob o card arrastado, como `<pai>:<coluna>`. */
-  readonly dropTarget: string | null;
-  readonly renderCard: (
-    card: BoardCard,
-    lane: BoardLane,
-    index: number,
-  ) => ReactNode;
+/** Célula de uma linha: a coluna e o card pai da linha. */
+export interface CellTarget {
+  readonly lane: BoardLane;
+  readonly parentId: string | undefined;
+}
+
+/** Identificador da célula, para marcar qual delas está sob o card arrastado. */
+export function cellId(target: CellTarget): string {
+  return `${target.parentId ?? ''}:${target.lane.id}`;
+}
+
+/** O que cada célula faz com o card arrastado. */
+export interface CellDropHandlers {
   readonly onDragOver: (
     event: DragEvent<HTMLElement>,
     target: CellTarget,
   ) => void;
   readonly onDragLeave: (event: DragEvent<HTMLElement>) => void;
   readonly onDrop: (event: DragEvent<HTMLElement>, target: CellTarget) => void;
+}
+
+export interface SwimlanesProps extends CellDropHandlers {
+  readonly groups: readonly ParentGroup[];
+  /** Prefixo do código dos cards do quadro. */
+  readonly keyPrefix: string;
+  readonly progress: ReadonlyMap<string, ChildProgress>;
+  /** Célula sob o card arrastado, no formato de `cellId`; `null` fora de um arraste. */
+  readonly dropTarget: string | null;
+  readonly renderCard: RenderCard;
 }
 
 /**
@@ -64,34 +77,16 @@ export function Swimlanes({
   );
 }
 
-/** Célula de uma linha: a coluna e o card pai da linha. */
-export interface CellTarget {
-  readonly lane: BoardLane;
-  readonly parentId: string | undefined;
-}
-
-export function cellId(target: CellTarget): string {
-  return `${target.parentId ?? ''}:${target.lane.id}`;
-}
-
-interface SwimlaneRowProps {
+interface SwimlaneRowProps extends CellDropHandlers {
   readonly group: ParentGroup;
   readonly keyPrefix: string;
+  /** Filhos do card pai que já estão na coluna de conclusão. */
   readonly progress: ChildProgress | undefined;
   readonly dropTarget: string | null;
-  readonly renderCard: (
-    card: BoardCard,
-    lane: BoardLane,
-    index: number,
-  ) => ReactNode;
-  readonly onDragOver: (
-    event: DragEvent<HTMLElement>,
-    target: CellTarget,
-  ) => void;
-  readonly onDragLeave: (event: DragEvent<HTMLElement>) => void;
-  readonly onDrop: (event: DragEvent<HTMLElement>, target: CellTarget) => void;
+  readonly renderCard: RenderCard;
 }
 
+/** Linha de um card pai: o cabeçalho com o pai e uma célula por coluna. */
 function SwimlaneRow({
   group,
   keyPrefix,
@@ -104,7 +99,8 @@ function SwimlaneRow({
 }: Readonly<SwimlaneRowProps>) {
   const titleId = useId();
   const { parent } = group;
-  const name = parent ? parent.title : 'Sem card pai';
+  const rowName = parent ? parent.title : 'Sem card pai';
+
   return (
     <section
       className="card kanban-swimlane bg-body-tertiary"
@@ -119,7 +115,7 @@ function SwimlaneRow({
               </span>{' '}
             </>
           ) : null}
-          {name}
+          {rowName}
         </h2>
         {progress ? (
           <span className="badge bg-body-secondary text-body border">
@@ -128,32 +124,75 @@ function SwimlaneRow({
         ) : null}
       </header>
       <div className="d-flex gap-3 overflow-x-auto p-2">
-        {group.cells.map(({ lane, cards }) => {
-          const target = { lane, parentId: parent?.id };
-          const active = dropTarget === cellId(target);
+        {group.cells.map((cell) => {
+          const target = { lane: cell.lane, parentId: parent?.id };
           return (
-            // biome-ignore lint/a11y/useSemanticElements: a célula agrupa os cards da coluna dentro da linha; pelo teclado, o card se move pela alça
-            <div
-              key={lane.id}
-              role="group"
-              aria-label={`${lane.title} em ${name}`}
-              className={`kanban-swimlane__cell${lane.locked ? ' kanban-swimlane__cell--locked' : ''}${active ? ' kanban-lane--drop-target' : ''}`}
-              onDragOver={(event) => onDragOver(event, target)}
+            <SwimlaneCell
+              key={cell.lane.id}
+              target={target}
+              cards={cell.cards}
+              rowName={rowName}
+              dropActive={dropTarget === cellId(target)}
+              renderCard={renderCard}
+              onDragOver={onDragOver}
               onDragLeave={onDragLeave}
-              onDrop={(event) => onDrop(event, target)}
-            >
-              <p className="small fw-semibold text-body-secondary mb-1">
-                {lane.title}
-              </p>
-              {cards.length > 0 ? (
-                <ul className="list-unstyled mb-0">
-                  {cards.map((card, index) => renderCard(card, lane, index))}
-                </ul>
-              ) : null}
-            </div>
+              onDrop={onDrop}
+            />
           );
         })}
       </div>
     </section>
+  );
+}
+
+interface SwimlaneCellProps extends CellDropHandlers {
+  readonly target: CellTarget;
+  readonly cards: readonly BoardCard[];
+  /** Nome da linha, que entra no nome acessível da célula. */
+  readonly rowName: string;
+  /** Um card arrastado está sobre a célula. */
+  readonly dropActive: boolean;
+  readonly renderCard: RenderCard;
+}
+
+/** Os cards de uma coluna dentro da linha de um card pai. */
+function SwimlaneCell({
+  target,
+  cards,
+  rowName,
+  dropActive,
+  renderCard,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}: Readonly<SwimlaneCellProps>) {
+  const { lane } = target;
+  const classNames = ['kanban-swimlane__cell'];
+  if (lane.locked) {
+    classNames.push('kanban-swimlane__cell--locked');
+  }
+  if (dropActive) {
+    classNames.push('kanban-lane--drop-target');
+  }
+
+  return (
+    // biome-ignore lint/a11y/useSemanticElements: a célula agrupa os cards da coluna dentro da linha; pelo teclado, o card se move pela alça
+    <div
+      role="group"
+      aria-label={`${lane.title} em ${rowName}`}
+      className={classNames.join(' ')}
+      onDragOver={(event) => onDragOver(event, target)}
+      onDragLeave={onDragLeave}
+      onDrop={(event) => onDrop(event, target)}
+    >
+      <p className="small fw-semibold text-body-secondary mb-1">{lane.title}</p>
+      {cards.length > 0 ? (
+        <ul className="list-unstyled mb-0">
+          {cards.map((card, index) =>
+            renderCard({ card, lane, index, dropBefore: false }),
+          )}
+        </ul>
+      ) : null}
+    </div>
   );
 }

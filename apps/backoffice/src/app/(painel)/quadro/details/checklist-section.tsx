@@ -2,11 +2,10 @@ import { cilX } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
 import { CButton, CFormCheck, CProgress } from '@coreui/react';
 import { useId } from 'react';
-
+import type { BoardCommands } from '../board-commands';
 import { InlineAddForm } from '../inline-add-form';
 import type { BoardCard } from '../model/board';
 import { checklistProgress } from '../model/checklist';
-import type { BoardCommands } from '../use-board';
 
 export interface ChecklistSectionProps {
   readonly card: BoardCard;

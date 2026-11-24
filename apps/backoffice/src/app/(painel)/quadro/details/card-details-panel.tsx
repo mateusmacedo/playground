@@ -5,8 +5,8 @@ import {
   COffcanvasHeader,
 } from '@coreui/react';
 import { useEffect, useId, useRef } from 'react';
+import type { BoardCommands } from '../board-commands';
 import type { Board, CardLocation } from '../model/board';
-import type { BoardCommands } from '../use-board';
 import { CardDetails, type CardDetailsActions } from './card-details';
 
 export interface CardDetailsPanelProps {

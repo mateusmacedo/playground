@@ -1,9 +1,8 @@
 import { CButton, CFormTextarea } from '@coreui/react';
 import { type FormEvent, useId, useState } from 'react';
-
+import type { BoardCommands } from '../board-commands';
 import type { BoardCard } from '../model/board';
 import { MAX_COMMENT_LENGTH } from '../model/comments';
-import type { BoardCommands } from '../use-board';
 
 const moment = new Intl.DateTimeFormat('pt-BR', {
   dateStyle: 'short',

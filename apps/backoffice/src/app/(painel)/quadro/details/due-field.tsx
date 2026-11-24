@@ -2,10 +2,9 @@ import { CFormCheck, CFormInput } from '@coreui/react';
 import { useId } from 'react';
 
 import { useIsClient } from '@/shared/hooks/use-is-client';
-
+import type { BoardCommands } from '../board-commands';
 import type { BoardCard } from '../model/board';
 import { type DueStatus, dueStatus, todayIso } from '../model/due';
-import type { BoardCommands } from '../use-board';
 
 const STATUS_TEXT: Readonly<Record<DueStatus, string>> = {
   overdue: 'Atrasado.',
