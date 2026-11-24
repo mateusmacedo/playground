@@ -131,7 +131,14 @@ function toLane(value: unknown): BoardLane | null {
   if (!cards || (wipLimit !== undefined && !isPositiveInteger(wipLimit))) {
     return null;
   }
-  return { id: value.id, title: value.title, cards, wipLimit };
+  return {
+    id: value.id,
+    title: value.title,
+    cards,
+    wipLimit,
+    hidden: value.hidden === true ? true : undefined,
+    locked: value.locked === true ? true : undefined,
+  };
 }
 
 function toLanes(value: unknown): BoardLane[] | null {
@@ -238,6 +245,7 @@ function toConfig(value: unknown): BoardConfig {
       typeof keyPrefix === 'string' && isValidKeyPrefix(keyPrefix)
         ? keyPrefix
         : DEFAULT_CONFIG.keyPrefix,
+    archiveLaneHidden: value.archiveLaneHidden === true ? true : undefined,
   };
 }
 

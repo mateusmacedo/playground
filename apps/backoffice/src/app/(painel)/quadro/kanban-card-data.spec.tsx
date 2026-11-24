@@ -243,7 +243,7 @@ describe('KanbanBoard: endereço do card', () => {
     await waitFor(() => expect(window.location.search).toBe(''));
   });
 
-  it('avisa quando o card do endereço não existe ou está arquivado', async () => {
+  it('avisa do card do endereço que não existe e abre o arquivado só para leitura', async () => {
     window.history.replaceState(null, '', '/quadro?card=QD-9');
     const { unmount } = render(<KanbanBoard initialLanes={lanes} />);
     expect(
@@ -271,9 +271,7 @@ describe('KanbanBoard: endereço do card', () => {
     window.history.replaceState(null, '', '/quadro?card=QD-2');
     render(<KanbanBoard initialLanes={lanes} storageKey={BOARD_STORAGE_KEY} />);
     expect(
-      await screen.findByText(
-        'O card QD-2 está arquivado. Restaure-o em "Arquivados" para abrir.',
-      ),
+      await screen.findByRole('dialog', { name: 'Card arquivado QD-2' }),
     ).toBeTruthy();
     localStorage.clear();
   });

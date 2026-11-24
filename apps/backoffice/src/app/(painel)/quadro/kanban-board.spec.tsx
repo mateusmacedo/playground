@@ -82,7 +82,9 @@ describe('KanbanBoard', () => {
   });
 
   it('mostra cada coluna com título, contador e os cards na ordem', () => {
-    expect(screen.getAllByRole('region')).toHaveLength(3);
+    // NOTE: as 3 colunas do quadro e a coluna automática dos arquivados.
+    expect(screen.getAllByRole('region')).toHaveLength(4);
+    expect(screen.getByRole('region', { name: 'Arquivados' })).toBeTruthy();
     expect(cardTitles('A fazer')).toEqual(['Item A', 'Item B']);
     expect(laneCount('A fazer')).toBe('2 cards');
     expect(laneCount('Em andamento')).toBe('1 card');

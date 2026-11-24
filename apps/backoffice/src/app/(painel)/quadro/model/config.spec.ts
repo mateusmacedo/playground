@@ -2,6 +2,7 @@ import {
   DEFAULT_CONFIG,
   isValidKeyPrefix,
   normalizeKeyPrefix,
+  setArchiveLaneHidden,
   setKeyPrefix,
   suggestKeyPrefix,
 } from './config';
@@ -33,5 +34,17 @@ describe('configuração do quadro', () => {
     expect(setKeyPrefix({ config: DEFAULT_CONFIG, keyPrefix: '9' })).toBe(
       DEFAULT_CONFIG,
     );
+  });
+
+  it('oculta e mostra a coluna de arquivados', () => {
+    const hidden = setArchiveLaneHidden({
+      config: DEFAULT_CONFIG,
+      hidden: true,
+    });
+    expect(hidden.archiveLaneHidden).toBe(true);
+    expect(setArchiveLaneHidden({ config: hidden, hidden: true })).toBe(hidden);
+    expect(
+      setArchiveLaneHidden({ config: hidden, hidden: false }).archiveLaneHidden,
+    ).toBeUndefined();
   });
 });

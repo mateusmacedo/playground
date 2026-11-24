@@ -4,6 +4,7 @@ import { CButton } from '@coreui/react';
 import type { Ref } from 'react';
 
 import type { BoardLabel } from '../model/board';
+import { HiddenLanes, type HiddenLanesProps } from './hidden-lanes';
 import { HistoryButtons } from './history-buttons';
 import { LabelFilter } from './label-filter';
 import { SearchBox } from './search-box';
@@ -30,6 +31,7 @@ export interface BoardToolbarProps {
     readonly onUndo: () => void;
     readonly onRedo: () => void;
   };
+  readonly hiddenLanes: HiddenLanesProps;
   readonly archivedCount: number;
   readonly onOpenArchive: () => void;
   /** Sem ela, o quadro não tem configuração na tela. */
@@ -44,6 +46,7 @@ export function BoardToolbar({
   search,
   filter,
   history,
+  hiddenLanes,
   archivedCount,
   onOpenArchive,
   onOpenSettings,
@@ -56,6 +59,7 @@ export function BoardToolbar({
         <LabelFilter {...filter} />
         <div className="d-flex flex-wrap gap-2 ms-auto">
           <HistoryButtons {...history} />
+          <HiddenLanes {...hiddenLanes} />
           <CButton
             type="button"
             color="secondary"

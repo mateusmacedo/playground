@@ -20,11 +20,13 @@ const moment = new Intl.DateTimeFormat('pt-BR', {
 function ArchiveItem({
   entry,
   keyPrefix,
+  onView,
   onRestore,
   onDelete,
 }: Readonly<{
   entry: ArchiveEntry;
   keyPrefix: string;
+  onView?: (entryId: string) => void;
   onRestore: (entryId: string) => void;
   onDelete: (entryId: string) => void;
 }>) {
@@ -54,6 +56,18 @@ function ArchiveItem({
         )}
       </div>
       <div className="d-flex gap-2">
+        {onView ? (
+          <CButton
+            type="button"
+            color="secondary"
+            variant="ghost"
+            size="sm"
+            aria-label={`Ver ${root.title}`}
+            onClick={() => onView(entry.id)}
+          >
+            Ver
+          </CButton>
+        ) : null}
         <CButton
           type="button"
           color="primary"
@@ -84,6 +98,7 @@ export function ArchiveDialog({
   visible,
   archive,
   keyPrefix,
+  onView,
   onRestore,
   onDelete,
   onClose,
@@ -93,6 +108,8 @@ export function ArchiveDialog({
   archive: readonly ArchiveEntry[];
   /** Prefixo do código dos cards do quadro. */
   keyPrefix: string;
+  /** Abre o card arquivado só para leitura. */
+  onView?: (entryId: string) => void;
   onRestore: (entryId: string) => void;
   onDelete: (entryId: string) => void;
   onClose: () => void;
@@ -125,6 +142,7 @@ export function ArchiveDialog({
                 key={entry.id}
                 entry={entry}
                 keyPrefix={keyPrefix}
+                onView={onView}
                 onRestore={onRestore}
                 onDelete={onDelete}
               />

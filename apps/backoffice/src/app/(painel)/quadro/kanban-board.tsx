@@ -1,12 +1,17 @@
 'use client';
 
 import { CAlert } from '@coreui/react';
-import { useId, useRef, useState } from 'react';
+import { type DragEvent, useId, useRef, useState } from 'react';
 
 import { useIsClient } from '@/shared/hooks/use-is-client';
 
+import { ArchiveLane } from './archive-lane';
 import { CardDetailsPanel } from './details/card-details-panel';
 import { ArchiveDialog } from './dialogs/archive-dialog';
+import {
+  ArchivedCardDialog,
+  type ArchivedView,
+} from './dialogs/archived-card-dialog';
 import {
   type BoardDialog,
   type BoardDialogHandlers,
@@ -25,8 +30,10 @@ import {
   laneAnnouncementText,
   type MoveAnnouncement,
 } from './model/announcements';
+import { restoreArchived } from './model/archive';
 import {
   allCards,
+  type Board,
   type BoardCard,
   type BoardLabel,
   type BoardLane,
@@ -38,6 +45,12 @@ import { cardKey } from './model/card-key';
 import { todayIso } from './model/due';
 import { childCounts } from './model/hierarchy';
 import { cardLabels } from './model/labels';
+import {
+  brokenLock,
+  mergeVisible,
+  respectsLocks,
+  visibleLanes,
+} from './model/lane-state';
 import { type LaneDirection, stepLane } from './model/lanes';
 import { cardMatchesLabels, cardMatchesQuery } from './model/search';
 import { BoardToolbar } from './toolbar/board-toolbar';
@@ -65,8 +78,11 @@ interface MoveEvent {
   readonly id: string;
 }
 
-const stepCardById = ({ lanes, id, direction }: MoveStep<StepDirection>) =>
-  stepCard({ lanes, cardId: id, direction });
+/** Passo do card pelo teclado; o passo que mexe numa coluna bloqueada não acontece. */
+const stepCardById = ({ lanes, id, direction }: MoveStep<StepDirection>) => {
+  const next = stepCard({ lanes, cardId: id, direction });
+  return respectsLocks({ before: lanes, after: next }) ? next : lanes;
+};
 const cardMoveAnnouncement = ({ kind, lanes, id }: MoveEvent) =>
   announcementText({ kind, lanes, cardId: id });
 const stepLaneById = ({ lanes, id, direction }: MoveStep<LaneDirection>) =>
@@ -83,6 +99,22 @@ interface OpenCard {
   readonly open: boolean;
 }
 
+/** Card arquivado aberto só para leitura; `open` falso mantém o conteúdo enquanto a janela sai da tela. */
+interface OpenArchived {
+  readonly view: ArchivedView;
+  readonly open: boolean;
+}
+
+/** Arquivamento que contém o card. */
+function archiveEntryOf(params: {
+  readonly archive: Board['archive'];
+  readonly cardId: string;
+}) {
+  return params.archive.find((entry) =>
+    entry.cards.some(({ card }) => card.id === params.cardId),
+  );
+}
+
 /** Aviso visível acima do quadro: link copiado, card do endereço que não pode ser aberto. */
 interface Notice {
   readonly color: 'success' | 'warning';
@@ -96,6 +128,7 @@ type FocusTarget =
   | 'data-board-archive'
   | 'data-board-labels'
   | 'data-board-settings'
+  | 'data-archive-lane'
   | 'data-board-undo';
 
 /** Nome do quadro, que mora na lista de quadros, para a janela de configuração. */
@@ -152,6 +185,7 @@ export function KanbanBoard({
   });
   const { lanes, labels } = board;
   const { keyPrefix } = board.config;
+  const shown = visibleLanes(lanes);
   const collapsedLanes = useCollapsedLanes(storageKey);
   const { collapsed } = collapsedLanes;
   const isClient = useIsClient();
@@ -163,6 +197,8 @@ export function KanbanBoard({
     () => new Set(),
   );
   const [openCard, setOpenCard] = useState<OpenCard | null>(null);
+  const [openArchived, setOpenArchived] = useState<OpenArchived | null>(null);
+  const [archiveDrop, setArchiveDrop] = useState(false);
   const [dialog, setDialog] = useState<BoardDialog | null>(null);
   const [listDialog, setListDialog] = useState<
     'archive' | 'labels' | 'settings' | null
@@ -174,19 +210,23 @@ export function KanbanBoard({
   const searchRef = useRef<HTMLInputElement>(null);
   const instructionsId = useId();
 
+  /** Devolve as colunas da tela, depois de mexidas, ao quadro inteiro, com as ocultas nos lugares delas. */
+  const withHidden = (next: readonly BoardLane[]) =>
+    mergeVisible({ all: lanes, visible: next });
+
   const cardKeyboard = useKeyboardMove({
-    lanes,
+    lanes: shown,
     setLanes: (next) => {
       // WHY: o card levado pelo teclado para uma coluna recolhida precisa da alça na tela para continuar com o foco.
       const receiving = lanesReceiving({
-        before: lanes,
+        before: shown,
         after: next,
         collapsed,
       });
       if (receiving.length > 0) {
         collapsedLanes.expand(receiving);
       }
-      commands.setLanes(next, KEYBOARD_MOVE);
+      commands.setLanes(withHidden(next), KEYBOARD_MOVE);
     },
     announce: setAnnouncement,
     keys: CARD_STEP_KEYS,
@@ -194,8 +234,8 @@ export function KanbanBoard({
     announcementFor: cardMoveAnnouncement,
   });
   const laneKeyboard = useKeyboardMove({
-    lanes,
-    setLanes: (next) => commands.setLanes(next, KEYBOARD_MOVE),
+    lanes: shown,
+    setLanes: (next) => commands.setLanes(withHidden(next), KEYBOARD_MOVE),
     announce: setAnnouncement,
     keys: LANE_STEP_KEYS,
     step: stepLaneById,
@@ -206,10 +246,16 @@ export function KanbanBoard({
     laneKeyboard.release();
   };
   const cardDrag = useDragAndDrop({
-    lanes,
+    lanes: shown,
     onDragStart: releaseKeyboard,
     onDrop: (drop) => {
-      commands.setLanes(drop.lanes);
+      const next = withHidden(drop.lanes);
+      const locked = brokenLock({ before: lanes, after: next });
+      if (locked) {
+        setAnnouncement(`A coluna ${locked.title} está bloqueada.`);
+        return;
+      }
+      commands.setLanes(next);
       setAnnouncement(
         announcementText({
           kind: 'dropped',
@@ -220,10 +266,10 @@ export function KanbanBoard({
     },
   });
   const laneDrag = useLaneDrag({
-    lanes,
+    lanes: shown,
     onDragStart: releaseKeyboard,
     onDrop: (drop) => {
-      commands.setLanes(drop.lanes);
+      commands.setLanes(withHidden(drop.lanes));
       setAnnouncement(
         laneAnnouncementText({
           kind: 'dropped',
@@ -283,8 +329,58 @@ export function KanbanBoard({
         ? cardKey({ card: openLocation.card, prefix: keyPrefix })
         : undefined,
     onOpen: openDetails,
+    onOpenArchived: (cardId) => {
+      const entry = archiveEntryOf({ archive: board.archive, cardId });
+      if (entry) {
+        openArchivedView({ entryId: entry.id, cardId });
+      }
+    },
     onUnavailable: (text) => setNotice({ color: 'warning', text }),
   });
+
+  function openArchivedView(view: ArchivedView) {
+    setOpenArchived({ view, open: true });
+  }
+
+  function closeArchivedView() {
+    setOpenArchived((current) => current && { ...current, open: false });
+  }
+
+  /** O card arrastado pode ir para o arquivo: existe e não está numa coluna bloqueada. */
+  function canArchiveDragged(): boolean {
+    const cardId = cardDrag.draggedId;
+    return Boolean(cardId && !findCard({ lanes, cardId })?.lane.locked);
+  }
+
+  const archiveDropHandlers = {
+    onDragOver: (event: DragEvent<HTMLElement>) => {
+      if (!canArchiveDragged()) {
+        return;
+      }
+      event.preventDefault();
+      // WHY: o arraste do card só permite `move`; com outro efeito, o Chromium recusa o drop.
+      event.dataTransfer.dropEffect = 'move';
+      setArchiveDrop(true);
+    },
+    onDragLeave: (event: DragEvent<HTMLElement>) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+        setArchiveDrop(false);
+      }
+    },
+    onDrop: (event: DragEvent<HTMLElement>) => {
+      setArchiveDrop(false);
+      const cardId = cardDrag.draggedId;
+      if (!cardId || !canArchiveDragged()) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      cardDrag.onDragEnd();
+      const title = findCard({ lanes, cardId })?.card.title;
+      commands.archiveCard(cardId);
+      setAnnouncement(`Card ${title} arquivado.`);
+    },
+  };
 
   function runHistory(direction: 'undo' | 'redo') {
     if (direction === 'undo' ? !canUndo : !canRedo) {
@@ -327,7 +423,7 @@ export function KanbanBoard({
 
   function requestCardRemoval(cardId: string) {
     const location = findCard({ lanes, cardId });
-    if (!location) {
+    if (!location || blockedByLock({ cardId })) {
       return;
     }
     const { card } = location;
@@ -342,9 +438,26 @@ export function KanbanBoard({
     });
   }
 
+  /** Avisa e devolve `true` quando a coluna do card, ou a de destino, está bloqueada. */
+  function blockedByLock(change: {
+    readonly cardId: string;
+    readonly laneId?: string;
+  }): boolean {
+    const source = findCard({ lanes, cardId: change.cardId })?.lane;
+    const target = lanes.find((lane) => lane.id === change.laneId);
+    const locked = [source, target].find((lane) => lane?.locked);
+    if (locked) {
+      setNotice({
+        color: 'warning',
+        text: `A coluna ${locked.title} está bloqueada: libere a coluna para mudar os cards dela.`,
+      });
+    }
+    return Boolean(locked);
+  }
+
   function archiveFromPanel(cardId: string) {
     const location = findCard({ lanes, cardId });
-    if (!location) {
+    if (!location || blockedByLock({ cardId })) {
       return;
     }
     commands.archiveCard(cardId);
@@ -353,6 +466,9 @@ export function KanbanBoard({
   }
 
   function duplicateFromPanel(cardId: string) {
+    if (blockedByLock({ cardId })) {
+      return;
+    }
     const location = findCard({ lanes, cardId });
     const copyId = commands.duplicateCard(cardId);
     if (location && copyId) {
@@ -378,6 +494,25 @@ export function KanbanBoard({
           text: 'O navegador não deixou copiar o link.',
         }),
     );
+  }
+
+  /** Restaura o arquivamento; devolve `false`, com aviso, quando ele voltaria para uma coluna bloqueada. */
+  function restoreEntry(entryId: string): boolean {
+    const locked = brokenLock({
+      before: lanes,
+      after: restoreArchived({ board, entryId }).lanes,
+    });
+    if (locked) {
+      setNotice({
+        color: 'warning',
+        text: `A coluna ${locked.title} está bloqueada: libere a coluna para restaurar o card nela.`,
+      });
+      return false;
+    }
+    const title = archivedTitle(entryId);
+    commands.restoreArchived(entryId);
+    setAnnouncement(`Card ${title} restaurado.`);
+    return true;
   }
 
   function archivedTitle(entryId: string): string {
@@ -450,6 +585,21 @@ export function KanbanBoard({
     onRename: commands.renameLane,
     onRequestLimit: (laneId) => requestForLane('limit', laneId),
     onRequestRemove: (laneId) => requestForLane('remove-lane', laneId),
+    onHide: (laneId) => {
+      const lane = lanes.find((candidate) => candidate.id === laneId);
+      const index = shown.findIndex((candidate) => candidate.id === laneId);
+      commands.setLaneHidden({ laneId, hidden: true });
+      setAnnouncement(`Coluna ${lane?.title} oculta.`);
+      focusLaneLater((shown[index + 1] ?? shown[index - 1])?.id);
+    },
+    onToggleLock: (laneId) => {
+      const lane = lanes.find((candidate) => candidate.id === laneId);
+      commands.setLaneLocked({ laneId, locked: !lane?.locked });
+      setAnnouncement(
+        `Coluna ${lane?.title} ${lane?.locked ? 'liberada' : 'bloqueada'}.`,
+      );
+      focusLaneLater(laneId);
+    },
     onToggleCollapse: (laneId) => {
       const lane = lanes.find((candidate) => candidate.id === laneId);
       collapsedLanes.toggle(laneId);
@@ -470,7 +620,7 @@ export function KanbanBoard({
     registerHandle: cardKeyboard.registerHandle,
   };
 
-  const cards = allCards(lanes);
+  const cards = allCards(shown);
   const titles = new Map(cards.map((card) => [card.id, card.title]));
   const counts = childCounts(lanes);
   const activeLabels = new Set(
@@ -482,7 +632,7 @@ export function KanbanBoard({
   const matches = (card: BoardCard) =>
     cardMatchesQuery({ card, query, labels, keyPrefix }) &&
     cardMatchesLabels({ card, labelIds: activeLabels });
-  const lastIndex = lanes.length - 1;
+  const lastIndex = shown.length - 1;
 
   return (
     <div ref={rootRef} className="kanban-board">
@@ -525,6 +675,24 @@ export function KanbanBoard({
           onUndo: () => runHistory('undo'),
           onRedo: () => runHistory('redo'),
         }}
+        hiddenLanes={{
+          lanes: lanes.filter((lane) => lane.hidden),
+          archiveHidden: Boolean(board.config.archiveLaneHidden),
+          onShow: (laneId) => {
+            commands.setLaneHidden({ laneId, hidden: false });
+            focusLaneLater(laneId);
+          },
+          onShowArchive: () => {
+            commands.setArchiveLaneHidden(false);
+            requestAnimationFrame(() =>
+              focusMarked({ attribute: 'data-archive-lane', id: '' }),
+            );
+          },
+          onShowAll: () => {
+            commands.showAllLanes();
+            commands.setArchiveLaneHidden(false);
+          },
+        }}
         archivedCount={board.archive.length}
         onOpenArchive={() => setListDialog('archive')}
         onOpenSettings={
@@ -544,7 +712,7 @@ export function KanbanBoard({
         onDragLeave={laneDrag.onDragLeave}
         onDrop={laneDrag.onDrop}
       >
-        {lanes.map((lane, laneIndex) => {
+        {shown.map((lane, laneIndex) => {
           const cardDrop =
             cardDrag.visibleDrop?.laneId === lane.id
               ? cardDrag.visibleDrop
@@ -560,14 +728,20 @@ export function KanbanBoard({
                 dropBefore: laneDrag.visibleSlot === laneIndex,
                 dropAfter:
                   laneIndex === lastIndex &&
-                  laneDrag.visibleSlot === lanes.length,
+                  laneDrag.visibleSlot === shown.length,
                 cardDropAtEnd: cardDrop?.slot === lane.cards.length,
                 collapsed: collapsed.has(lane.id),
               }}
               canRemove={lanes.length > 1}
+              canHide={shown.length > 1}
               instructionsId={instructionsId}
               headerActions={headerActions}
-              onDragOver={cardDrag.onDragOver}
+              onDragOver={(event, target) => {
+                // NOTE: sem o `preventDefault`, o navegador não aceita soltar o card na coluna bloqueada.
+                if (!target.locked) {
+                  cardDrag.onDragOver(event, target);
+                }
+              }}
               onDragLeave={cardDrag.onDragLeave}
               onDrop={cardDrag.onDrop}
               onAddCard={(card) => {
@@ -595,6 +769,7 @@ export function KanbanBoard({
                   dragging={cardDrag.draggedId === card.id}
                   grabbed={cardKeyboard.grabbedId === card.id}
                   dropBefore={cardDrop?.slot === index}
+                  locked={lane.locked}
                   instructionsId={instructionsId}
                   actions={cardActions}
                 />
@@ -602,6 +777,20 @@ export function KanbanBoard({
             </KanbanLane>
           );
         })}
+        {board.config.archiveLaneHidden ? null : (
+          <ArchiveLane
+            archive={board.archive}
+            keyPrefix={keyPrefix}
+            dropActive={archiveDrop}
+            {...archiveDropHandlers}
+            onOpen={openArchivedView}
+            onHide={() => {
+              commands.setArchiveLaneHidden(true);
+              setAnnouncement('Coluna Arquivados oculta.');
+              focusMarked({ attribute: 'data-board-archive', id: '' });
+            }}
+          />
+        )}
         <div className="kanban-board__add-lane">
           <InlineAddForm
             buttonLabel="Adicionar coluna"
@@ -618,7 +807,14 @@ export function KanbanBoard({
         visible={panelVisible}
         location={openLocation}
         board={board}
-        commands={commands}
+        commands={{
+          ...commands,
+          moveCardToLane: (change) => {
+            if (!blockedByLock(change)) {
+              commands.moveCardToLane(change);
+            }
+          },
+        }}
         actions={{
           onOpenCard: openDetails,
           onRequestRemove: requestCardRemoval,
@@ -636,10 +832,16 @@ export function KanbanBoard({
         visible={listDialog === 'archive'}
         archive={board.archive}
         keyPrefix={keyPrefix}
+        onView={(entryId) => {
+          const root = board.archive.find((entry) => entry.id === entryId)
+            ?.cards[0]?.card;
+          if (root) {
+            setListDialog(null);
+            openArchivedView({ entryId, cardId: root.id });
+          }
+        }}
         onRestore={(entryId) => {
-          const title = archivedTitle(entryId);
-          commands.restoreArchived(entryId);
-          setAnnouncement(`Card ${title} restaurado.`);
+          restoreEntry(entryId);
         }}
         onDelete={(entryId) => {
           const title = archivedTitle(entryId);
@@ -647,6 +849,27 @@ export function KanbanBoard({
           setAnnouncement(`Card ${title} excluído de vez.`);
         }}
         onClose={() => setListDialog(null)}
+        onClosed={() =>
+          focusMarked({ attribute: 'data-board-archive', id: '' })
+        }
+      />
+      <ArchivedCardDialog
+        visible={Boolean(openArchived?.open)}
+        view={openArchived?.view ?? null}
+        board={board}
+        onOpenCard={openArchivedView}
+        onRestore={(entryId) => {
+          if (restoreEntry(entryId)) {
+            closeArchivedView();
+          }
+        }}
+        onDelete={(entryId) => {
+          const title = archivedTitle(entryId);
+          commands.deleteArchived(entryId);
+          closeArchivedView();
+          setAnnouncement(`Card ${title} excluído de vez.`);
+        }}
+        onClose={closeArchivedView}
         onClosed={() =>
           focusMarked({ attribute: 'data-board-archive', id: '' })
         }

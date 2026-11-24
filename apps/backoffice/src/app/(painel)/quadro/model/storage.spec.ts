@@ -220,3 +220,35 @@ describe('configuração gravada', () => {
     expect(parseStoredBoard(noConfig)?.config.keyPrefix).toBe('QD');
   });
 });
+
+describe('estado das colunas gravado', () => {
+  it('devolve colunas ocultas e bloqueadas e a coluna de arquivados oculta', () => {
+    const board = createBoard({
+      lanes: [
+        { id: 'a', title: 'A', cards: [], hidden: true },
+        { id: 'b', title: 'B', cards: [], locked: true },
+      ],
+      config: { keyPrefix: 'QD', archiveLaneHidden: true },
+    });
+    const parsed = parseStoredBoard(serializeBoard(board));
+    expect(parsed?.lanes.map((lane) => [lane.hidden, lane.locked])).toEqual([
+      [true, undefined],
+      [undefined, true],
+    ]);
+    expect(parsed?.config.archiveLaneHidden).toBe(true);
+  });
+
+  it('ignora marcas que não são `true`', () => {
+    const raw = JSON.stringify({
+      version: 3,
+      board: {
+        lanes: [{ id: 'a', title: 'A', cards: [], hidden: 'sim', locked: 1 }],
+        config: { keyPrefix: 'QD', archiveLaneHidden: 'sim' },
+      },
+    });
+    const parsed = parseStoredBoard(raw);
+    expect(parsed?.lanes[0]?.hidden).toBeUndefined();
+    expect(parsed?.lanes[0]?.locked).toBeUndefined();
+    expect(parsed?.config.archiveLaneHidden).toBeUndefined();
+  });
+});

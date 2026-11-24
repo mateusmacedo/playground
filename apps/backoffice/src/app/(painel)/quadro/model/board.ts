@@ -70,6 +70,10 @@ export interface BoardLane {
   readonly cards: readonly BoardCard[];
   /** Máximo de cards esperado na coluna (o limite de WIP); passar dele só gera destaque, não bloqueia. */
   readonly wipLimit?: number;
+  /** Fora da tela até alguém mostrar de novo; os cards continuam no quadro. */
+  readonly hidden?: boolean;
+  /** Não recebe nem solta cards, e a ordem deles não muda; editar o conteúdo dos cards continua valendo. */
+  readonly locked?: boolean;
 }
 
 export type LabelColor =
@@ -105,6 +109,8 @@ export interface ArchiveEntry {
 export interface BoardConfig {
   /** Prefixo do código dos cards (`QD` em `QD-12`). */
   readonly keyPrefix: string;
+  /** A coluna automática dos arquivados está oculta. */
+  readonly archiveLaneHidden?: boolean;
 }
 
 /** O quadro inteiro: colunas, arquivados, etiquetas, configuração e o próximo número de card, que nunca volta atrás. */

@@ -33,6 +33,15 @@ export function suggestKeyPrefix(name: string): string {
   return isValidKeyPrefix(candidate) ? candidate : DEFAULT_KEY_PREFIX;
 }
 
+export function setArchiveLaneHidden(params: {
+  readonly config: BoardConfig;
+  readonly hidden: boolean;
+}): BoardConfig {
+  return Boolean(params.config.archiveLaneHidden) === params.hidden
+    ? params.config
+    : { ...params.config, archiveLaneHidden: params.hidden || undefined };
+}
+
 export function setKeyPrefix(params: {
   readonly config: BoardConfig;
   readonly keyPrefix: string;

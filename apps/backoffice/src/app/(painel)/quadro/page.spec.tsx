@@ -9,7 +9,8 @@ describe('BoardPage', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: 'Quadro' }),
     ).toBeTruthy();
-    expect(screen.getAllByRole('region')).toHaveLength(3);
+    // NOTE: as 3 colunas de exemplo e a coluna automática dos arquivados.
+    expect(screen.getAllByRole('region')).toHaveLength(4);
     expect(screen.getByRole('region', { name: 'A fazer' })).toBeTruthy();
   });
 

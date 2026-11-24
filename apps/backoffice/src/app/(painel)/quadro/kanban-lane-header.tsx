@@ -1,4 +1,4 @@
-import { cilMove, cilOptions } from '@coreui/icons';
+import { cilLockLocked, cilMove, cilOptions } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
 import {
   CDropdown,
@@ -38,6 +38,9 @@ export interface LaneHeaderActions {
   readonly onRequestRemove: (laneId: string) => void;
   /** Recolhe a coluna expandida, ou expande a recolhida. */
   readonly onToggleCollapse: (laneId: string) => void;
+  readonly onHide: (laneId: string) => void;
+  /** Bloqueia a coluna liberada, ou libera a bloqueada. */
+  readonly onToggleLock: (laneId: string) => void;
 }
 
 export interface KanbanLaneHeaderProps {
@@ -48,6 +51,8 @@ export interface KanbanLaneHeaderProps {
   readonly grabbed: boolean;
   /** A última coluna do quadro não pode ser excluída. */
   readonly canRemove: boolean;
+  /** A última coluna visível não pode ser ocultada. */
+  readonly canHide: boolean;
   readonly instructionsId: string;
   readonly actions: LaneHeaderActions;
 }
@@ -74,6 +79,7 @@ export function KanbanLaneHeader({
   titleId,
   grabbed,
   canRemove,
+  canHide,
   instructionsId,
   actions,
 }: Readonly<KanbanLaneHeaderProps>) {
@@ -150,6 +156,12 @@ export function KanbanLaneHeader({
           }}
         />
       )}
+      {lane.locked ? (
+        <span className="text-body-secondary" title="Coluna bloqueada">
+          <CIcon icon={cilLockLocked} aria-hidden="true" />
+          <span className="visually-hidden">Coluna bloqueada</span>
+        </span>
+      ) : null}
       <CardCount lane={lane} />
       <CDropdown placement="bottom-end">
         <CDropdownToggle
@@ -182,7 +194,22 @@ export function KanbanLaneHeader({
           <CDropdownItem
             as="button"
             type="button"
-            disabled={!canRemove}
+            disabled={!canHide}
+            onClick={() => actions.onHide(lane.id)}
+          >
+            Ocultar coluna
+          </CDropdownItem>
+          <CDropdownItem
+            as="button"
+            type="button"
+            onClick={() => actions.onToggleLock(lane.id)}
+          >
+            {lane.locked ? 'Liberar coluna' : 'Bloquear coluna'}
+          </CDropdownItem>
+          <CDropdownItem
+            as="button"
+            type="button"
+            disabled={!canRemove || lane.locked}
             onClick={() => actions.onRequestRemove(lane.id)}
           >
             Excluir coluna

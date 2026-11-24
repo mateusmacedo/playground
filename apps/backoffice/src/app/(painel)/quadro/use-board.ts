@@ -22,7 +22,7 @@ import {
   removeChecklistItem,
   toggleChecklistItem,
 } from './model/checklist';
-import { setKeyPrefix } from './model/config';
+import { setArchiveLaneHidden, setKeyPrefix } from './model/config';
 import { setDueDate, setDueDone } from './model/due';
 import { setParent } from './model/hierarchy';
 import {
@@ -43,6 +43,12 @@ import {
   toggleCardLabel,
   updateLabel,
 } from './model/labels';
+import {
+  respectsLocks,
+  setLaneHidden,
+  setLaneLocked,
+  showAllLanes,
+} from './model/lane-state';
 import { addLane, removeLane, renameLane, setWipLimit } from './model/lanes';
 import { parseStoredBoard, serializeBoard } from './model/storage';
 
@@ -127,6 +133,17 @@ export interface BoardCommands {
     readonly cardId: string;
     readonly itemId: string;
   }) => void;
+  /** Oculta ou mostra a coluna; a última visível não sai da tela. */
+  readonly setLaneHidden: (change: {
+    readonly laneId: string;
+    readonly hidden: boolean;
+  }) => void;
+  readonly showAllLanes: () => void;
+  readonly setLaneLocked: (change: {
+    readonly laneId: string;
+    readonly locked: boolean;
+  }) => void;
+  readonly setArchiveLaneHidden: (hidden: boolean) => void;
   /** Troca o prefixo do código dos cards; prefixo inválido não muda nada. */
   readonly setKeyPrefix: (keyPrefix: string) => void;
   /** Volta às colunas e aos cards iniciais, mantendo a configuração. */
@@ -142,10 +159,15 @@ export interface BoardState {
   readonly commands: BoardCommands;
 }
 
+/** Mesmas colunas, uma a uma: a lista pode ter sido remontada sem mudar nenhuma delas. */
+function sameLanes(a: readonly BoardLane[], b: readonly BoardLane[]): boolean {
+  return a.length === b.length && a.every((lane, index) => lane === b[index]);
+}
+
 /** Mesmo conteúdo, sem contar o histórico dos cards. */
 function sameContent(a: Board, b: Board): boolean {
   return (
-    a.lanes === b.lanes &&
+    sameLanes(a.lanes, b.lanes) &&
     a.archive === b.archive &&
     a.labels === b.labels &&
     a.nextNumber === b.nextNumber &&
@@ -160,7 +182,12 @@ function withChange(params: {
   readonly log: boolean;
 }): History<Board> {
   const { history, next, key, log } = params;
-  if (next === history.present || sameContent(next, history.present)) {
+  if (
+    next === history.present ||
+    sameContent(next, history.present) ||
+    // NOTE: a coluna bloqueada barra qualquer comando que mude os cards dela, venha de onde vier.
+    !respectsLocks({ before: history.present.lanes, after: next.lanes })
+  ) {
     return history;
   }
   const coalescing = isCoalescing({ history, key });
@@ -365,6 +392,16 @@ export function useBoard(params: {
       commit(onLanes((lanes) => toggleChecklistItem({ lanes, ...change }))),
     removeChecklistItem: (change) =>
       commit(onLanes((lanes) => removeChecklistItem({ lanes, ...change }))),
+    setLaneHidden: (change) =>
+      commit(onLanes((lanes) => setLaneHidden({ lanes, ...change }))),
+    showAllLanes: () => commit(onLanes(showAllLanes)),
+    setLaneLocked: (change) =>
+      commit(onLanes((lanes) => setLaneLocked({ lanes, ...change }))),
+    setArchiveLaneHidden: (hidden) =>
+      commit((current) => {
+        const config = setArchiveLaneHidden({ config: current.config, hidden });
+        return config === current.config ? current : { ...current, config };
+      }),
     setKeyPrefix: (keyPrefix) =>
       commit((current) => {
         const config = setKeyPrefix({ config: current.config, keyPrefix });

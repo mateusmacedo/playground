@@ -15,6 +15,8 @@ export function useCardUrl(params: {
   /** Código do card aberto no painel, ou `undefined`. */
   readonly openKey: string | undefined;
   readonly onOpen: (cardId: string) => void;
+  /** Abre o card arquivado só para leitura; sem ela, o arquivado conta como indisponível. */
+  readonly onOpenArchived?: (cardId: string) => void;
   /** O endereço pediu um card que não pode ser aberto; recebe a mensagem para a tela. */
   readonly onUnavailable: (message: string) => void;
 }): void {
@@ -30,6 +32,10 @@ export function useCardUrl(params: {
     const found = findByKey({ board: params.board, key });
     if (found.kind === 'live') {
       params.onOpen(found.cardId);
+      return;
+    }
+    if (found.kind === 'archived' && params.onOpenArchived) {
+      params.onOpenArchived(found.cardId);
       return;
     }
     params.onUnavailable(

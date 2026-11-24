@@ -30,7 +30,8 @@ test.describe('quadro kanban', () => {
       page.getByRole('heading', { level: 1, name: 'Quadro' }),
     ).toBeVisible();
     await expect(page.getByLabel('breadcrumb')).toContainText('Quadro');
-    await expect(page.getByRole('main').getByRole('region')).toHaveCount(3);
+    // NOTE: as 3 colunas de exemplo e a coluna automática dos arquivados.
+    await expect(page.getByRole('main').getByRole('region')).toHaveCount(4);
   });
 
   test('arrasta um card para a coluna vazia', async ({ page }) => {
@@ -108,9 +109,16 @@ test.describe('quadro kanban', () => {
     await handle.click();
     await page.keyboard.press('ArrowLeft');
     await page.keyboard.press('Space');
+    // NOTE: a coluna automática dos arquivados fica sempre por último.
     await expect(
       page.getByRole('main').getByRole('heading', { level: 2 }),
-    ).toHaveText(['A fazer', 'Em andamento', 'Homologação', 'Concluído']);
+    ).toHaveText([
+      'A fazer',
+      'Em andamento',
+      'Homologação',
+      'Concluído',
+      'Arquivados',
+    ]);
   });
 
   test('abre o card pelo clique, edita o título e define o card pai', async ({
@@ -363,5 +371,46 @@ test.describe('quadro kanban: busca, desfazer, arquivo e dados do card', () => {
     });
     await expect(page).toHaveURL(/quadro=board-1/);
     await expect(cardTitles(page, 'A fazer').first()).toHaveText('Item 1');
+  });
+
+  test('oculta, bloqueia e arquiva pela coluna de arquivados', async ({
+    page,
+  }) => {
+    // WHY: o arraste precisa do card e da coluna de arquivados, a última, na tela ao mesmo tempo.
+    await page.setViewportSize({ width: 1680, height: 900 });
+    await page.goto('/quadro');
+    const doing = lane(page, 'Em andamento');
+    await page
+      .getByRole('button', { name: 'Ações da coluna Em andamento' })
+      .click();
+    await doing.getByRole('button', { name: 'Bloquear coluna' }).click();
+    await expect(doing.getByText(/^Coluna bloqueada: libere/)).toBeVisible();
+    await expect(
+      doing.getByRole('button', { name: 'Adicionar card' }),
+    ).toHaveCount(0);
+
+    const archive = lane(page, 'Arquivados');
+    await page
+      .getByRole('listitem')
+      .filter({ has: page.getByRole('heading', { name: 'Item 1' }) })
+      .dragTo(archive.getByRole('heading', { name: 'Arquivados' }));
+    await expect(archive.getByText('Item 1')).toBeVisible();
+    await archive
+      .getByRole('button', { name: 'Ver Item 1, arquivado' })
+      .click();
+    const view = page.getByRole('dialog', { name: /^Card arquivado QD-1/ });
+    await expect(view.getByText('Só leitura', { exact: false })).toBeVisible();
+    await view.getByRole('button', { name: 'Fechar' }).click();
+
+    await page
+      .getByRole('button', { name: 'Ações da coluna Concluído' })
+      .click();
+    await lane(page, 'Concluído')
+      .getByRole('button', { name: 'Ocultar coluna' })
+      .click();
+    await expect(lane(page, 'Concluído')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Colunas ocultas (1)' }).click();
+    await page.getByRole('button', { name: 'Mostrar Concluído' }).click();
+    await expect(lane(page, 'Concluído')).toBeVisible();
   });
 });

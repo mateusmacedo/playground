@@ -33,6 +33,7 @@ export interface KanbanLaneProps {
   readonly index: number;
   readonly moveState: LaneMoveState;
   readonly canRemove: boolean;
+  readonly canHide: boolean;
   readonly instructionsId: string;
   readonly headerActions: LaneHeaderActions;
   readonly onDragOver: (event: DragEvent<HTMLElement>, lane: BoardLane) => void;
@@ -58,6 +59,7 @@ function laneClassName(params: {
     [moveState.dropBefore, 'kanban-lane--drop-before'],
     [moveState.dropAfter, 'kanban-lane--drop-after'],
     [moveState.collapsed, 'kanban-lane--collapsed'],
+    [Boolean(lane.locked), 'kanban-lane--locked'],
     [
       moveState.collapsed && moveState.cardDropAtEnd,
       'kanban-lane--drop-target',
@@ -75,6 +77,7 @@ export function KanbanLane({
   index,
   moveState,
   canRemove,
+  canHide,
   instructionsId,
   headerActions,
   onDragOver,
@@ -122,6 +125,7 @@ export function KanbanLane({
           titleId={titleId}
           moveState={moveState}
           canRemove={canRemove}
+          canHide={canHide}
           instructionsId={instructionsId}
           headerActions={headerActions}
           onAddCard={onAddCard}
@@ -139,6 +143,7 @@ function LaneContent({
   titleId,
   moveState,
   canRemove,
+  canHide,
   instructionsId,
   headerActions,
   onAddCard,
@@ -156,6 +161,7 @@ function LaneContent({
         titleId={titleId}
         grabbed={moveState.grabbed}
         canRemove={canRemove}
+        canHide={canHide}
         instructionsId={instructionsId}
         actions={headerActions}
       />
@@ -171,12 +177,18 @@ function LaneContent({
         )}
       </div>
       <div className="card-footer border-0 bg-transparent p-2 pt-0">
-        <InlineAddForm
-          buttonLabel="Adicionar card"
-          inputLabel={`Título do novo card em ${lane.title}`}
-          keepOpen
-          onAdd={(title) => onAddCard({ laneId: lane.id, title })}
-        />
+        {lane.locked ? (
+          <p className="small text-body-secondary text-center mb-0">
+            Coluna bloqueada: libere para mover ou criar cards.
+          </p>
+        ) : (
+          <InlineAddForm
+            buttonLabel="Adicionar card"
+            inputLabel={`Título do novo card em ${lane.title}`}
+            keepOpen
+            onAdd={(title) => onAddCard({ laneId: lane.id, title })}
+          />
+        )}
       </div>
     </>
   );

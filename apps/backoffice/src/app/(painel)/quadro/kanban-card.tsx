@@ -45,6 +45,8 @@ export interface KanbanCardProps {
   readonly grabbed: boolean;
   /** Mostra a linha de inserção acima do card. */
   readonly dropBefore: boolean;
+  /** O card está numa coluna bloqueada e não pode ser movido. */
+  readonly locked?: boolean;
   readonly instructionsId: string;
   readonly actions: KanbanCardActions;
 }
@@ -82,13 +84,14 @@ export function KanbanCard({
   dragging,
   grabbed,
   dropBefore,
+  locked = false,
   instructionsId,
   actions,
 }: Readonly<KanbanCardProps>) {
   return (
     <li
       className={cardClassName({ open, dragging, grabbed, dropBefore, dimmed })}
-      draggable
+      draggable={!locked}
       data-card-index={index}
       onDragStart={(event) => actions.onDragStart(event, card.id)}
       onDragEnd={actions.onDragEnd}
@@ -98,6 +101,7 @@ export function KanbanCard({
           type="button"
           className="btn btn-sm btn-ghost-secondary kanban-card__handle"
           aria-label={`Mover ${card.title}`}
+          disabled={locked}
           aria-describedby={instructionsId}
           aria-pressed={grabbed}
           ref={(element) => actions.registerHandle({ id: card.id, element })}
