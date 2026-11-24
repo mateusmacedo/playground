@@ -21,14 +21,13 @@ const STATUS_CLASS: Readonly<Record<DueStatus, string>> = {
   upcoming: '',
 };
 
+export interface DueFieldProps {
+  readonly card: BoardCard;
+  readonly commands: Pick<BoardCommands, 'setDueDate' | 'setDueDone'>;
+}
+
 /** Prazo do card: a data, a marca de cumprido e a situação em relação a hoje. */
-export function DueField({
-  card,
-  commands,
-}: Readonly<{
-  card: BoardCard;
-  commands: Pick<BoardCommands, 'setDueDate' | 'setDueDone'>;
-}>) {
+export function DueField({ card, commands }: Readonly<DueFieldProps>) {
   const id = useId();
   const isClient = useIsClient();
   const status = isClient ? dueStatus({ card, today: todayIso() }) : undefined;

@@ -26,6 +26,19 @@ export interface ArchivedView {
   readonly cardId: string;
 }
 
+export interface ArchivedCardDialogProps {
+  readonly visible: boolean;
+  readonly view: ArchivedView | null;
+  readonly board: Board;
+  /** Abre outro card do mesmo arquivamento. */
+  readonly onOpenCard: (view: ArchivedView) => void;
+  readonly onRestore: (entryId: string) => void;
+  readonly onDelete: (entryId: string) => void;
+  readonly onClose: () => void;
+  /** A janela terminou de fechar. */
+  readonly onClosed: () => void;
+}
+
 /**
  * Mostra um card arquivado sem deixar editar: dados, etiquetas, checklist, os cards que foram arquivados com ele e o
  * histórico. Restaurar devolve o arquivamento inteiro ao quadro.
@@ -39,18 +52,7 @@ export function ArchivedCardDialog({
   onDelete,
   onClose,
   onClosed,
-}: Readonly<{
-  visible: boolean;
-  view: ArchivedView | null;
-  board: Board;
-  /** Abre outro card do mesmo arquivamento. */
-  onOpenCard: (view: ArchivedView) => void;
-  onRestore: (entryId: string) => void;
-  onDelete: (entryId: string) => void;
-  onClose: () => void;
-  /** A janela terminou de fechar. */
-  onClosed: () => void;
-}>) {
+}: Readonly<ArchivedCardDialogProps>) {
   const titleId = useId();
   const entry: ArchiveEntry | undefined = board.archive.find(
     (candidate) => candidate.id === view?.entryId,
@@ -166,12 +168,14 @@ export function ArchivedCardDialog({
   );
 }
 
+interface ArchivedDataProps {
+  readonly entry: ArchiveEntry;
+  readonly cardId: string;
+  readonly board: Board;
+}
+
 /** Etiquetas, prazo e checklist do card arquivado, em texto. */
-function ArchivedData({
-  entry,
-  cardId,
-  board,
-}: Readonly<{ entry: ArchiveEntry; cardId: string; board: Board }>) {
+function ArchivedData({ entry, cardId, board }: Readonly<ArchivedDataProps>) {
   const card = entry.cards.find((item) => item.card.id === cardId)?.card;
   if (!card) {
     return null;

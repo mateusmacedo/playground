@@ -9,17 +9,22 @@ import { cardKey } from './card-key';
 
 export type CardPatch = Partial<Pick<BoardCard, 'title' | 'description'>>;
 
-/** Acrescenta o card no fim da coluna; título vazio ou coluna inexistente não criam nada. */
-export function addCard(params: {
+/** Dados do card que entra no quadro. */
+export interface NewCardData {
+  readonly id: string;
+  readonly title: string;
+  readonly parentId?: string;
+  readonly number?: number;
+}
+
+export interface AddCardParams {
   readonly lanes: readonly BoardLane[];
   readonly laneId: string;
-  readonly card: {
-    readonly id: string;
-    readonly title: string;
-    readonly parentId?: string;
-    readonly number?: number;
-  };
-}): readonly BoardLane[] {
+  readonly card: NewCardData;
+}
+
+/** Acrescenta o card no fim da coluna; título vazio ou coluna inexistente não criam nada. */
+export function addCard(params: AddCardParams): readonly BoardLane[] {
   const { lanes, laneId, card } = params;
   const title = card.title.trim();
   if (!title || !lanes.some((lane) => lane.id === laneId)) {
@@ -36,12 +41,14 @@ export function addCard(params: {
   );
 }
 
-/** Aplica a edição do card. Título vazio mantém o anterior, e descrição só com espaços some. */
-export function updateCard(params: {
+export interface UpdateCardParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
   readonly patch: CardPatch;
-}): readonly BoardLane[] {
+}
+
+/** Aplica a edição do card. Título vazio mantém o anterior, e descrição só com espaços some. */
+export function updateCard(params: UpdateCardParams): readonly BoardLane[] {
   const { lanes, cardId, patch } = params;
   const location = findCard({ lanes, cardId });
   if (!location) {
@@ -73,12 +80,16 @@ export function updateCard(params: {
   );
 }
 
-/** Leva o card para o fim de outra coluna; na própria coluna, não muda nada. */
-export function moveCardToLane(params: {
+export interface MoveCardToLaneParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
   readonly laneId: string;
-}): readonly BoardLane[] {
+}
+
+/** Leva o card para o fim de outra coluna; na própria coluna, não muda nada. */
+export function moveCardToLane(
+  params: MoveCardToLaneParams,
+): readonly BoardLane[] {
   const { lanes, cardId, laneId } = params;
   const location = findCard({ lanes, cardId });
   if (!location || location.lane.id === laneId) {
@@ -92,11 +103,13 @@ export function moveCardToLane(params: {
   });
 }
 
-/** Exclui o card. Os filhos dele sobem um nível: passam para o pai do card excluído ou ficam sem pai. */
-export function removeCard(params: {
+export interface RemoveCardParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
-}): readonly BoardLane[] {
+}
+
+/** Exclui o card. Os filhos dele sobem um nível: passam para o pai do card excluído ou ficam sem pai. */
+export function removeCard(params: RemoveCardParams): readonly BoardLane[] {
   const { lanes, cardId } = params;
   const location = findCard({ lanes, cardId });
   if (!location) {
@@ -113,16 +126,18 @@ export function removeCard(params: {
   }));
 }
 
-/**
- * Duplica o card logo abaixo do original, com o título marcado como cópia, os mesmos dados e o mesmo pai, mas sem os
- * filhos nem o histórico, que começa registrando de onde a cópia veio.
- */
-export function duplicateCard(params: {
+export interface DuplicateCardParams {
   readonly board: Board;
   readonly cardId: string;
   readonly newId: string;
   readonly at: string;
-}): Board {
+}
+
+/**
+ * Duplica o card logo abaixo do original, com o título marcado como cópia, os mesmos dados e o mesmo pai, mas sem os
+ * filhos nem o histórico, que começa registrando de onde a cópia veio.
+ */
+export function duplicateCard(params: DuplicateCardParams): Board {
   const { board, cardId, newId, at } = params;
   const location = findCard({ lanes: board.lanes, cardId });
   if (!location) {

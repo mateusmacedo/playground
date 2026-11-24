@@ -6,15 +6,17 @@ import {
 } from './board';
 import { descendantIds } from './hierarchy';
 
+export interface ArchiveCardParams {
+  readonly board: Board;
+  readonly cardId: string;
+  readonly at: string;
+}
+
 /**
  * Arquiva o card junto com os descendentes: todos saem das colunas e voltam juntos, então a hierarquia entre eles não
  * se perde. Card inexistente devolve o próprio `board`.
  */
-export function archiveCard(params: {
-  readonly board: Board;
-  readonly cardId: string;
-  readonly at: string;
-}): Board {
+export function archiveCard(params: ArchiveCardParams): Board {
   const { board, cardId, at } = params;
   const ids = new Set([
     cardId,
@@ -44,14 +46,16 @@ export function archiveCard(params: {
   };
 }
 
+export interface RestoreArchivedParams {
+  readonly board: Board;
+  readonly entryId: string;
+}
+
 /**
  * Devolve o arquivamento ao quadro, cada card no fim da coluna de onde saiu (ou da primeira, se ela sumiu). O pai que
  * não existe mais e as etiquetas que saíram do catálogo são soltos.
  */
-export function restoreArchived(params: {
-  readonly board: Board;
-  readonly entryId: string;
-}): Board {
+export function restoreArchived(params: RestoreArchivedParams): Board {
   const { board, entryId } = params;
   const entry = board.archive.find((candidate) => candidate.id === entryId);
   const fallback = board.lanes[0];
@@ -90,11 +94,13 @@ export function restoreArchived(params: {
   };
 }
 
-/** Exclui de vez o arquivamento e todos os cards dele. */
-export function deleteArchived(params: {
+export interface DeleteArchivedParams {
   readonly board: Board;
   readonly entryId: string;
-}): Board {
+}
+
+/** Exclui de vez o arquivamento e todos os cards dele. */
+export function deleteArchived(params: DeleteArchivedParams): Board {
   const { board, entryId } = params;
   const archive = board.archive.filter((entry) => entry.id !== entryId);
   return archive.length === board.archive.length

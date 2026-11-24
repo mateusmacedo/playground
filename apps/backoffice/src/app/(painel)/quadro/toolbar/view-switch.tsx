@@ -3,14 +3,13 @@ import { useId } from 'react';
 
 import type { BoardView } from '../use-board-view';
 
+export interface ViewSwitchProps {
+  readonly view: BoardView;
+  readonly onChange: (change: Partial<BoardView>) => void;
+}
+
 /** Troca entre o quadro e a lista, e liga as linhas por card pai no quadro. */
-export function ViewSwitch({
-  view,
-  onChange,
-}: Readonly<{
-  view: BoardView;
-  onChange: (change: Partial<BoardView>) => void;
-}>) {
+export function ViewSwitch({ view, onChange }: Readonly<ViewSwitchProps>) {
   const groupedId = useId();
   return (
     <div className="d-flex flex-wrap align-items-center gap-2">

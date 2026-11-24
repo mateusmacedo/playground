@@ -26,21 +26,37 @@ function placements(board: Board): ReadonlyMap<string, Placement> {
   return map;
 }
 
-function labelNames(params: {
+interface LabelNamesParams {
   readonly ids: readonly string[];
   readonly labels: readonly BoardLabel[];
-}): readonly string[] {
+}
+
+function labelNames(params: LabelNamesParams): readonly string[] {
   return params.labels
     .filter((label) => params.ids.includes(label.id))
     .map((label) => label.name);
 }
 
-function labelChange(params: {
+/** O quadro antes e depois de uma mudança. */
+interface BoardPair {
+  readonly before: Board;
+  readonly after: Board;
+}
+
+/** Onde cada card estava antes e depois da mudança, pelo id. */
+interface PlacementsPair {
+  readonly before: ReadonlyMap<string, Placement>;
+  readonly after: ReadonlyMap<string, Placement>;
+}
+
+interface LabelChangeParams {
   readonly before: BoardCard;
   readonly after: BoardCard;
-  readonly boards: { readonly before: Board; readonly after: Board };
+  readonly boards: BoardPair;
   readonly at: string;
-}): CardActivity | undefined {
+}
+
+function labelChange(params: LabelChangeParams): CardActivity | undefined {
   const old = params.before.labelIds ?? [];
   const current = params.after.labelIds ?? [];
   const added = current.filter((id) => !old.includes(id));
@@ -56,11 +72,13 @@ function labelChange(params: {
   };
 }
 
-function placeChange(params: {
+interface PlaceChangeParams {
   readonly before: Placement;
   readonly after: Placement;
   readonly at: string;
-}): CardActivity | undefined {
+}
+
+function placeChange(params: PlaceChangeParams): CardActivity | undefined {
   const { before, after, at } = params;
   if (before.laneTitle === after.laneTitle) {
     return undefined;
@@ -74,12 +92,16 @@ function placeChange(params: {
   return { at, kind: 'moved', from: before.laneTitle, to: after.laneTitle };
 }
 
-/** Anexo que entrou ou saiu do card; um por vez, como a tela faz. */
-function attachmentChange(params: {
+interface AttachmentChangeParams {
   readonly before: BoardCard;
   readonly after: BoardCard;
   readonly at: string;
-}): CardActivity | undefined {
+}
+
+/** Anexo que entrou ou saiu do card; um por vez, como a tela faz. */
+function attachmentChange(
+  params: AttachmentChangeParams,
+): CardActivity | undefined {
   const { at } = params;
   const before = params.before.attachments ?? [];
   const after = params.after.attachments ?? [];
@@ -96,17 +118,16 @@ function attachmentChange(params: {
   return { at, kind: 'attachment', added: added?.name, removed: removed?.name };
 }
 
-/** O que mudou num card que existia antes. */
-function changesOf(params: {
+interface ChangesOfParams {
   readonly before: Placement;
   readonly after: Placement;
-  readonly titles: {
-    readonly before: ReadonlyMap<string, Placement>;
-    readonly after: ReadonlyMap<string, Placement>;
-  };
-  readonly boards: { readonly before: Board; readonly after: Board };
+  readonly titles: PlacementsPair;
+  readonly boards: BoardPair;
   readonly at: string;
-}): CardActivity[] {
+}
+
+/** O que mudou num card que existia antes. */
+function changesOf(params: ChangesOfParams): CardActivity[] {
   const { at, titles, boards } = params;
   const before = params.before.card;
   const after = params.after.card;
@@ -149,11 +170,15 @@ function changesOf(params: {
   return changes.filter((change) => change !== undefined);
 }
 
+/** Dois registros seguidos do histórico: o último gravado e o que chega. */
+interface EntryPair {
+  readonly last: CardActivity;
+  readonly next: CardActivity;
+}
+
 /** Junta dois registros seguidos do mesmo tipo; `null` quando a junção não deixa mudança nenhuma. */
-function mergeEntries(
-  last: CardActivity,
-  next: CardActivity,
-): CardActivity | null {
+function mergeEntries(params: EntryPair): CardActivity | null {
+  const { last, next } = params;
   if (
     (last.kind === 'moved' && next.kind === 'moved') ||
     (last.kind === 'renamed' && next.kind === 'renamed')
@@ -166,20 +191,24 @@ function mergeEntries(
   return next;
 }
 
+export interface AppendActivityParams {
+  readonly list: readonly CardActivity[];
+  readonly entries: readonly CardActivity[];
+  readonly merge: boolean;
+}
+
 /**
  * Acrescenta os registros ao histórico. Com `merge`, um registro do mesmo tipo do último o substitui, guardando o
  * ponto de partida (o título de antes da digitação, a coluna de antes do movimento).
  */
-export function appendActivity(params: {
-  readonly list: readonly CardActivity[];
-  readonly entries: readonly CardActivity[];
-  readonly merge: boolean;
-}): readonly CardActivity[] {
+export function appendActivity(
+  params: AppendActivityParams,
+): readonly CardActivity[] {
   const list = [...params.list];
   for (const entry of params.entries) {
     const last = list.at(-1);
     if (params.merge && last?.kind === entry.kind) {
-      const merged = mergeEntries(last, entry);
+      const merged = mergeEntries({ last, next: entry });
       list.pop();
       if (merged) {
         list.push(merged);
@@ -191,16 +220,18 @@ export function appendActivity(params: {
   return list.slice(-ACTIVITY_LIMIT);
 }
 
-/**
- * Registra no histórico de cada card o que mudou de `before` para `after`. Card novo ganha "criado", a menos que já
- * chegue com histórico (a cópia de uma duplicação); card que sumiu de vez não registra nada.
- */
-export function withActivity(params: {
+export interface WithActivityParams {
   readonly before: Board;
   readonly after: Board;
   readonly at: string;
   readonly merge: boolean;
-}): Board {
+}
+
+/**
+ * Registra no histórico de cada card o que mudou de `before` para `after`. Card novo ganha "criado", a menos que já
+ * chegue com histórico (a cópia de uma duplicação); card que sumiu de vez não registra nada.
+ */
+export function withActivity(params: WithActivityParams): Board {
   const { before, after, at, merge } = params;
   if (before === after) {
     return after;
@@ -271,7 +302,9 @@ export function withActivity(params: {
   };
 }
 
-function labelText(entry: Extract<CardActivity, { kind: 'labels' }>): string {
+type LabelsActivity = Extract<CardActivity, { kind: 'labels' }>;
+
+function labelText(entry: LabelsActivity): string {
   const parts: string[] = [];
   if (entry.added.length > 0) {
     parts.push(
@@ -286,7 +319,9 @@ function labelText(entry: Extract<CardActivity, { kind: 'labels' }>): string {
   return `${parts.join('. ')}.`;
 }
 
-function parentText(entry: Extract<CardActivity, { kind: 'parent' }>): string {
+type ParentActivity = Extract<CardActivity, { kind: 'parent' }>;
+
+function parentText(entry: ParentActivity): string {
   if (entry.from && entry.to) {
     return `Card pai trocado de ${entry.from} para ${entry.to}.`;
   }

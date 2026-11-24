@@ -1,5 +1,4 @@
 import {
-  createEvent,
   fireEvent,
   render,
   screen,
@@ -7,6 +6,7 @@ import {
   within,
 } from '@testing-library/react';
 
+import { fakeDataTransfer, fireDrag } from './drag-test-utils';
 import { KanbanBoard } from './kanban-board';
 import type { BoardLane } from './model/board';
 
@@ -50,26 +50,6 @@ function openLaneMenu(laneName: string, item: string) {
     screen.getByRole('button', { name: `Ações da coluna ${laneName}` }),
   );
   fireEvent.click(within(lane(laneName)).getByRole('button', { name: item }));
-}
-
-/** Arraste com `dataTransfer` falso; `clientX` entra por propriedade porque o jsdom ignora o campo no init. */
-function fireDrag(
-  kind: 'dragStart' | 'dragOver' | 'dragLeave' | 'drop' | 'dragEnd',
-  element: Element,
-  extra: { readonly clientX?: number; readonly relatedTarget?: Node } = {},
-) {
-  const dataTransfer = {
-    setData: vi.fn(),
-    setDragImage: vi.fn(),
-    effectAllowed: 'none',
-    dropEffect: 'none',
-  };
-  const event = createEvent[kind](element, { dataTransfer });
-  for (const [key, value] of Object.entries(extra)) {
-    Object.defineProperty(event, key, { value });
-  }
-  fireEvent(element, event);
-  return dataTransfer;
 }
 
 /** Cada coluna ocupa 100px de largura, uma ao lado da outra. */
@@ -199,34 +179,43 @@ describe('KanbanBoard: colunas', () => {
     });
     const board = lane('A fazer').parentElement as HTMLElement;
 
-    const transfer = fireDrag('dragStart', handle);
+    const transfer = fakeDataTransfer();
+    fireDrag({ kind: 'dragStart', element: handle, dataTransfer: transfer });
     expect(transfer.setDragImage).toHaveBeenCalledWith(lane('A fazer'), 24, 24);
     expect(lane('A fazer').classList.contains('kanban-lane--dragging')).toBe(
       true,
     );
 
-    fireDrag('dragOver', lane('A fazer'), { clientX: 10 });
+    fireDrag({ kind: 'dragOver', element: lane('A fazer'), clientX: 10 });
     expect(document.querySelector('.kanban-lane--drop-before')).toBeNull();
 
-    fireDrag('dragOver', lane('Concluído'), { clientX: 280 });
+    fireDrag({ kind: 'dragOver', element: lane('Concluído'), clientX: 280 });
     expect(
       lane('Concluído').classList.contains('kanban-lane--drop-after'),
     ).toBe(true);
 
-    fireDrag('dragLeave', board, { relatedTarget: lane('Concluído') });
+    fireDrag({
+      kind: 'dragLeave',
+      element: board,
+      relatedTarget: lane('Concluído'),
+    });
     expect(
       lane('Concluído').classList.contains('kanban-lane--drop-after'),
     ).toBe(true);
-    fireDrag('dragLeave', board, { relatedTarget: document.body });
+    fireDrag({
+      kind: 'dragLeave',
+      element: board,
+      relatedTarget: document.body,
+    });
     expect(
       lane('Concluído').classList.contains('kanban-lane--drop-after'),
     ).toBe(false);
 
-    fireDrag('dragOver', lane('Concluído'), { clientX: 220 });
+    fireDrag({ kind: 'dragOver', element: lane('Concluído'), clientX: 220 });
     expect(
       lane('Concluído').classList.contains('kanban-lane--drop-before'),
     ).toBe(true);
-    fireDrag('drop', lane('Concluído'), { clientX: 220 });
+    fireDrag({ kind: 'drop', element: lane('Concluído'), clientX: 220 });
 
     expect(laneNames()).toEqual(['Em andamento', 'A fazer', 'Concluído']);
     expect(announcement()).toBe('Coluna A fazer solta: posição 2 de 3.');
@@ -240,27 +229,31 @@ describe('KanbanBoard: colunas', () => {
     layOutLanes();
     const board = lane('A fazer').parentElement as HTMLElement;
 
-    fireDrag('dragOver', board, { clientX: 150 });
-    fireDrag('drop', board, { clientX: 150 });
+    fireDrag({ kind: 'dragOver', element: board, clientX: 150 });
+    fireDrag({ kind: 'drop', element: board, clientX: 150 });
     expect(laneNames()).toEqual(['A fazer', 'Em andamento', 'Concluído']);
 
-    fireDrag(
-      'dragStart',
-      screen.getByRole('button', { name: 'Mover a coluna Em andamento' }),
-    );
-    fireDrag('drop', board, { clientX: 150 });
-    expect(laneNames()).toEqual(['A fazer', 'Em andamento', 'Concluído']);
-
-    fireDrag(
-      'dragStart',
-      screen.getByRole('button', { name: 'Mover a coluna Em andamento' }),
-    );
-    fireDrag(
-      'dragEnd',
-      screen.getByRole('button', {
+    fireDrag({
+      kind: 'dragStart',
+      element: screen.getByRole('button', {
         name: 'Mover a coluna Em andamento',
       }),
-    );
+    });
+    fireDrag({ kind: 'drop', element: board, clientX: 150 });
+    expect(laneNames()).toEqual(['A fazer', 'Em andamento', 'Concluído']);
+
+    fireDrag({
+      kind: 'dragStart',
+      element: screen.getByRole('button', {
+        name: 'Mover a coluna Em andamento',
+      }),
+    });
+    fireDrag({
+      kind: 'dragEnd',
+      element: screen.getByRole('button', {
+        name: 'Mover a coluna Em andamento',
+      }),
+    });
     expect(
       lane('Em andamento').classList.contains('kanban-lane--dragging'),
     ).toBe(false);

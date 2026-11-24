@@ -35,18 +35,20 @@ export interface CardDetailsProps {
   readonly actions: CardDetailsActions;
 }
 
+interface TitleFieldProps {
+  readonly id: string;
+  readonly cardId: string;
+  readonly title: string;
+  readonly commands: Pick<BoardCommands, 'updateCard'>;
+}
+
 /** Título do card com rascunho: o vazio não chega ao quadro, e uma mudança de fora (o desfazer) substitui o rascunho. */
 function TitleField({
   id,
   cardId,
   title,
   commands,
-}: Readonly<{
-  id: string;
-  cardId: string;
-  title: string;
-  commands: Pick<BoardCommands, 'updateCard'>;
-}>) {
+}: Readonly<TitleFieldProps>) {
   const [draft, setDraft] = useState(title);
   const [seen, setSeen] = useState(title);
   if (seen !== title) {

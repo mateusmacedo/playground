@@ -1,12 +1,12 @@
 import {
   act,
-  createEvent,
   fireEvent,
   render,
   screen,
   waitFor,
   within,
 } from '@testing-library/react';
+import { fireDrag } from './drag-test-utils';
 import { KanbanBoard } from './kanban-board';
 import type { BoardLane } from './model/board';
 
@@ -22,8 +22,6 @@ const lanes: readonly BoardLane[] = [
   { id: 'doing', title: 'Em andamento', cards: [{ id: 'c', title: 'Item C' }] },
   { id: 'done', title: 'Concluído', cards: [] },
 ];
-
-type DragKind = 'dragStart' | 'dragOver' | 'dragLeave' | 'drop' | 'dragEnd';
 
 function lane(name: string) {
   return screen.getByRole('region', { name });
@@ -55,27 +53,6 @@ function handle(title: string) {
   return screen.getByRole('button', { name: `Mover ${title}` });
 }
 
-/**
- * Dispara um evento de arraste com `dataTransfer` falso. `clientY` e `relatedTarget` entram por propriedade porque o
- * jsdom não tem `DragEvent` e ignora esses campos no init de um evento genérico.
- */
-function fireDrag(
-  kind: DragKind,
-  element: Element,
-  extra: { readonly clientY?: number; readonly relatedTarget?: Node } = {},
-): boolean {
-  const dataTransfer = {
-    setData: vi.fn(),
-    effectAllowed: 'none',
-    dropEffect: 'none',
-  };
-  const event = createEvent[kind](element, { dataTransfer });
-  for (const [key, value] of Object.entries(extra)) {
-    Object.defineProperty(event, key, { value });
-  }
-  return fireEvent(element, event);
-}
-
 describe('KanbanBoard', () => {
   beforeEach(() => {
     render(<KanbanBoard initialLanes={lanes} />);
@@ -100,10 +77,10 @@ describe('KanbanBoard', () => {
   });
 
   it('leva o card para o fim de outra coluna ao arrastar e soltar', () => {
-    fireDrag('dragStart', cardItem('Item A'));
+    fireDrag({ kind: 'dragStart', element: cardItem('Item A') });
     const target = within(lane('Em andamento')).getByRole('list');
-    fireDrag('dragOver', target);
-    fireDrag('drop', target);
+    fireDrag({ kind: 'dragOver', element: target });
+    fireDrag({ kind: 'drop', element: target });
 
     expect(cardTitles('A fazer')).toEqual(['Item B']);
     expect(cardTitles('Em andamento')).toEqual(['Item C', 'Item A']);
@@ -113,36 +90,39 @@ describe('KanbanBoard', () => {
   });
 
   it('aceita o drop na coluna vazia', () => {
-    fireDrag('dragStart', cardItem('Item C'));
-    fireDrag('drop', screen.getByText('Nenhum card nesta coluna.'));
+    fireDrag({ kind: 'dragStart', element: cardItem('Item C') });
+    fireDrag({
+      kind: 'drop',
+      element: screen.getByText('Nenhum card nesta coluna.'),
+    });
 
     expect(cardTitles('Concluído')).toEqual(['Item C']);
     expect(laneCount('Em andamento')).toBe('0 cards');
   });
 
   it('reordena na mesma coluna pela metade do card sob o ponteiro', () => {
-    fireDrag('dragStart', cardItem('Item B'));
-    fireDrag('dragOver', cardItem('Item A'), { clientY: -1 });
+    fireDrag({ kind: 'dragStart', element: cardItem('Item B') });
+    fireDrag({ kind: 'dragOver', element: cardItem('Item A'), clientY: -1 });
 
     expect(cardItem('Item A').className).toContain('kanban-card--drop-before');
 
-    fireDrag('drop', cardItem('Item A'), { clientY: -1 });
+    fireDrag({ kind: 'drop', element: cardItem('Item A'), clientY: -1 });
 
     expect(cardTitles('A fazer')).toEqual(['Item B', 'Item A']);
   });
 
   it('desenha a linha de inserção só onde o drop muda o quadro', () => {
-    fireDrag('dragStart', cardItem('Item A'));
+    fireDrag({ kind: 'dragStart', element: cardItem('Item A') });
 
     expect(cardItem('Item A').className).toContain('kanban-card--dragging');
 
-    fireDrag('dragOver', cardItem('Item A'), { clientY: 1 });
-    fireDrag('dragOver', cardItem('Item A'), { clientY: 1 });
+    fireDrag({ kind: 'dragOver', element: cardItem('Item A'), clientY: 1 });
+    fireDrag({ kind: 'dragOver', element: cardItem('Item A'), clientY: 1 });
 
     expect(document.querySelector('.kanban-card--drop-before')).toBeNull();
     expect(laneBody('A fazer').className).not.toContain('--drop-end');
 
-    fireDrag('dragOver', cardItem('Item B'), { clientY: 1 });
+    fireDrag({ kind: 'dragOver', element: cardItem('Item B'), clientY: 1 });
 
     expect(laneBody('A fazer').className).toContain(
       'kanban-lane__body--drop-end',
@@ -150,34 +130,40 @@ describe('KanbanBoard', () => {
   });
 
   it('apaga a linha ao sair da coluna e encerra o arraste no dragend', () => {
-    fireDrag('dragStart', cardItem('Item A'));
-    fireDrag('dragOver', cardItem('Item B'), { clientY: 1 });
-    fireDrag('dragLeave', laneBody('A fazer'), {
+    fireDrag({ kind: 'dragStart', element: cardItem('Item A') });
+    fireDrag({ kind: 'dragOver', element: cardItem('Item B'), clientY: 1 });
+    fireDrag({
+      kind: 'dragLeave',
+      element: laneBody('A fazer'),
       relatedTarget: cardItem('Item B'),
     });
 
     expect(laneBody('A fazer').className).toContain('--drop-end');
 
-    fireDrag('dragLeave', laneBody('Em andamento'), {
+    fireDrag({
+      kind: 'dragLeave',
+      element: laneBody('Em andamento'),
       relatedTarget: document.body,
     });
 
     expect(laneBody('A fazer').className).toContain('--drop-end');
 
-    fireDrag('dragLeave', laneBody('A fazer'), {
+    fireDrag({
+      kind: 'dragLeave',
+      element: laneBody('A fazer'),
       relatedTarget: document.body,
     });
 
     expect(laneBody('A fazer').className).not.toContain('--drop-end');
 
-    fireDrag('dragEnd', cardItem('Item A'));
+    fireDrag({ kind: 'dragEnd', element: cardItem('Item A') });
 
     expect(cardItem('Item A').className).not.toContain('--dragging');
   });
 
   it('não muda o quadro quando o card é solto no mesmo lugar', () => {
-    fireDrag('dragStart', cardItem('Item A'));
-    fireDrag('drop', cardItem('Item A'), { clientY: -1 });
+    fireDrag({ kind: 'dragStart', element: cardItem('Item A') });
+    fireDrag({ kind: 'drop', element: cardItem('Item A'), clientY: -1 });
 
     expect(cardTitles('A fazer')).toEqual(['Item A', 'Item B']);
     expect(cardItem('Item A').className).not.toContain('--dragging');
@@ -186,8 +172,8 @@ describe('KanbanBoard', () => {
   it('recusa arraste que não começou num card, como o de um arquivo', () => {
     const target = within(lane('Em andamento')).getByRole('list');
 
-    expect(fireDrag('dragOver', target)).toBe(true);
-    expect(fireDrag('drop', target)).toBe(true);
+    expect(fireDrag({ kind: 'dragOver', element: target })).toBe(true);
+    expect(fireDrag({ kind: 'drop', element: target })).toBe(true);
     expect(cardTitles('Em andamento')).toEqual(['Item C']);
   });
 
@@ -284,7 +270,7 @@ describe('KanbanBoard', () => {
 
   it('solta o card pego pelo teclado quando um arraste começa', () => {
     fireEvent.click(handle('Item A'));
-    fireDrag('dragStart', cardItem('Item B'));
+    fireDrag({ kind: 'dragStart', element: cardItem('Item B') });
 
     expect(handle('Item A').getAttribute('aria-pressed')).toBe('false');
   });

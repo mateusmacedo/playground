@@ -1,5 +1,4 @@
 import {
-  createEvent,
   fireEvent,
   render,
   screen,
@@ -7,6 +6,7 @@ import {
   within,
 } from '@testing-library/react';
 
+import { fireDrag } from './drag-test-utils';
 import { KanbanBoard } from './kanban-board';
 import type { BoardLane } from './model/board';
 
@@ -67,23 +67,6 @@ function laneMenu(laneName: string, item: string): HTMLButtonElement {
   return within(lane(laneName)).getByRole('button', {
     name: item,
   }) as HTMLButtonElement;
-}
-
-function fireDrag(
-  kind: 'dragStart' | 'dragOver' | 'dragLeave' | 'drop' | 'dragEnd',
-  element: Element,
-  extra: { readonly relatedTarget?: Node | null } = {},
-): boolean {
-  const dataTransfer = {
-    setData: vi.fn(),
-    effectAllowed: 'none',
-    dropEffect: 'none',
-  };
-  const event = createEvent[kind](element, { dataTransfer });
-  for (const [key, value] of Object.entries(extra)) {
-    Object.defineProperty(event, key, { value });
-  }
-  return fireEvent(element, event);
 }
 
 describe('KanbanBoard: colunas ocultas e bloqueadas', () => {
@@ -153,9 +136,11 @@ describe('KanbanBoard: colunas ocultas e bloqueadas', () => {
     fireEvent.click(handle);
     expect(cardTitles('Em andamento')).toEqual(['Item C']);
 
-    fireDrag('dragStart', cardItem('Item A'));
-    expect(fireDrag('dragOver', lane('Em andamento'))).toBe(true);
-    fireDrag('dragEnd', cardItem('Item A'));
+    fireDrag({ kind: 'dragStart', element: cardItem('Item A') });
+    expect(fireDrag({ kind: 'dragOver', element: lane('Em andamento') })).toBe(
+      true,
+    );
+    fireDrag({ kind: 'dragEnd', element: cardItem('Item A') });
 
     openCard('Item C');
     fireEvent.change(within(panel()).getByLabelText('Coluna'), {
@@ -214,19 +199,19 @@ describe('KanbanBoard: coluna de arquivados', () => {
     render(<KanbanBoard initialLanes={lanes} />);
     const archive = lane('Arquivados');
 
-    fireDrag('dragStart', cardItem('Item C'));
-    expect(fireDrag('dragOver', archive)).toBe(false);
+    fireDrag({ kind: 'dragStart', element: cardItem('Item C') });
+    expect(fireDrag({ kind: 'dragOver', element: archive })).toBe(false);
     expect(archive.className).toContain('kanban-lane--drop-target');
-    fireDrag('dragLeave', archive, { relatedTarget: null });
+    fireDrag({ kind: 'dragLeave', element: archive, relatedTarget: null });
     expect(archive.className).not.toContain('kanban-lane--drop-target');
-    fireDrag('dragOver', archive);
-    fireDrag('drop', archive);
+    fireDrag({ kind: 'dragOver', element: archive });
+    fireDrag({ kind: 'drop', element: archive });
 
     expect(cardTitles('Em andamento')).toEqual([]);
     expect(within(archive).getByText('Item C')).toBeTruthy();
     expect(announcement()).toBe('Card Item C arquivado.');
-    expect(fireDrag('dragOver', archive)).toBe(true);
-    fireDrag('drop', archive);
+    expect(fireDrag({ kind: 'dragOver', element: archive })).toBe(true);
+    fireDrag({ kind: 'drop', element: archive });
   });
 
   it('não restaura nem arquiva por arraste numa coluna bloqueada', async () => {

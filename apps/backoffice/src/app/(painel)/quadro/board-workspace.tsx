@@ -36,6 +36,12 @@ function readRequestedBoard(): string | null {
   return new URLSearchParams(window.location.search).get(BOARD_PARAM);
 }
 
+export interface BoardWorkspaceProps {
+  /** Conteúdo inicial do quadro principal; os quadros novos começam com colunas vazias. */
+  readonly sampleLanes: readonly BoardLane[];
+  readonly sampleLabels?: readonly BoardLabel[];
+}
+
 /**
  * Vários quadros, cada um com o próprio conteúdo e configuração: escolher, criar e excluir. O quadro aberto vai para o
  * endereço (`?quadro=<id>`), para o link copiado de um card abrir no quadro certo.
@@ -43,11 +49,7 @@ function readRequestedBoard(): string | null {
 export function BoardWorkspace({
   sampleLanes,
   sampleLabels,
-}: Readonly<{
-  /** Conteúdo inicial do quadro principal; os quadros novos começam com colunas vazias. */
-  sampleLanes: readonly BoardLane[];
-  sampleLabels?: readonly BoardLabel[];
-}>) {
+}: Readonly<BoardWorkspaceProps>) {
   const author = useOptionalSession()?.user?.displayName;
   const { boards, activeId, loaded, commands } = useWorkspace({
     readRequestedId: readRequestedBoard,

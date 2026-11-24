@@ -23,11 +23,13 @@ type LabelCommands = Pick<
   'createLabel' | 'updateLabel' | 'removeLabel'
 >;
 
+interface LabelRowProps {
+  readonly label: BoardLabel;
+  readonly commands: LabelCommands;
+}
+
 /** Uma etiqueta do catálogo; o nome tem rascunho para o campo poder ficar vazio enquanto a pessoa digita. */
-function LabelRow({
-  label,
-  commands,
-}: Readonly<{ label: BoardLabel; commands: LabelCommands }>) {
+function LabelRow({ label, commands }: Readonly<LabelRowProps>) {
   const [draft, setDraft] = useState(label.name);
   const [seen, setSeen] = useState(label.name);
   if (seen !== label.name) {
@@ -85,6 +87,15 @@ function LabelRow({
   );
 }
 
+export interface LabelsDialogProps {
+  readonly visible: boolean;
+  readonly labels: readonly BoardLabel[];
+  readonly commands: LabelCommands;
+  readonly onClose: () => void;
+  /** A janela terminou de fechar. */
+  readonly onClosed: () => void;
+}
+
 /** Catálogo de etiquetas do quadro: renomear, trocar a cor, excluir (sai de todos os cards) e criar. */
 export function LabelsDialog({
   visible,
@@ -92,14 +103,7 @@ export function LabelsDialog({
   commands,
   onClose,
   onClosed,
-}: Readonly<{
-  visible: boolean;
-  labels: readonly BoardLabel[];
-  commands: LabelCommands;
-  onClose: () => void;
-  /** A janela terminou de fechar. */
-  onClosed: () => void;
-}>) {
+}: Readonly<LabelsDialogProps>) {
   const titleId = useId();
   return (
     <CModal

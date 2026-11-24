@@ -9,15 +9,17 @@ function isEditable(target: EventTarget | null): boolean {
   );
 }
 
+export interface BoardShortcutHandlers {
+  readonly onUndo: () => void;
+  readonly onRedo: () => void;
+  readonly onFocusSearch: () => void;
+}
+
 /**
  * Atalhos do quadro: Ctrl/Cmd+Z desfaz, Ctrl/Cmd+Shift+Z e Ctrl+Y refazem e `/` vai para a busca. Ficam de fora os
  * campos de texto e as janelas abertas.
  */
-export function useBoardShortcuts(handlers: {
-  readonly onUndo: () => void;
-  readonly onRedo: () => void;
-  readonly onFocusSearch: () => void;
-}): void {
+export function useBoardShortcuts(handlers: BoardShortcutHandlers): void {
   const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
     const { target } = event;
     if (

@@ -38,12 +38,16 @@ export function formatBytes(bytes: number): string {
     : `${sizeFormat.format(bytes / (1024 * 1024))} MB`;
 }
 
-/** Acrescenta o anexo no fim; nome vazio, link inválido ou arquivo acima do limite não mudam nada. */
-export function addAttachment(params: {
+export interface AddAttachmentParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
   readonly attachment: Omit<CardAttachment, 'id'>;
-}): readonly BoardLane[] {
+}
+
+/** Acrescenta o anexo no fim; nome vazio, link inválido ou arquivo acima do limite não mudam nada. */
+export function addAttachment(
+  params: AddAttachmentParams,
+): readonly BoardLane[] {
   const name = params.attachment.name.trim();
   const { url, size } = params.attachment;
   const file = url.startsWith('data:');
@@ -75,11 +79,15 @@ export function addAttachment(params: {
   });
 }
 
-export function removeAttachment(params: {
+export interface RemoveAttachmentParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
   readonly attachmentId: string;
-}): readonly BoardLane[] {
+}
+
+export function removeAttachment(
+  params: RemoveAttachmentParams,
+): readonly BoardLane[] {
   return updateCardIn({
     lanes: params.lanes,
     cardId: params.cardId,

@@ -1,14 +1,16 @@
 import type { BoardLane } from './board';
 
+export interface NextIdParams {
+  readonly prefix: string;
+  readonly taken: Iterable<string>;
+}
+
 /**
  * Próximo id no formato `<prefixo>-<número>`, acima do maior número em uso com o mesmo prefixo.
  *
  * WHY: o `crypto.randomUUID` só existe em contexto seguro, e o painel também é aberto por HTTP pela rede local.
  */
-export function nextId(params: {
-  readonly prefix: string;
-  readonly taken: Iterable<string>;
-}): string {
+export function nextId(params: NextIdParams): string {
   const { prefix, taken } = params;
   let highest = 0;
   for (const id of taken) {

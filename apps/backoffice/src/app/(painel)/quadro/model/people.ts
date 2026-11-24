@@ -3,11 +3,13 @@ import { updateCardIn } from './board';
 import { nextId } from './ids';
 import { normalizeText } from './search';
 
-/** Nome sem espaços nas pontas; `null` quando vazio ou repetido (sem contar maiúsculas e acentos). */
-export function validPersonName(params: {
+export interface ValidPersonNameParams {
   readonly people: readonly BoardPerson[];
   readonly name: string;
-}): string | null {
+}
+
+/** Nome sem espaços nas pontas; `null` quando vazio ou repetido (sem contar maiúsculas e acentos). */
+export function validPersonName(params: ValidPersonNameParams): string | null {
   const name = params.name.trim();
   const taken = params.people.some(
     (person) => normalizeText(person.name) === normalizeText(name),
@@ -15,11 +17,13 @@ export function validPersonName(params: {
   return name && !taken ? name : null;
 }
 
-/** Acrescenta a pessoa ao fim da lista; nome vazio ou repetido não muda nada. */
-export function addPerson(params: {
+export interface AddPersonParams {
   readonly people: readonly BoardPerson[];
   readonly name: string;
-}): readonly BoardPerson[] {
+}
+
+/** Acrescenta a pessoa ao fim da lista; nome vazio ou repetido não muda nada. */
+export function addPerson(params: AddPersonParams): readonly BoardPerson[] {
   const name = validPersonName(params);
   if (!name) {
     return params.people;
@@ -31,28 +35,34 @@ export function addPerson(params: {
   return [...params.people, { id, name }];
 }
 
+/** Card a conferir contra os ids das pessoas que continuam no quadro. */
+interface AssigneeCheck {
+  readonly card: BoardCard;
+  readonly known: ReadonlySet<string>;
+}
+
 /** Tira do card o responsável que não está mais na lista. */
-function withKnownAssignee(
-  card: BoardCard,
-  known: ReadonlySet<string>,
-): BoardCard {
+function withKnownAssignee(params: AssigneeCheck): BoardCard {
+  const { card, known } = params;
   return card.assigneeId && !known.has(card.assigneeId)
     ? { ...card, assigneeId: undefined }
     : card;
 }
 
-/** Troca as pessoas do quadro; os cards de quem saiu ficam sem responsável, inclusive os arquivados. */
-export function setPeople(params: {
+export interface SetPeopleParams {
   readonly board: Board;
   readonly people: readonly BoardPerson[];
-}): Board {
+}
+
+/** Troca as pessoas do quadro; os cards de quem saiu ficam sem responsável, inclusive os arquivados. */
+export function setPeople(params: SetPeopleParams): Board {
   const { board, people } = params;
   const known = new Set(people.map((person) => person.id));
   const clean = (lane: BoardLane): BoardLane =>
     lane.cards.some((card) => card.assigneeId && !known.has(card.assigneeId))
       ? {
           ...lane,
-          cards: lane.cards.map((card) => withKnownAssignee(card, known)),
+          cards: lane.cards.map((card) => withKnownAssignee({ card, known })),
         }
       : lane;
   return {
@@ -63,18 +73,20 @@ export function setPeople(params: {
       ...entry,
       cards: entry.cards.map((item) => ({
         ...item,
-        card: withKnownAssignee(item.card, known),
+        card: withKnownAssignee({ card: item.card, known }),
       })),
     })),
   };
 }
 
-/** Define o responsável do card; `undefined` tira. Pessoa que não está no quadro não muda nada. */
-export function setAssignee(params: {
+export interface SetAssigneeParams {
   readonly board: Board;
   readonly cardId: string;
   readonly assigneeId: string | undefined;
-}): Board {
+}
+
+/** Define o responsável do card; `undefined` tira. Pessoa que não está no quadro não muda nada. */
+export function setAssignee(params: SetAssigneeParams): Board {
   const { board, cardId, assigneeId } = params;
   if (
     assigneeId !== undefined &&
@@ -91,10 +103,12 @@ export function setAssignee(params: {
   return lanes === board.lanes ? board : { ...board, lanes };
 }
 
-export function personName(params: {
+export interface PersonNameParams {
   readonly board: Board;
   readonly personId: string | undefined;
-}): string | undefined {
+}
+
+export function personName(params: PersonNameParams): string | undefined {
   return params.board.config.people?.find(
     (person) => person.id === params.personId,
   )?.name;

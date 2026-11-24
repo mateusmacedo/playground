@@ -3,6 +3,14 @@ import CIcon from '@coreui/icons-react';
 import { CFormInput, CInputGroup, CInputGroupText } from '@coreui/react';
 import type { Ref } from 'react';
 
+export interface SearchBoxProps {
+  readonly inputRef: Ref<HTMLInputElement>;
+  readonly query: string;
+  readonly matchCount: number | null;
+  readonly totalCount: number;
+  readonly onChange: (query: string) => void;
+}
+
 /** Busca de cards; `matchCount` nulo quando não há busca nem filtro ativos. */
 export function SearchBox({
   inputRef,
@@ -10,13 +18,7 @@ export function SearchBox({
   matchCount,
   totalCount,
   onChange,
-}: Readonly<{
-  inputRef: Ref<HTMLInputElement>;
-  query: string;
-  matchCount: number | null;
-  totalCount: number;
-  onChange: (query: string) => void;
-}>) {
+}: Readonly<SearchBoxProps>) {
   return (
     <div className="kanban-search d-flex align-items-center gap-2">
       <CInputGroup size="sm">

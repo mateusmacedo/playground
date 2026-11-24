@@ -10,17 +10,19 @@ const moment = new Intl.DateTimeFormat('pt-BR', {
   timeStyle: 'short',
 });
 
+export interface CommentsSectionProps {
+  readonly card: BoardCard;
+  /** Nome de quem comenta. */
+  readonly author: string;
+  readonly commands: Pick<BoardCommands, 'addComment' | 'removeComment'>;
+}
+
 /** Comentários do card, do mais antigo para o mais recente, e o campo para comentar. */
 export function CommentsSection({
   card,
   author,
   commands,
-}: Readonly<{
-  card: BoardCard;
-  /** Nome de quem comenta. */
-  author: string;
-  commands: Pick<BoardCommands, 'addComment' | 'removeComment'>;
-}>) {
+}: Readonly<CommentsSectionProps>) {
   const headingId = useId();
   const inputId = useId();
   const [draft, setDraft] = useState('');

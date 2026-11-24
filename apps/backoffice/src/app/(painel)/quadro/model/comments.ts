@@ -9,12 +9,14 @@ import { nextId } from './ids';
 /** Tamanho máximo do texto de um comentário. */
 export const MAX_COMMENT_LENGTH = 2000;
 
-/** Acrescenta o comentário no fim; texto vazio não muda nada, e o longo demais é cortado. */
-export function addComment(params: {
+export interface AddCommentParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
   readonly comment: Omit<CardComment, 'id'>;
-}): readonly BoardLane[] {
+}
+
+/** Acrescenta o comentário no fim; texto vazio não muda nada, e o longo demais é cortado. */
+export function addComment(params: AddCommentParams): readonly BoardLane[] {
   const text = params.comment.text.trim().slice(0, MAX_COMMENT_LENGTH);
   if (!text) {
     return params.lanes;
@@ -36,11 +38,15 @@ export function addComment(params: {
   });
 }
 
-export function removeComment(params: {
+export interface RemoveCommentParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
   readonly commentId: string;
-}): readonly BoardLane[] {
+}
+
+export function removeComment(
+  params: RemoveCommentParams,
+): readonly BoardLane[] {
   return updateCardIn({
     lanes: params.lanes,
     cardId: params.cardId,

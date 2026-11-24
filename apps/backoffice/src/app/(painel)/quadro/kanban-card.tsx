@@ -6,6 +6,7 @@ import { KanbanCardMeta } from './kanban-card-meta';
 import type { BoardCard, BoardLabel } from './model/board';
 import { cardKey } from './model/card-key';
 import type { ChildProgress } from './model/completion';
+import type { HandleRegistration } from './use-keyboard-move';
 
 /** O que o quadro faz quando o card é aberto, arrastado ou comandado pelo teclado. */
 export interface KanbanCardActions {
@@ -18,10 +19,7 @@ export interface KanbanCardActions {
     cardId: string,
   ) => void;
   readonly onHandleBlur: (cardId: string) => void;
-  readonly registerHandle: (handle: {
-    readonly id: string;
-    readonly element: HTMLButtonElement | null;
-  }) => void;
+  readonly registerHandle: (handle: HandleRegistration) => void;
 }
 
 export interface KanbanCardProps {

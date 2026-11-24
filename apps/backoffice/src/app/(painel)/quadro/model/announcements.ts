@@ -10,15 +10,17 @@ function limitWarning(lane: BoardLane): string {
     : '';
 }
 
+export interface AnnouncementTextParams {
+  readonly kind: MoveAnnouncement;
+  readonly lanes: readonly BoardLane[];
+  readonly cardId: string;
+}
+
 /**
  * Texto que o leitor de tela anuncia a cada passo do movimento, com a coluna e a posição atuais do card. Card que não
  * está no quadro não gera anúncio.
  */
-export function announcementText(params: {
-  readonly kind: MoveAnnouncement;
-  readonly lanes: readonly BoardLane[];
-  readonly cardId: string;
-}): string {
+export function announcementText(params: AnnouncementTextParams): string {
   const location = findCard({ lanes: params.lanes, cardId: params.cardId });
   if (!location) {
     return '';
@@ -40,12 +42,16 @@ export function announcementText(params: {
   }
 }
 
-/** O mesmo anúncio para o movimento de uma coluna, com a posição dela no quadro. */
-export function laneAnnouncementText(params: {
+export interface LaneAnnouncementTextParams {
   readonly kind: MoveAnnouncement;
   readonly lanes: readonly BoardLane[];
   readonly laneId: string;
-}): string {
+}
+
+/** O mesmo anúncio para o movimento de uma coluna, com a posição dela no quadro. */
+export function laneAnnouncementText(
+  params: LaneAnnouncementTextParams,
+): string {
   const index = params.lanes.findIndex((lane) => lane.id === params.laneId);
   const lane = params.lanes[index];
   if (!lane) {

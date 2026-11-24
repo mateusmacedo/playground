@@ -20,6 +20,25 @@ export interface BoardFormValues {
   readonly people?: readonly BoardPerson[];
 }
 
+export interface BoardFormDialogProps {
+  readonly visible: boolean;
+  readonly title: string;
+  readonly confirmLabel: string;
+  readonly initial: BoardFormValues;
+  /** O prefixo segue o nome enquanto não for editado. */
+  readonly suggestPrefix?: boolean;
+  /** Devolve o nome que vale, ou `null` quando ele está vazio ou repetido. */
+  readonly validateName: (name: string) => string | null;
+  /** Texto de apoio do campo do prefixo. */
+  readonly prefixHelp?: string;
+  /** Colunas do quadro; com elas, a janela também configura a coluna de conclusão e as pessoas. */
+  readonly lanes?: readonly BoardLane[];
+  readonly onSave: (values: BoardFormValues) => void;
+  readonly onCancel: () => void;
+  /** Conteúdo extra da janela, depois dos campos. */
+  readonly children?: ReactNode;
+}
+
 /**
  * Nome e prefixo do código de um quadro, para criar um quadro novo ou configurar o aberto. Num quadro novo, o prefixo
  * acompanha o nome até a pessoa mexer nele.
@@ -36,24 +55,7 @@ export function BoardFormDialog({
   onSave,
   onCancel,
   children,
-}: Readonly<{
-  visible: boolean;
-  title: string;
-  confirmLabel: string;
-  initial: BoardFormValues;
-  /** O prefixo segue o nome enquanto não for editado. */
-  suggestPrefix?: boolean;
-  /** Devolve o nome que vale, ou `null` quando ele está vazio ou repetido. */
-  validateName: (name: string) => string | null;
-  /** Texto de apoio do campo do prefixo. */
-  prefixHelp?: string;
-  /** Colunas do quadro; com elas, a janela também configura a coluna de conclusão e as pessoas. */
-  lanes?: readonly BoardLane[];
-  onSave: (values: BoardFormValues) => void;
-  onCancel: () => void;
-  /** Conteúdo extra da janela, depois dos campos. */
-  children?: ReactNode;
-}>) {
+}: Readonly<BoardFormDialogProps>) {
   const nameId = useId();
   const prefixId = useId();
   const [name, setName] = useState(initial.name);

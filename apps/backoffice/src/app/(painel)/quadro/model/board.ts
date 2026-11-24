@@ -174,10 +174,12 @@ export interface CardLocation {
 
 export type StepDirection = 'up' | 'down' | 'left' | 'right';
 
-export function findCard(params: {
+export interface FindCardParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
-}): CardLocation | undefined {
+}
+
+export function findCard(params: FindCardParams): CardLocation | undefined {
   const { lanes, cardId } = params;
   for (const [laneIndex, lane] of lanes.entries()) {
     const cardIndex = lane.cards.findIndex((card) => card.id === cardId);
@@ -194,12 +196,14 @@ export function allCards(lanes: readonly BoardLane[]): readonly BoardCard[] {
   return lanes.flatMap((lane) => lane.cards);
 }
 
-/** Aplica `update` ao card; card inexistente ou `update` que devolve o mesmo card mantêm o próprio `lanes`. */
-export function updateCardIn(params: {
+export interface UpdateCardInParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
   readonly update: (card: BoardCard) => BoardCard;
-}): readonly BoardLane[] {
+}
+
+/** Aplica `update` ao card; card inexistente ou `update` que devolve o mesmo card mantêm o próprio `lanes`. */
+export function updateCardIn(params: UpdateCardInParams): readonly BoardLane[] {
   const { lanes, cardId, update } = params;
   const location = findCard({ lanes, cardId });
   if (!location) {
@@ -219,17 +223,19 @@ export function updateCardIn(params: {
   );
 }
 
-/**
- * Devolve o quadro com o card na nova posição, sem alterar o original. Card ou coluna inexistente e movimento para o
- * mesmo lugar devolvem o próprio `lanes`, então repetir um movimento não muda nada.
- */
-export function moveCard(params: {
+export interface MoveCardParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
   readonly toLaneId: string;
   /** Posição final na coluna de destino, contada sem o próprio card; fora da faixa, vai para a ponta mais próxima. */
   readonly toIndex: number;
-}): readonly BoardLane[] {
+}
+
+/**
+ * Devolve o quadro com o card na nova posição, sem alterar o original. Card ou coluna inexistente e movimento para o
+ * mesmo lugar devolvem o próprio `lanes`, então repetir um movimento não muda nada.
+ */
+export function moveCard(params: MoveCardParams): readonly BoardLane[] {
   const { lanes, cardId, toLaneId } = params;
   const origin = findCard({ lanes, cardId });
   const destination = lanes.find((lane) => lane.id === toLaneId);
@@ -263,16 +269,18 @@ export function moveCard(params: {
   });
 }
 
-/**
- * Converte a fenda onde o card foi solto (antes do card que está na posição `slot` da coluna, como aparece na tela)
- * na posição final do `moveCard`. Na mesma coluna, abaixo da origem, a fenda conta o próprio card e perde uma posição.
- */
-export function slotToIndex(params: {
+export interface SlotToIndexParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
   readonly laneId: string;
   readonly slot: number;
-}): number {
+}
+
+/**
+ * Converte a fenda onde o card foi solto (antes do card que está na posição `slot` da coluna, como aparece na tela)
+ * na posição final do `moveCard`. Na mesma coluna, abaixo da origem, a fenda conta o próprio card e perde uma posição.
+ */
+export function slotToIndex(params: SlotToIndexParams): number {
   const { lanes, cardId, laneId, slot } = params;
   const origin = findCard({ lanes, cardId });
   if (origin && origin.lane.id === laneId && slot > origin.cardIndex) {
@@ -281,12 +289,14 @@ export function slotToIndex(params: {
   return slot;
 }
 
-/** Um passo do teclado: acima ou abaixo na mesma coluna, ou para a coluna vizinha mantendo a altura possível. */
-export function stepCard(params: {
+export interface StepCardParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
   readonly direction: StepDirection;
-}): readonly BoardLane[] {
+}
+
+/** Um passo do teclado: acima ou abaixo na mesma coluna, ou para a coluna vizinha mantendo a altura possível. */
+export function stepCard(params: StepCardParams): readonly BoardLane[] {
   const { lanes, cardId, direction } = params;
   const origin = findCard({ lanes, cardId });
   if (!origin) {

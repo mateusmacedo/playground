@@ -17,19 +17,21 @@ const moment = new Intl.DateTimeFormat('pt-BR', {
   timeStyle: 'short',
 });
 
+interface ArchiveItemProps {
+  readonly entry: ArchiveEntry;
+  readonly keyPrefix: string;
+  readonly onView?: (entryId: string) => void;
+  readonly onRestore: (entryId: string) => void;
+  readonly onDelete: (entryId: string) => void;
+}
+
 function ArchiveItem({
   entry,
   keyPrefix,
   onView,
   onRestore,
   onDelete,
-}: Readonly<{
-  entry: ArchiveEntry;
-  keyPrefix: string;
-  onView?: (entryId: string) => void;
-  onRestore: (entryId: string) => void;
-  onDelete: (entryId: string) => void;
-}>) {
+}: Readonly<ArchiveItemProps>) {
   const root = entry.cards[0]?.card;
   if (!root) {
     return null;
@@ -93,6 +95,20 @@ function ArchiveItem({
   );
 }
 
+export interface ArchiveDialogProps {
+  readonly visible: boolean;
+  readonly archive: readonly ArchiveEntry[];
+  /** Prefixo do código dos cards do quadro. */
+  readonly keyPrefix: string;
+  /** Abre o card arquivado só para leitura. */
+  readonly onView?: (entryId: string) => void;
+  readonly onRestore: (entryId: string) => void;
+  readonly onDelete: (entryId: string) => void;
+  readonly onClose: () => void;
+  /** A janela terminou de fechar. */
+  readonly onClosed: () => void;
+}
+
 /** Lista dos cards arquivados, com restaurar e excluir de vez; as duas ações podem ser desfeitas. */
 export function ArchiveDialog({
   visible,
@@ -103,19 +119,7 @@ export function ArchiveDialog({
   onDelete,
   onClose,
   onClosed,
-}: Readonly<{
-  visible: boolean;
-  archive: readonly ArchiveEntry[];
-  /** Prefixo do código dos cards do quadro. */
-  keyPrefix: string;
-  /** Abre o card arquivado só para leitura. */
-  onView?: (entryId: string) => void;
-  onRestore: (entryId: string) => void;
-  onDelete: (entryId: string) => void;
-  onClose: () => void;
-  /** A janela terminou de fechar. */
-  onClosed: () => void;
-}>) {
+}: Readonly<ArchiveDialogProps>) {
   const titleId = useId();
   return (
     <CModal

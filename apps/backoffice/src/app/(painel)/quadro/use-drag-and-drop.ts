@@ -36,24 +36,30 @@ function slotFromPointer(
   return event.clientY < rect.top + rect.height / 2 ? index : index + 1;
 }
 
-/** Arraste nativo do HTML5, que cobre mouse e toque; o quadro decide o que fazer com o resultado do drop. */
-export function useDragAndDrop(params: {
+export interface CardDrop {
+  readonly lanes: readonly BoardLane[];
+  readonly cardId: string;
+}
+
+interface CardDropAttempt {
+  readonly cardId: string;
+  readonly target: DropTarget;
+}
+
+export interface UseDragAndDropParams {
   readonly lanes: readonly BoardLane[];
   readonly onDragStart: () => void;
-  readonly onDrop: (drop: {
-    readonly lanes: readonly BoardLane[];
-    readonly cardId: string;
-  }) => void;
-}): DragAndDrop {
+  readonly onDrop: (drop: CardDrop) => void;
+}
+
+/** Arraste nativo do HTML5, que cobre mouse e toque; o quadro decide o que fazer com o resultado do drop. */
+export function useDragAndDrop(params: UseDragAndDropParams): DragAndDrop {
   const { lanes } = params;
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
 
   /** Quadro depois de soltar o card na fenda; o próprio `lanes` quando soltar ali não muda nada. */
-  function lanesAfterDrop(drop: {
-    readonly cardId: string;
-    readonly target: DropTarget;
-  }) {
+  function lanesAfterDrop(drop: CardDropAttempt) {
     const { cardId, target } = drop;
     const toIndex = slotToIndex({
       lanes,

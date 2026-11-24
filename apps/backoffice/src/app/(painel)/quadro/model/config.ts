@@ -33,21 +33,27 @@ export function suggestKeyPrefix(name: string): string {
   return isValidKeyPrefix(candidate) ? candidate : DEFAULT_KEY_PREFIX;
 }
 
-export function setArchiveLaneHidden(params: {
+export interface SetArchiveLaneHiddenParams {
   readonly config: BoardConfig;
   readonly hidden: boolean;
-}): BoardConfig {
+}
+
+export function setArchiveLaneHidden(
+  params: SetArchiveLaneHiddenParams,
+): BoardConfig {
   return Boolean(params.config.archiveLaneHidden) === params.hidden
     ? params.config
     : { ...params.config, archiveLaneHidden: params.hidden || undefined };
 }
 
-/** Define a coluna de conclusão; `undefined` tira, e coluna que não existe no quadro não muda nada. */
-export function setDoneLane(params: {
+export interface SetDoneLaneParams {
   readonly config: BoardConfig;
   readonly laneIds: readonly string[];
   readonly doneLaneId: string | undefined;
-}): BoardConfig {
+}
+
+/** Define a coluna de conclusão; `undefined` tira, e coluna que não existe no quadro não muda nada. */
+export function setDoneLane(params: SetDoneLaneParams): BoardConfig {
   const { config, laneIds, doneLaneId } = params;
   if (
     config.doneLaneId === doneLaneId ||
@@ -58,10 +64,12 @@ export function setDoneLane(params: {
   return { ...config, doneLaneId };
 }
 
-export function setKeyPrefix(params: {
+export interface SetKeyPrefixParams {
   readonly config: BoardConfig;
   readonly keyPrefix: string;
-}): BoardConfig {
+}
+
+export function setKeyPrefix(params: SetKeyPrefixParams): BoardConfig {
   const keyPrefix = normalizeKeyPrefix(params.keyPrefix);
   return isValidKeyPrefix(keyPrefix) && keyPrefix !== params.config.keyPrefix
     ? { ...params.config, keyPrefix }

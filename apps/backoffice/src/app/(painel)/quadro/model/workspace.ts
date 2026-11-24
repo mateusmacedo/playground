@@ -26,12 +26,14 @@ export function boardStorageKey(boardId: string): string {
     : `backoffice:quadro:${boardId}:v1`;
 }
 
-/** Nome sem espaços nas pontas; `null` quando vazio ou igual ao de outro quadro (sem contar maiúsculas e acentos). */
-export function validBoardName(params: {
+export interface ValidBoardNameParams {
   readonly boards: readonly BoardSummary[];
   readonly name: string;
   readonly boardId?: string;
-}): string | null {
+}
+
+/** Nome sem espaços nas pontas; `null` quando vazio ou igual ao de outro quadro (sem contar maiúsculas e acentos). */
+export function validBoardName(params: ValidBoardNameParams): string | null {
   const name = params.name.trim();
   const taken = params.boards.some(
     (board) =>
@@ -41,10 +43,12 @@ export function validBoardName(params: {
   return name && !taken ? name : null;
 }
 
-export function addBoard(params: {
+export interface AddBoardParams {
   readonly boards: readonly BoardSummary[];
   readonly board: BoardSummary;
-}): readonly BoardSummary[] {
+}
+
+export function addBoard(params: AddBoardParams): readonly BoardSummary[] {
   const name = validBoardName({
     boards: params.boards,
     name: params.board.name,
@@ -54,11 +58,15 @@ export function addBoard(params: {
     : params.boards;
 }
 
-export function renameBoard(params: {
+export interface RenameBoardParams {
   readonly boards: readonly BoardSummary[];
   readonly boardId: string;
   readonly name: string;
-}): readonly BoardSummary[] {
+}
+
+export function renameBoard(
+  params: RenameBoardParams,
+): readonly BoardSummary[] {
   const name = validBoardName(params);
   const current = params.boards.find((board) => board.id === params.boardId);
   if (!name || !current || current.name === name) {
@@ -69,23 +77,29 @@ export function renameBoard(params: {
   );
 }
 
-/** Tira o quadro da lista; o último quadro não pode sair. */
-export function removeBoard(params: {
+export interface RemoveBoardParams {
   readonly boards: readonly BoardSummary[];
   readonly boardId: string;
-}): readonly BoardSummary[] {
+}
+
+/** Tira o quadro da lista; o último quadro não pode sair. */
+export function removeBoard(
+  params: RemoveBoardParams,
+): readonly BoardSummary[] {
   const boards = params.boards.filter((board) => board.id !== params.boardId);
   return boards.length > 0 && boards.length < params.boards.length
     ? boards
     : params.boards;
 }
 
-/** Quadro que fica aberto quando o quadro de `boardId` some: o vizinho da esquerda, ou o primeiro. */
-export function neighborBoard(params: {
+export interface NeighborBoardParams {
   readonly before: readonly BoardSummary[];
   readonly after: readonly BoardSummary[];
   readonly boardId: string;
-}): string | undefined {
+}
+
+/** Quadro que fica aberto quando o quadro de `boardId` some: o vizinho da esquerda, ou o primeiro. */
+export function neighborBoard(params: NeighborBoardParams): string | undefined {
   if (params.after.some((board) => board.id === params.boardId)) {
     return params.boardId;
   }

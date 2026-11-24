@@ -5,6 +5,25 @@ import { cardKey } from './model/card-key';
 import { type ChildProgress, progressText } from './model/completion';
 import type { ParentGroup } from './model/views';
 
+export interface SwimlanesProps {
+  readonly groups: readonly ParentGroup[];
+  readonly keyPrefix: string;
+  readonly progress: ReadonlyMap<string, ChildProgress>;
+  /** Célula sob o card arrastado, como `<pai>:<coluna>`. */
+  readonly dropTarget: string | null;
+  readonly renderCard: (
+    card: BoardCard,
+    lane: BoardLane,
+    index: number,
+  ) => ReactNode;
+  readonly onDragOver: (
+    event: DragEvent<HTMLElement>,
+    target: CellTarget,
+  ) => void;
+  readonly onDragLeave: (event: DragEvent<HTMLElement>) => void;
+  readonly onDrop: (event: DragEvent<HTMLElement>, target: CellTarget) => void;
+}
+
 /**
  * Quadro em linhas, uma por card pai, com as colunas lado a lado em cada linha. Soltar um card arrastado numa célula
  * leva o card para o fim daquela coluna; a ordem dentro da coluna se muda no quadro sem linhas.
@@ -18,17 +37,7 @@ export function Swimlanes({
   onDragOver,
   onDragLeave,
   onDrop,
-}: Readonly<{
-  groups: readonly ParentGroup[];
-  keyPrefix: string;
-  progress: ReadonlyMap<string, ChildProgress>;
-  /** Célula sob o card arrastado, como `<pai>:<coluna>`. */
-  dropTarget: string | null;
-  renderCard: (card: BoardCard, lane: BoardLane, index: number) => ReactNode;
-  onDragOver: (event: DragEvent<HTMLElement>, target: CellTarget) => void;
-  onDragLeave: (event: DragEvent<HTMLElement>) => void;
-  onDrop: (event: DragEvent<HTMLElement>, target: CellTarget) => void;
-}>) {
+}: Readonly<SwimlanesProps>) {
   if (groups.length === 0) {
     return (
       <p className="text-body-secondary p-2 mb-0">
@@ -65,6 +74,24 @@ export function cellId(target: CellTarget): string {
   return `${target.parentId ?? ''}:${target.lane.id}`;
 }
 
+interface SwimlaneRowProps {
+  readonly group: ParentGroup;
+  readonly keyPrefix: string;
+  readonly progress: ChildProgress | undefined;
+  readonly dropTarget: string | null;
+  readonly renderCard: (
+    card: BoardCard,
+    lane: BoardLane,
+    index: number,
+  ) => ReactNode;
+  readonly onDragOver: (
+    event: DragEvent<HTMLElement>,
+    target: CellTarget,
+  ) => void;
+  readonly onDragLeave: (event: DragEvent<HTMLElement>) => void;
+  readonly onDrop: (event: DragEvent<HTMLElement>, target: CellTarget) => void;
+}
+
 function SwimlaneRow({
   group,
   keyPrefix,
@@ -74,16 +101,7 @@ function SwimlaneRow({
   onDragOver,
   onDragLeave,
   onDrop,
-}: Readonly<{
-  group: ParentGroup;
-  keyPrefix: string;
-  progress: ChildProgress | undefined;
-  dropTarget: string | null;
-  renderCard: (card: BoardCard, lane: BoardLane, index: number) => ReactNode;
-  onDragOver: (event: DragEvent<HTMLElement>, target: CellTarget) => void;
-  onDragLeave: (event: DragEvent<HTMLElement>) => void;
-  onDrop: (event: DragEvent<HTMLElement>, target: CellTarget) => void;
-}>) {
+}: Readonly<SwimlaneRowProps>) {
   const titleId = useId();
   const { parent } = group;
   const name = parent ? parent.title : 'Sem card pai';

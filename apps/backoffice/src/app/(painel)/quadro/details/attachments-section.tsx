@@ -22,14 +22,16 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
+export interface AttachmentsSectionProps {
+  readonly card: BoardCard;
+  readonly commands: Pick<BoardCommands, 'addAttachment' | 'removeAttachment'>;
+}
+
 /** Anexos do card: links e arquivos pequenos, com abrir, baixar e remover. */
 export function AttachmentsSection({
   card,
   commands,
-}: Readonly<{
-  card: BoardCard;
-  commands: Pick<BoardCommands, 'addAttachment' | 'removeAttachment'>;
-}>) {
+}: Readonly<AttachmentsSectionProps>) {
   const headingId = useId();
   const id = useId();
   const [link, setLink] = useState('');

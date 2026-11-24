@@ -23,6 +23,17 @@ const DUE_CLASS: Readonly<Record<DueStatus, string>> = {
   upcoming: '',
 };
 
+export interface BoardListProps {
+  readonly rows: readonly ListRow[];
+  readonly keyPrefix: string;
+  readonly labels: readonly BoardLabel[];
+  readonly today: string | undefined;
+  readonly progress: ReadonlyMap<string, ChildProgress>;
+  readonly sort: ListSort;
+  readonly onSort: (key: ListSortKey) => void;
+  readonly onOpen: (cardId: string) => void;
+}
+
 /**
  * Visão em lista: um card por linha, com código, título, coluna, responsável, prazo, progresso dos filhos e
  * etiquetas. O cabeçalho ordena as linhas; o título abre o card no painel.
@@ -36,16 +47,7 @@ export function BoardList({
   sort,
   onSort,
   onOpen,
-}: Readonly<{
-  rows: readonly ListRow[];
-  keyPrefix: string;
-  labels: readonly BoardLabel[];
-  today: string | undefined;
-  progress: ReadonlyMap<string, ChildProgress>;
-  sort: ListSort;
-  onSort: (key: ListSortKey) => void;
-  onOpen: (cardId: string) => void;
-}>) {
+}: Readonly<BoardListProps>) {
   return (
     <div className="table-responsive kanban-list">
       <table className="table table-sm table-hover align-middle mb-0">

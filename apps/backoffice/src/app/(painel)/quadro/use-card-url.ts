@@ -5,11 +5,7 @@ import { findByKey } from './model/card-key';
 
 const CARD_PARAM = 'card';
 
-/**
- * Liga o card aberto ao endereço (`?card=QD-12`): abrir o endereço abre o card, e abrir ou fechar o card atualiza o
- * endereço sem recarregar a página. A leitura espera `ready`, porque o card pode estar só no quadro gravado.
- */
-export function useCardUrl(params: {
+export interface UseCardUrlParams {
   readonly ready: boolean;
   readonly board: Board;
   /** Código do card aberto no painel, ou `undefined`. */
@@ -19,7 +15,13 @@ export function useCardUrl(params: {
   readonly onOpenArchived?: (cardId: string) => void;
   /** O endereço pediu um card que não pode ser aberto; recebe a mensagem para a tela. */
   readonly onUnavailable: (message: string) => void;
-}): void {
+}
+
+/**
+ * Liga o card aberto ao endereço (`?card=QD-12`): abrir o endereço abre o card, e abrir ou fechar o card atualiza o
+ * endereço sem recarregar a página. A leitura espera `ready`, porque o card pode estar só no quadro gravado.
+ */
+export function useCardUrl(params: UseCardUrlParams): void {
   const { ready, openKey } = params;
   const [checked, setChecked] = useState(false);
 

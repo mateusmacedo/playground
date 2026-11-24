@@ -13,10 +13,12 @@ function formatMoment(at: string): string {
   return Number.isNaN(date.getTime()) ? '' : moment.format(date);
 }
 
+export interface ActivityListProps {
+  readonly activity: readonly CardActivity[];
+}
+
 /** Histórico do card, do mais recente para o mais antigo. */
-export function ActivityList({
-  activity,
-}: Readonly<{ activity: readonly CardActivity[] }>) {
+export function ActivityList({ activity }: Readonly<ActivityListProps>) {
   const id = useId();
   const recentFirst = [...activity].reverse();
   return (

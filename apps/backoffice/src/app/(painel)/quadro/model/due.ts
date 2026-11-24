@@ -11,12 +11,14 @@ export function isDateOnly(value: string): boolean {
   return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
 }
 
-/** Define o prazo do card; vazio tira o prazo e a marca de cumprido. Data inválida não muda nada. */
-export function setDueDate(params: {
+export interface SetDueDateParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
   readonly dueDate: string | undefined;
-}): readonly BoardLane[] {
+}
+
+/** Define o prazo do card; vazio tira o prazo e a marca de cumprido. Data inválida não muda nada. */
+export function setDueDate(params: SetDueDateParams): readonly BoardLane[] {
   const dueDate = params.dueDate || undefined;
   if (dueDate !== undefined && !isDateOnly(dueDate)) {
     return params.lanes;
@@ -35,12 +37,14 @@ export function setDueDate(params: {
   });
 }
 
-/** Marca o prazo como cumprido, ou não; card sem prazo não muda. */
-export function setDueDone(params: {
+export interface SetDueDoneParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
   readonly done: boolean;
-}): readonly BoardLane[] {
+}
+
+/** Marca o prazo como cumprido, ou não; card sem prazo não muda. */
+export function setDueDone(params: SetDueDoneParams): readonly BoardLane[] {
   const { done } = params;
   return updateCardIn({
     lanes: params.lanes,
@@ -59,11 +63,13 @@ export function todayIso(now: Date = new Date()): string {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
-/** Situação do prazo em relação a `today`; `undefined` para card sem prazo. */
-export function dueStatus(params: {
+export interface DueStatusParams {
   readonly card: Pick<BoardCard, 'dueDate' | 'dueDone'>;
   readonly today: string;
-}): DueStatus | undefined {
+}
+
+/** Situação do prazo em relação a `today`; `undefined` para card sem prazo. */
+export function dueStatus(params: DueStatusParams): DueStatus | undefined {
   const { card, today } = params;
   if (!card.dueDate) {
     return undefined;

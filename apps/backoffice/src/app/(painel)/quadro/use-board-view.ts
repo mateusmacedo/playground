@@ -32,11 +32,13 @@ function parseView(raw: string | null): BoardView {
   }
 }
 
-/** Visão do quadro, uma preferência de tela como as colunas recolhidas: fica gravada à parte e não entra no desfazer. */
-export function useBoardView(storageKey?: string): {
+export interface UseBoardViewResult {
   readonly view: BoardView;
   readonly setView: (change: Partial<BoardView>) => void;
-} {
+}
+
+/** Visão do quadro, uma preferência de tela como as colunas recolhidas: fica gravada à parte e não entra no desfazer. */
+export function useBoardView(storageKey?: string): UseBoardViewResult {
   const key = storageKey ? boardViewKey(storageKey) : undefined;
   const [view, setViewState] = useState(DEFAULT_VIEW);
   const [loaded, setLoaded] = useState(!key);

@@ -4,14 +4,16 @@ import { useId, useState } from 'react';
 import type { BoardPerson } from '../model/board';
 import { addPerson, validPersonName } from '../model/people';
 
+export interface PeopleEditorProps {
+  readonly people: readonly BoardPerson[];
+  readonly onChange: (people: readonly BoardPerson[]) => void;
+}
+
 /** Pessoas do quadro, para escolher o responsável dos cards: acrescentar e tirar. */
 export function PeopleEditor({
   people,
   onChange,
-}: Readonly<{
-  people: readonly BoardPerson[];
-  onChange: (people: readonly BoardPerson[]) => void;
-}>) {
+}: Readonly<PeopleEditorProps>) {
   const headingId = useId();
   const inputId = useId();
   const [draft, setDraft] = useState('');

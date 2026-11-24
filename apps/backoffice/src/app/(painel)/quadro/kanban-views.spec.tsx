@@ -1,11 +1,6 @@
-import {
-  createEvent,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 
+import { fireDrag } from './drag-test-utils';
 import { KanbanBoard } from './kanban-board';
 import type { BoardLane } from './model/board';
 import { boardViewKey } from './use-board-view';
@@ -43,23 +38,6 @@ function bodyRows(): string[][] {
         .slice(0, 3)
         .map((cell) => cell.textContent ?? ''),
     );
-}
-
-function fireDrag(
-  kind: 'dragStart' | 'dragOver' | 'dragLeave' | 'drop' | 'dragEnd',
-  element: Element,
-  extra: { readonly relatedTarget?: Node | null } = {},
-): boolean {
-  const dataTransfer = {
-    setData: vi.fn(),
-    effectAllowed: 'none',
-    dropEffect: 'none',
-  };
-  const event = createEvent[kind](element, { dataTransfer });
-  for (const [key, value] of Object.entries(extra)) {
-    Object.defineProperty(event, key, { value });
-  }
-  return fireEvent(element, event);
 }
 
 function cardItem(title: string): HTMLElement {
@@ -176,20 +154,20 @@ describe('KanbanBoard: linhas por card pai', () => {
       name: 'Concluído em Pai',
     });
 
-    fireDrag('dragStart', cardItem('Filho A'));
-    expect(fireDrag('dragOver', target)).toBe(false);
+    fireDrag({ kind: 'dragStart', element: cardItem('Filho A') });
+    expect(fireDrag({ kind: 'dragOver', element: target })).toBe(false);
     expect(target.className).toContain('kanban-lane--drop-target');
-    fireDrag('dragLeave', target, { relatedTarget: null });
+    fireDrag({ kind: 'dragLeave', element: target, relatedTarget: null });
     expect(target.className).not.toContain('kanban-lane--drop-target');
-    fireDrag('dragOver', target);
-    fireDrag('drop', target);
+    fireDrag({ kind: 'dragOver', element: target });
+    fireDrag({ kind: 'drop', element: target });
 
     expect(within(target).getByText('Filho A')).toBeTruthy();
     expect(document.querySelector('[aria-live="assertive"]')?.textContent).toBe(
       'Card Filho A movido para Concluído.',
     );
-    expect(fireDrag('dragOver', target)).toBe(true);
-    fireDrag('drop', target);
+    expect(fireDrag({ kind: 'dragOver', element: target })).toBe(true);
+    fireDrag({ kind: 'drop', element: target });
   });
 
   it('não solta na célula de coluna bloqueada nem na mesma coluna', () => {
@@ -206,18 +184,20 @@ describe('KanbanBoard: linhas por card pai', () => {
     );
     const parentRow = screen.getByRole('region', { name: 'QD-1 Pai' });
 
-    fireDrag('dragStart', cardItem('Filho A'));
+    fireDrag({ kind: 'dragStart', element: cardItem('Filho A') });
     expect(
-      fireDrag(
-        'dragOver',
-        within(parentRow).getByRole('group', { name: 'Concluído em Pai' }),
-      ),
+      fireDrag({
+        kind: 'dragOver',
+        element: within(parentRow).getByRole('group', {
+          name: 'Concluído em Pai',
+        }),
+      }),
     ).toBe(true);
     const same = within(parentRow).getByRole('group', {
       name: 'A fazer em Pai',
     });
-    fireDrag('dragOver', same);
-    fireDrag('drop', same);
+    fireDrag({ kind: 'dragOver', element: same });
+    fireDrag({ kind: 'drop', element: same });
     expect(within(same).getByText('Filho A')).toBeTruthy();
   });
 });

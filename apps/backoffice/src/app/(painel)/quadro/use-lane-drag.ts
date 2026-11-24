@@ -26,26 +26,32 @@ function slotFromPointer(event: DragEvent<HTMLElement>): number {
   return next ? Number(next.dataset.laneIndex) : columns.length;
 }
 
+export interface LaneDrop {
+  readonly lanes: readonly BoardLane[];
+  readonly laneId: string;
+}
+
+interface LaneDropAttempt {
+  readonly laneId: string;
+  readonly slot: number;
+}
+
+export interface UseLaneDragParams {
+  readonly lanes: readonly BoardLane[];
+  readonly onDragStart: () => void;
+  readonly onDrop: (drop: LaneDrop) => void;
+}
+
 /**
  * Arraste nativo das colunas pela alça do cabeçalho. Os eventos ficam no contêiner das colunas e ignoram o arraste de
  * cards, que tem estado próprio no `useDragAndDrop`.
  */
-export function useLaneDrag(params: {
-  readonly lanes: readonly BoardLane[];
-  readonly onDragStart: () => void;
-  readonly onDrop: (drop: {
-    readonly lanes: readonly BoardLane[];
-    readonly laneId: string;
-  }) => void;
-}): LaneDrag {
+export function useLaneDrag(params: UseLaneDragParams): LaneDrag {
   const { lanes } = params;
   const [draggedLaneId, setDraggedLaneId] = useState<string | null>(null);
   const [slot, setSlot] = useState<number | null>(null);
 
-  function lanesAfterDrop(drop: {
-    readonly laneId: string;
-    readonly slot: number;
-  }) {
+  function lanesAfterDrop(drop: LaneDropAttempt) {
     const toIndex = laneSlotToIndex({ lanes, ...drop });
     return moveLane({ lanes, laneId: drop.laneId, toIndex });
   }

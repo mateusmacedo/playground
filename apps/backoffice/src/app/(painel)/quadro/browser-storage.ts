@@ -7,14 +7,16 @@ export function readStorage(key: string): string | null {
   }
 }
 
+export interface WriteStorageParams {
+  readonly key: string;
+  readonly value: string;
+}
+
 /**
  * Grava no `localStorage`; cota cheia ou armazenamento bloqueado não interrompem a tela. Devolve `false` quando não
  * gravou, para quem precisar avisar.
  */
-export function writeStorage(params: {
-  readonly key: string;
-  readonly value: string;
-}): boolean {
+export function writeStorage(params: WriteStorageParams): boolean {
   try {
     window.localStorage.setItem(params.key, params.value);
     return true;
@@ -33,14 +35,16 @@ export function removeStorage(key: string): void {
   }
 }
 
+export interface SubscribeStorageParams {
+  readonly key: string;
+  readonly onChange: (value: string | null) => void;
+}
+
 /**
  * Chama `onChange` quando outra aba grava ou apaga a chave; a própria aba não recebe o evento. Devolve a função que
  * para de ouvir.
  */
-export function subscribeStorage(params: {
-  readonly key: string;
-  readonly onChange: (value: string | null) => void;
-}): () => void {
+export function subscribeStorage(params: SubscribeStorageParams): () => void {
   const listener = (event: StorageEvent) => {
     if (event.key === params.key) {
       params.onChange(event.newValue);

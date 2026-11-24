@@ -12,6 +12,14 @@ import { useId } from 'react';
 
 import type { BoardLabel } from '../model/board';
 
+export interface LabelFilterProps {
+  readonly labels: readonly BoardLabel[];
+  readonly selected: ReadonlySet<string>;
+  readonly onToggle: (labelId: string) => void;
+  readonly onClear: () => void;
+  readonly onManage: () => void;
+}
+
 /** Filtro por etiqueta: mostra os cards com qualquer uma das marcadas. Também leva ao catálogo de etiquetas. */
 export function LabelFilter({
   labels,
@@ -19,13 +27,7 @@ export function LabelFilter({
   onToggle,
   onClear,
   onManage,
-}: Readonly<{
-  labels: readonly BoardLabel[];
-  selected: ReadonlySet<string>;
-  onToggle: (labelId: string) => void;
-  onClear: () => void;
-  onManage: () => void;
-}>) {
+}: Readonly<LabelFilterProps>) {
   const id = useId();
   return (
     <CDropdown autoClose="outside">

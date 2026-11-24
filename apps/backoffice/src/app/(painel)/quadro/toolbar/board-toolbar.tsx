@@ -1,42 +1,19 @@
 import { cilInbox, cilReload, cilSettings } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
 import { CButton } from '@coreui/react';
-import type { Ref } from 'react';
 
-import type { BoardLabel } from '../model/board';
-import type { BoardView } from '../use-board-view';
 import { HiddenLanes, type HiddenLanesProps } from './hidden-lanes';
-import { HistoryButtons } from './history-buttons';
-import { LabelFilter } from './label-filter';
-import { SearchBox } from './search-box';
-import { ViewSwitch } from './view-switch';
+import { HistoryButtons, type HistoryButtonsProps } from './history-buttons';
+import { LabelFilter, type LabelFilterProps } from './label-filter';
+import { SearchBox, type SearchBoxProps } from './search-box';
+import { ViewSwitch, type ViewSwitchProps } from './view-switch';
 
 export interface BoardToolbarProps {
   readonly instructionsId: string;
-  readonly search: {
-    readonly inputRef: Ref<HTMLInputElement>;
-    readonly query: string;
-    readonly matchCount: number | null;
-    readonly totalCount: number;
-    readonly onChange: (query: string) => void;
-  };
-  readonly filter: {
-    readonly labels: readonly BoardLabel[];
-    readonly selected: ReadonlySet<string>;
-    readonly onToggle: (labelId: string) => void;
-    readonly onClear: () => void;
-    readonly onManage: () => void;
-  };
-  readonly history: {
-    readonly canUndo: boolean;
-    readonly canRedo: boolean;
-    readonly onUndo: () => void;
-    readonly onRedo: () => void;
-  };
-  readonly view: {
-    readonly view: BoardView;
-    readonly onChange: (change: Partial<BoardView>) => void;
-  };
+  readonly search: SearchBoxProps;
+  readonly filter: LabelFilterProps;
+  readonly history: HistoryButtonsProps;
+  readonly view: ViewSwitchProps;
   readonly hiddenLanes: HiddenLanesProps;
   readonly archivedCount: number;
   readonly onOpenArchive: () => void;

@@ -12,6 +12,12 @@ import { flushSync } from 'react-dom';
 
 import type { BoardLane } from './model/board';
 import { isOverLimit } from './model/lanes';
+import type { HandleRegistration } from './use-keyboard-move';
+
+export interface LaneRename {
+  readonly laneId: string;
+  readonly title: string;
+}
 
 /** O que o quadro faz com a alça, o nome e o menu da coluna. */
 export interface LaneHeaderActions {
@@ -26,14 +32,8 @@ export interface LaneHeaderActions {
     laneId: string,
   ) => void;
   readonly onHandleBlur: (laneId: string) => void;
-  readonly registerHandle: (handle: {
-    readonly id: string;
-    readonly element: HTMLButtonElement | null;
-  }) => void;
-  readonly onRename: (change: {
-    readonly laneId: string;
-    readonly title: string;
-  }) => void;
+  readonly registerHandle: (handle: HandleRegistration) => void;
+  readonly onRename: (change: LaneRename) => void;
   readonly onRequestLimit: (laneId: string) => void;
   readonly onRequestRemove: (laneId: string) => void;
   /** Recolhe a coluna expandida, ou expande a recolhida. */
@@ -57,8 +57,12 @@ export interface KanbanLaneHeaderProps {
   readonly actions: LaneHeaderActions;
 }
 
+export interface CardCountProps {
+  readonly lane: BoardLane;
+}
+
 /** Contador de cards da coluna, com o limite e o aviso de excesso para o leitor de tela. */
-export function CardCount({ lane }: Readonly<{ lane: BoardLane }>) {
+export function CardCount({ lane }: Readonly<CardCountProps>) {
   const count = lane.cards.length;
   const over = isOverLimit(lane);
   return (

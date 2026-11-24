@@ -10,15 +10,19 @@ export interface ParentGroup {
   }[];
 }
 
+export interface GroupByParentParams {
+  readonly lanes: readonly BoardLane[];
+  readonly allLanes: readonly BoardLane[];
+}
+
 /**
  * Agrupa os cards das colunas pelo card pai, como as raias do Jira: uma linha por pai que tem filhos nas colunas, na
  * ordem em que os pais aparecem no quadro, e no fim a linha dos cards sem pai. `allLanes` acha o pai mesmo numa coluna
  * oculta.
  */
-export function groupByParent(params: {
-  readonly lanes: readonly BoardLane[];
-  readonly allLanes: readonly BoardLane[];
-}): readonly ParentGroup[] {
+export function groupByParent(
+  params: GroupByParentParams,
+): readonly ParentGroup[] {
   const { lanes, allLanes } = params;
   const cards = new Map(
     allLanes.flatMap((lane) => lane.cards).map((card) => [card.id, card]),
@@ -66,10 +70,12 @@ export interface ListRow {
   readonly assignee?: string;
 }
 
-export function listRows(params: {
+export interface ListRowsParams {
   readonly lanes: readonly BoardLane[];
   readonly people: ReadonlyMap<string, string>;
-}): readonly ListRow[] {
+}
+
+export function listRows(params: ListRowsParams): readonly ListRow[] {
   let position = 0;
   return params.lanes.flatMap((lane, laneIndex) =>
     lane.cards.map((card) => {
@@ -89,23 +95,29 @@ export function listRows(params: {
 
 const collator = new Intl.Collator('pt-BR', { sensitivity: 'base' });
 
+/** Dois textos a comparar, cada um podendo faltar, e o sentido da ordem. */
+interface OptionalComparison {
+  readonly a: string | undefined;
+  readonly b: string | undefined;
+  readonly direction: 1 | -1;
+}
+
 /** Valor vazio vai sempre para o fim, nas duas direções. */
-function compareOptional(
-  a: string | undefined,
-  b: string | undefined,
-  direction: 1 | -1,
-): number {
+function compareOptional(params: OptionalComparison): number {
+  const { a, b, direction } = params;
   if (a === undefined || b === undefined) {
     return a === b ? 0 : a === undefined ? 1 : -1;
   }
   return collator.compare(normalizeText(a), normalizeText(b)) * direction;
 }
 
-/** Ordena as linhas pela coluna escolhida; empate fica na ordem do quadro. */
-export function sortRows(params: {
+export interface SortRowsParams {
   readonly rows: readonly ListRow[];
   readonly sort: ListSort;
-}): readonly ListRow[] {
+}
+
+/** Ordena as linhas pela coluna escolhida; empate fica na ordem do quadro. */
+export function sortRows(params: SortRowsParams): readonly ListRow[] {
   const { key } = params.sort;
   const direction = params.sort.direction === 'ascending' ? 1 : -1;
   const compare = (a: ListRow, b: ListRow): number => {
@@ -113,13 +125,17 @@ export function sortRows(params: {
       case 'key':
         return ((a.card.number ?? 0) - (b.card.number ?? 0)) * direction;
       case 'title':
-        return compareOptional(a.card.title, b.card.title, direction);
+        return compareOptional({ a: a.card.title, b: b.card.title, direction });
       case 'lane':
         return (a.laneIndex - b.laneIndex) * direction;
       case 'assignee':
-        return compareOptional(a.assignee, b.assignee, direction);
+        return compareOptional({ a: a.assignee, b: b.assignee, direction });
       case 'due':
-        return compareOptional(a.card.dueDate, b.card.dueDate, direction);
+        return compareOptional({
+          a: a.card.dueDate,
+          b: b.card.dueDate,
+          direction,
+        });
     }
   };
   return [...params.rows].sort(

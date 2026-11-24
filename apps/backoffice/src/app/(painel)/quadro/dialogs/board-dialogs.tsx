@@ -1,6 +1,10 @@
 import { ConfirmModal } from '@/shared/ui/confirm-modal';
 import type { BoardCard, BoardLane } from '../model/board';
-import { LaneLimitDialog, RemoveLaneDialog } from './lane-dialogs';
+import {
+  LaneLimitDialog,
+  type LaneRemoval,
+  RemoveLaneDialog,
+} from './lane-dialogs';
 import { OnClosed } from './on-closed';
 
 export type BoardDialogRequest =
@@ -15,6 +19,8 @@ export type BoardDialogRequest =
     }
   | { readonly kind: 'reset' };
 
+type RemoveCardRequest = Extract<BoardDialogRequest, { kind: 'remove-card' }>;
+
 /** Janela aberta, ou fechando: o pedido continua guardado até o fim da animação de saída. */
 export interface BoardDialog {
   /** Muda a cada abertura, para o conteúdo da janela começar do zero. */
@@ -25,15 +31,14 @@ export interface BoardDialog {
   readonly focusLaneId?: string;
 }
 
+export interface LaneLimitChange {
+  readonly laneId: string;
+  readonly limit: number | undefined;
+}
+
 export interface BoardDialogHandlers {
-  readonly onSaveLimit: (change: {
-    readonly laneId: string;
-    readonly limit: number | undefined;
-  }) => void;
-  readonly onRemoveLane: (change: {
-    readonly laneId: string;
-    readonly moveCardsTo?: string;
-  }) => void;
+  readonly onSaveLimit: (change: LaneLimitChange) => void;
+  readonly onRemoveLane: (change: LaneRemoval) => void;
   readonly onRemoveCard: (cardId: string) => void;
   readonly onReset: () => void;
   readonly onCancel: () => void;
@@ -41,9 +46,7 @@ export interface BoardDialogHandlers {
   readonly onClosed: (focusLaneId: string | undefined) => void;
 }
 
-function removeCardText(
-  request: Extract<BoardDialogRequest, { kind: 'remove-card' }>,
-): string {
+function removeCardText(request: RemoveCardRequest): string {
   const { childCount, parentTitle } = request;
   if (childCount === 0) {
     return 'O card sai do quadro.';
@@ -58,16 +61,18 @@ function removeCardText(
     : `O card sai do quadro. ${children} ${verb} a ficar sem card pai.`;
 }
 
+export interface BoardDialogsProps {
+  readonly dialog: BoardDialog | null;
+  readonly lanes: readonly BoardLane[];
+  readonly handlers: BoardDialogHandlers;
+}
+
 /** As janelas de confirmação do quadro; só uma fica aberta por vez. */
 export function BoardDialogs({
   dialog,
   lanes,
   handlers,
-}: Readonly<{
-  dialog: BoardDialog | null;
-  lanes: readonly BoardLane[];
-  handlers: BoardDialogHandlers;
-}>) {
+}: Readonly<BoardDialogsProps>) {
   if (!dialog) {
     return null;
   }

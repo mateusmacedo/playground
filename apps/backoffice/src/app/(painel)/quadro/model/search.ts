@@ -9,17 +9,19 @@ export function normalizeText(text: string): string {
     .toLowerCase();
 }
 
-/**
- * O card bate com a busca quando cada palavra dela aparece no título, na descrição, no código, no nome das etiquetas
- * ou nos itens do checklist. Busca vazia bate com tudo.
- */
-export function cardMatchesQuery(params: {
+export interface CardMatchesQueryParams {
   readonly card: BoardCard;
   readonly query: string;
   readonly labels: readonly BoardLabel[];
   /** Prefixo do código dos cards do quadro. */
   readonly keyPrefix: string;
-}): boolean {
+}
+
+/**
+ * O card bate com a busca quando cada palavra dela aparece no título, na descrição, no código, no nome das etiquetas
+ * ou nos itens do checklist. Busca vazia bate com tudo.
+ */
+export function cardMatchesQuery(params: CardMatchesQueryParams): boolean {
   const { card, query, labels, keyPrefix } = params;
   const words = normalizeText(query).split(/\s+/).filter(Boolean);
   if (words.length === 0) {
@@ -40,11 +42,13 @@ export function cardMatchesQuery(params: {
   return words.every((word) => haystack.includes(word));
 }
 
-/** Sem etiqueta escolhida, todo card passa; com etiquetas, passa o card que tem qualquer uma delas. */
-export function cardMatchesLabels(params: {
+export interface CardMatchesLabelsParams {
   readonly card: BoardCard;
   readonly labelIds: ReadonlySet<string>;
-}): boolean {
+}
+
+/** Sem etiqueta escolhida, todo card passa; com etiquetas, passa o card que tem qualquer uma delas. */
+export function cardMatchesLabels(params: CardMatchesLabelsParams): boolean {
   const { card, labelIds } = params;
   return (
     labelIds.size === 0 || (card.labelIds ?? []).some((id) => labelIds.has(id))

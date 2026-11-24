@@ -27,6 +27,11 @@ export interface LaneMoveState {
   readonly collapsed: boolean;
 }
 
+export interface NewCard {
+  readonly laneId: string;
+  readonly title: string;
+}
+
 export interface KanbanLaneProps {
   readonly lane: BoardLane;
   /** Posição da coluna no quadro, lida pelo arraste de colunas. */
@@ -39,18 +44,17 @@ export interface KanbanLaneProps {
   readonly onDragOver: (event: DragEvent<HTMLElement>, lane: BoardLane) => void;
   readonly onDragLeave: (event: DragEvent<HTMLElement>, laneId: string) => void;
   readonly onDrop: (event: DragEvent<HTMLElement>, lane: BoardLane) => void;
-  readonly onAddCard: (card: {
-    readonly laneId: string;
-    readonly title: string;
-  }) => void;
+  readonly onAddCard: (card: NewCard) => void;
   /** Os cards da coluna, já na ordem da tela. */
   readonly children: ReactNode;
 }
 
-function laneClassName(params: {
+interface LaneClassNameParams {
   readonly lane: BoardLane;
   readonly moveState: LaneMoveState;
-}): string {
+}
+
+function laneClassName(params: LaneClassNameParams): string {
   const { lane, moveState } = params;
   const modifiers: readonly [boolean, string][] = [
     [isOverLimit(lane), 'kanban-lane--over-limit'],
@@ -137,6 +141,15 @@ export function KanbanLane({
   );
 }
 
+interface LaneContentProps
+  extends Omit<
+    KanbanLaneProps,
+    'index' | 'onDragOver' | 'onDragLeave' | 'onDrop'
+  > {
+  /** Id do título, que dá nome à coluna. */
+  readonly titleId: string;
+}
+
 /** Cabeçalho, cards e inclusão de card da coluna expandida. */
 function LaneContent({
   lane,
@@ -148,11 +161,7 @@ function LaneContent({
   headerActions,
   onAddCard,
   children,
-}: Readonly<
-  Omit<KanbanLaneProps, 'index' | 'onDragOver' | 'onDragLeave' | 'onDrop'> & {
-    titleId: string;
-  }
->) {
+}: Readonly<LaneContentProps>) {
   const count = lane.cards.length;
   return (
     <>

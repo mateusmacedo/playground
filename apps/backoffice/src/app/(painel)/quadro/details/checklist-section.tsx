@@ -8,17 +8,19 @@ import type { BoardCard } from '../model/board';
 import { checklistProgress } from '../model/checklist';
 import type { BoardCommands } from '../use-board';
 
+export interface ChecklistSectionProps {
+  readonly card: BoardCard;
+  readonly commands: Pick<
+    BoardCommands,
+    'addChecklistItem' | 'toggleChecklistItem' | 'removeChecklistItem'
+  >;
+}
+
 /** Checklist do card: progresso, itens para marcar ou remover e a inclusão de itens. */
 export function ChecklistSection({
   card,
   commands,
-}: Readonly<{
-  card: BoardCard;
-  commands: Pick<
-    BoardCommands,
-    'addChecklistItem' | 'toggleChecklistItem' | 'removeChecklistItem'
-  >;
-}>) {
+}: Readonly<ChecklistSectionProps>) {
   const id = useId();
   const items = card.checklist ?? [];
   const { done, total } = checklistProgress(card);

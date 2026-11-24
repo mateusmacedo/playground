@@ -2,18 +2,20 @@ import { cilActionRedo, cilActionUndo } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
 import { CButton, CButtonGroup } from '@coreui/react';
 
+export interface HistoryButtonsProps {
+  readonly canUndo: boolean;
+  readonly canRedo: boolean;
+  readonly onUndo: () => void;
+  readonly onRedo: () => void;
+}
+
 /** Desfazer e refazer; os atalhos estão no título de cada botão. */
 export function HistoryButtons({
   canUndo,
   canRedo,
   onUndo,
   onRedo,
-}: Readonly<{
-  canUndo: boolean;
-  canRedo: boolean;
-  onUndo: () => void;
-  onRedo: () => void;
-}>) {
+}: Readonly<HistoryButtonsProps>) {
   return (
     <CButtonGroup size="sm" role="group" aria-label="Histórico de alterações">
       <CButton

@@ -15,20 +15,22 @@ function parseLimit(value: string): number | undefined | null {
   return Number.isInteger(limit) && limit > 0 ? limit : null;
 }
 
+export interface LaneLimitDialogProps {
+  readonly visible: boolean;
+  readonly lane: BoardLane;
+  readonly onSave: (limit: number | undefined) => void;
+  readonly onCancel: () => void;
+  /** Conteúdo extra da janela, depois do campo. */
+  readonly children?: ReactNode;
+}
+
 export function LaneLimitDialog({
   visible,
   lane,
   onSave,
   onCancel,
   children,
-}: Readonly<{
-  visible: boolean;
-  lane: BoardLane;
-  onSave: (limit: number | undefined) => void;
-  onCancel: () => void;
-  /** Conteúdo extra da janela, depois do campo. */
-  children?: ReactNode;
-}>) {
+}: Readonly<LaneLimitDialogProps>) {
   const [value, setValue] = useState(lane.wipLimit?.toString() ?? '');
   const inputId = useId();
   const limit = parseLimit(value);
@@ -72,14 +74,31 @@ export function LaneLimitDialog({
   );
 }
 
-/** Coluna que recebe os cards por padrão: a vizinha da esquerda, ou a da direita quando a coluna é a primeira. */
-function defaultDestination(params: {
+interface DefaultDestinationParams {
   readonly lanes: readonly BoardLane[];
   readonly laneId: string;
-}): string {
+}
+
+/** Coluna que recebe os cards por padrão: a vizinha da esquerda, ou a da direita quando a coluna é a primeira. */
+function defaultDestination(params: DefaultDestinationParams): string {
   const index = params.lanes.findIndex((lane) => lane.id === params.laneId);
   const neighbor = params.lanes[index - 1] ?? params.lanes[index + 1];
   return neighbor?.id ?? '';
+}
+
+export interface LaneRemoval {
+  laneId: string;
+  moveCardsTo?: string;
+}
+
+export interface RemoveLaneDialogProps {
+  readonly visible: boolean;
+  readonly lane: BoardLane;
+  readonly lanes: readonly BoardLane[];
+  readonly onConfirm: (change: LaneRemoval) => void;
+  readonly onCancel: () => void;
+  /** Conteúdo extra da janela, depois do texto. */
+  readonly children?: ReactNode;
 }
 
 export function RemoveLaneDialog({
@@ -89,15 +108,7 @@ export function RemoveLaneDialog({
   onConfirm,
   onCancel,
   children,
-}: Readonly<{
-  visible: boolean;
-  lane: BoardLane;
-  lanes: readonly BoardLane[];
-  onConfirm: (change: { laneId: string; moveCardsTo?: string }) => void;
-  onCancel: () => void;
-  /** Conteúdo extra da janela, depois do texto. */
-  children?: ReactNode;
-}>) {
+}: Readonly<RemoveLaneDialogProps>) {
   const [destination, setDestination] = useState(() =>
     defaultDestination({ lanes, laneId: lane.id }),
   );

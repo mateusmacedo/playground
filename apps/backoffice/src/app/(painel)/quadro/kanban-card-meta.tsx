@@ -21,6 +21,17 @@ const DUE_TEXT: Readonly<Record<DueStatus, string>> = {
   upcoming: '',
 };
 
+export interface KanbanCardMetaProps {
+  readonly card: BoardCard;
+  readonly labels: readonly BoardLabel[];
+  readonly childCount: number;
+  readonly today: string | undefined;
+  /** Nome do responsável. */
+  readonly assignee?: string;
+  /** Filhos na coluna de conclusão, quando o quadro tem uma. */
+  readonly progress?: ChildProgress;
+}
+
 /**
  * Selos do card: etiquetas, prazo, checklist e filhos. A situação do prazo depende do dia de hoje, então só aparece
  * quando `today` chega, depois de montar no navegador.
@@ -32,16 +43,7 @@ export function KanbanCardMeta({
   today,
   assignee,
   progress,
-}: Readonly<{
-  card: BoardCard;
-  labels: readonly BoardLabel[];
-  childCount: number;
-  today: string | undefined;
-  /** Nome do responsável. */
-  assignee?: string;
-  /** Filhos na coluna de conclusão, quando o quadro tem uma. */
-  progress?: ChildProgress;
-}>) {
+}: Readonly<KanbanCardMetaProps>) {
   const checklist = checklistProgress(card);
   const status = today ? dueStatus({ card, today }) : undefined;
   const comments = card.comments?.length ?? 0;
@@ -134,8 +136,12 @@ export function KanbanCardMeta({
   );
 }
 
+interface ProgressBadgeProps {
+  readonly progress: ChildProgress;
+}
+
 /** Filhos concluídos de quantos o card tem, em número e numa barra. */
-function ProgressBadge({ progress }: Readonly<{ progress: ChildProgress }>) {
+function ProgressBadge({ progress }: Readonly<ProgressBadgeProps>) {
   const complete = progress.done === progress.total;
   const percent = Math.round((progress.done / progress.total) * 100);
   return (

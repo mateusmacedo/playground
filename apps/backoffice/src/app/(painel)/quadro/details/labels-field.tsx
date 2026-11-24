@@ -5,16 +5,18 @@ import type { BoardCard, BoardLabel } from '../model/board';
 import type { BoardCommands } from '../use-board';
 import { NewLabelForm } from './new-label-form';
 
+export interface LabelsFieldProps {
+  readonly card: BoardCard;
+  readonly labels: readonly BoardLabel[];
+  readonly commands: Pick<BoardCommands, 'toggleLabel' | 'createLabel'>;
+}
+
 /** Etiquetas do card: marcar e desmarcar as do catálogo, ou criar uma nova já marcada. */
 export function LabelsField({
   card,
   labels,
   commands,
-}: Readonly<{
-  card: BoardCard;
-  labels: readonly BoardLabel[];
-  commands: Pick<BoardCommands, 'toggleLabel' | 'createLabel'>;
-}>) {
+}: Readonly<LabelsFieldProps>) {
   const id = useId();
   return (
     <fieldset>

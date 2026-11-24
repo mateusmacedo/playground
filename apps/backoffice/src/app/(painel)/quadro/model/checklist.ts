@@ -1,12 +1,16 @@
 import { type BoardCard, type BoardLane, updateCardIn } from './board';
 import { nextId } from './ids';
 
-/** Acrescenta o item no fim do checklist; texto vazio não cria nada. */
-export function addChecklistItem(params: {
+export interface AddChecklistItemParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
   readonly text: string;
-}): readonly BoardLane[] {
+}
+
+/** Acrescenta o item no fim do checklist; texto vazio não cria nada. */
+export function addChecklistItem(
+  params: AddChecklistItemParams,
+): readonly BoardLane[] {
   const text = params.text.trim();
   if (!text) {
     return params.lanes;
@@ -25,12 +29,16 @@ export function addChecklistItem(params: {
   });
 }
 
-/** Marca o item como feito, ou desmarca. */
-export function toggleChecklistItem(params: {
+export interface ToggleChecklistItemParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
   readonly itemId: string;
-}): readonly BoardLane[] {
+}
+
+/** Marca o item como feito, ou desmarca. */
+export function toggleChecklistItem(
+  params: ToggleChecklistItemParams,
+): readonly BoardLane[] {
   const { itemId } = params;
   return updateCardIn({
     lanes: params.lanes,
@@ -47,12 +55,16 @@ export function toggleChecklistItem(params: {
   });
 }
 
-/** Tira o item do checklist; o checklist que fica vazio some do card. */
-export function removeChecklistItem(params: {
+export interface RemoveChecklistItemParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
   readonly itemId: string;
-}): readonly BoardLane[] {
+}
+
+/** Tira o item do checklist; o checklist que fica vazio some do card. */
+export function removeChecklistItem(
+  params: RemoveChecklistItemParams,
+): readonly BoardLane[] {
   const { itemId } = params;
   return updateCardIn({
     lanes: params.lanes,
@@ -70,10 +82,12 @@ export function removeChecklistItem(params: {
   });
 }
 
-export function checklistProgress(card: BoardCard): {
+export interface ChecklistProgress {
   readonly done: number;
   readonly total: number;
-} {
+}
+
+export function checklistProgress(card: BoardCard): ChecklistProgress {
   const items = card.checklist ?? [];
   return {
     done: items.filter((item) => item.done).length,

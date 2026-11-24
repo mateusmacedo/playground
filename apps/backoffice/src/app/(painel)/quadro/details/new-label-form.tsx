@@ -4,12 +4,17 @@ import { type FormEvent, useState } from 'react';
 import type { LabelColor } from '../model/board';
 import { LABEL_COLORS } from '../model/labels';
 
+export interface NewLabel {
+  name: string;
+  color: LabelColor;
+}
+
+export interface NewLabelFormProps {
+  readonly onCreate: (label: NewLabel) => boolean;
+}
+
 /** Nome e cor de uma etiqueta nova; `onCreate` diz se ela foi criada (nome repetido não é). */
-export function NewLabelForm({
-  onCreate,
-}: Readonly<{
-  onCreate: (label: { name: string; color: LabelColor }) => boolean;
-}>) {
+export function NewLabelForm({ onCreate }: Readonly<NewLabelFormProps>) {
   const [name, setName] = useState('');
   const [color, setColor] = useState<LabelColor>('primary');
   const [error, setError] = useState('');

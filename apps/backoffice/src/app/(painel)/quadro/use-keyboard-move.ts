@@ -5,6 +5,11 @@ import type { MoveAnnouncement } from './model/announcements';
 import type { BoardLane, StepDirection } from './model/board';
 import type { LaneDirection } from './model/lanes';
 
+export interface HandleRegistration {
+  readonly id: string;
+  readonly element: HTMLButtonElement | null;
+}
+
 export interface KeyboardMove {
   readonly grabbedId: string | null;
   /** Solta o item pego, sem anúncio; usado quando outro meio assume o movimento. */
@@ -15,10 +20,7 @@ export interface KeyboardMove {
     id: string,
   ) => void;
   readonly onHandleBlur: (id: string) => void;
-  readonly registerHandle: (handle: {
-    readonly id: string;
-    readonly element: HTMLButtonElement | null;
-  }) => void;
+  readonly registerHandle: (handle: HandleRegistration) => void;
 }
 
 interface KeyboardGrab {
@@ -41,27 +43,40 @@ export const LANE_STEP_KEYS: Readonly<Record<string, LaneDirection>> = {
   ArrowRight: 'right',
 };
 
-/**
- * Movimento pelo teclado na alça de um card ou de uma coluna: o clique (Espaço, Enter ou toque) pega e solta, as setas
- * movem e o Esc desfaz. Cada passo vira um anúncio para o leitor de tela.
- */
-export function useKeyboardMove<Direction extends string>(params: {
+export interface MoveStep<Direction extends string> {
+  readonly lanes: readonly BoardLane[];
+  readonly id: string;
+  readonly direction: Direction;
+}
+
+export interface MoveEvent {
+  readonly kind: MoveAnnouncement;
+  readonly lanes: readonly BoardLane[];
+  readonly id: string;
+}
+
+interface GrabbedStep<Direction extends string> {
+  readonly id: string;
+  readonly direction: Direction;
+}
+
+export interface UseKeyboardMoveParams<Direction extends string> {
   readonly lanes: readonly BoardLane[];
   readonly setLanes: (lanes: readonly BoardLane[]) => void;
   readonly announce: (text: string) => void;
   readonly keys: Readonly<Record<string, Direction>>;
   /** Um passo na direção pedida; devolve o próprio `lanes` quando não há para onde ir. */
-  readonly step: (move: {
-    readonly lanes: readonly BoardLane[];
-    readonly id: string;
-    readonly direction: Direction;
-  }) => readonly BoardLane[];
-  readonly announcementFor: (event: {
-    readonly kind: MoveAnnouncement;
-    readonly lanes: readonly BoardLane[];
-    readonly id: string;
-  }) => string;
-}): KeyboardMove {
+  readonly step: (move: MoveStep<Direction>) => readonly BoardLane[];
+  readonly announcementFor: (event: MoveEvent) => string;
+}
+
+/**
+ * Movimento pelo teclado na alça de um card ou de uma coluna: o clique (Espaço, Enter ou toque) pega e solta, as setas
+ * movem e o Esc desfaz. Cada passo vira um anúncio para o leitor de tela.
+ */
+export function useKeyboardMove<Direction extends string>(
+  params: UseKeyboardMoveParams<Direction>,
+): KeyboardMove {
   const { lanes, setLanes, announce, keys, announcementFor } = params;
   const [grab, setGrab] = useState<KeyboardGrab | null>(null);
   const handles = useRef(new Map<string, HTMLButtonElement>());
@@ -90,7 +105,7 @@ export function useKeyboardMove<Direction extends string>(params: {
     announce(announcementFor({ kind: 'cancelled', lanes: snapshot, id }));
   }
 
-  function step(move: { readonly id: string; readonly direction: Direction }) {
+  function step(move: GrabbedStep<Direction>) {
     const { id, direction } = move;
     const next = params.step({ lanes, id, direction });
     if (next === lanes) {
@@ -135,10 +150,7 @@ export function useKeyboardMove<Direction extends string>(params: {
     });
   }
 
-  function registerHandle(handle: {
-    readonly id: string;
-    readonly element: HTMLButtonElement | null;
-  }) {
+  function registerHandle(handle: HandleRegistration) {
     if (handle.element) {
       handles.current.set(handle.id, handle.element);
     }

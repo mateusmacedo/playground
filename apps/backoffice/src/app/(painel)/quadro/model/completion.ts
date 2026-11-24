@@ -6,14 +6,18 @@ export interface ChildProgress {
   readonly total: number;
 }
 
+export interface ChildProgressParams {
+  readonly lanes: readonly BoardLane[];
+  readonly doneLaneId: string | undefined;
+}
+
 /**
  * Progresso dos filhos de cada card pai, contando os filhos diretos que estão na coluna de conclusão do quadro. Sem
  * coluna de conclusão, ou com uma que não existe mais, não há progresso.
  */
-export function childProgress(params: {
-  readonly lanes: readonly BoardLane[];
-  readonly doneLaneId: string | undefined;
-}): ReadonlyMap<string, ChildProgress> {
+export function childProgress(
+  params: ChildProgressParams,
+): ReadonlyMap<string, ChildProgress> {
   const { lanes, doneLaneId } = params;
   const progress = new Map<string, ChildProgress>();
   if (!doneLaneId || !lanes.some((lane) => lane.id === doneLaneId)) {

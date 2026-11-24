@@ -1,20 +1,24 @@
 import { allCards, type BoardCard, type BoardLane, findCard } from './board';
 
-/** Filhos diretos do card, na ordem da tela. */
-export function childrenOf(params: {
+export interface ChildrenOfParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
-}): readonly BoardCard[] {
+}
+
+/** Filhos diretos do card, na ordem da tela. */
+export function childrenOf(params: ChildrenOfParams): readonly BoardCard[] {
   return allCards(params.lanes).filter(
     (card) => card.parentId === params.cardId,
   );
 }
 
-/** Cadeia de pais do card, do pai direto até a raiz. Para num pai inexistente ou num ciclo. */
-export function ancestorsOf(params: {
+export interface AncestorsOfParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
-}): readonly BoardCard[] {
+}
+
+/** Cadeia de pais do card, do pai direto até a raiz. Para num pai inexistente ou num ciclo. */
+export function ancestorsOf(params: AncestorsOfParams): readonly BoardCard[] {
   const { lanes, cardId } = params;
   const ancestors: BoardCard[] = [];
   const visited = new Set([cardId]);
@@ -44,11 +48,15 @@ export function childCounts(
   return counts;
 }
 
-/** Ids de todos os descendentes do card: filhos, netos e assim por diante. */
-export function descendantIds(params: {
+export interface DescendantIdsParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
-}): ReadonlySet<string> {
+}
+
+/** Ids de todos os descendentes do card: filhos, netos e assim por diante. */
+export function descendantIds(
+  params: DescendantIdsParams,
+): ReadonlySet<string> {
   const cards = allCards(params.lanes);
   const found = new Set<string>();
   const pending = [params.cardId];
@@ -63,11 +71,15 @@ export function descendantIds(params: {
   return found;
 }
 
-/** Cards que podem ser pai do card: todos, menos ele mesmo e os descendentes dele, que fechariam um ciclo. */
-export function parentCandidates(params: {
+export interface ParentCandidatesParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
-}): readonly BoardCard[] {
+}
+
+/** Cards que podem ser pai do card: todos, menos ele mesmo e os descendentes dele, que fechariam um ciclo. */
+export function parentCandidates(
+  params: ParentCandidatesParams,
+): readonly BoardCard[] {
   const { lanes, cardId } = params;
   const blocked = descendantIds({ lanes, cardId });
   return allCards(lanes).filter(
@@ -75,12 +87,14 @@ export function parentCandidates(params: {
   );
 }
 
-/** Liga o card a um pai, ou o solta com `undefined`. Pai inexistente ou que fecharia um ciclo não muda nada. */
-export function setParent(params: {
+export interface SetParentParams {
   readonly lanes: readonly BoardLane[];
   readonly cardId: string;
   readonly parentId: string | undefined;
-}): readonly BoardLane[] {
+}
+
+/** Liga o card a um pai, ou o solta com `undefined`. Pai inexistente ou que fecharia um ciclo não muda nada. */
+export function setParent(params: SetParentParams): readonly BoardLane[] {
   const { lanes, cardId, parentId } = params;
   const location = findCard({ lanes, cardId });
   if (!location || location.card.parentId === parentId) {

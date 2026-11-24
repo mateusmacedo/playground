@@ -34,16 +34,20 @@ export const NEW_BOARD_LANES: readonly BoardLane[] = [
   { id: 'lane-3', title: 'Concluído', cards: [] },
 ];
 
+export interface NewBoard {
+  readonly name: string;
+  readonly keyPrefix: string;
+}
+
+export interface BoardRename {
+  readonly boardId: string;
+  readonly name: string;
+}
+
 export interface WorkspaceCommands {
   /** Cria o quadro e o abre; devolve o id, ou `undefined` quando o nome veio vazio ou repetido. */
-  readonly create: (board: {
-    readonly name: string;
-    readonly keyPrefix: string;
-  }) => string | undefined;
-  readonly rename: (change: {
-    readonly boardId: string;
-    readonly name: string;
-  }) => void;
+  readonly create: (board: NewBoard) => string | undefined;
+  readonly rename: (change: BoardRename) => void;
   /** Tira o quadro da lista e apaga o que estava gravado nele; o último quadro não sai. */
   readonly remove: (boardId: string) => void;
   readonly select: (boardId: string) => void;
@@ -57,14 +61,16 @@ export interface WorkspaceState {
   readonly commands: WorkspaceCommands;
 }
 
+export interface UseWorkspaceParams {
+  /** Id do quadro pedido no endereço, lido depois de montar. */
+  readonly readRequestedId: () => string | null;
+}
+
 /**
  * Lista de quadros e o quadro aberto. A lista fica gravada e acompanha o que as outras abas mudam; o quadro aberto é
  * desta aba, e o endereço (`?quadro=<id>`) tem prioridade sobre o último aberto.
  */
-export function useWorkspace(params: {
-  /** Id do quadro pedido no endereço, lido depois de montar. */
-  readonly readRequestedId: () => string | null;
-}): WorkspaceState {
+export function useWorkspace(params: UseWorkspaceParams): WorkspaceState {
   const [boards, setBoards] = useState(DEFAULT_BOARDS);
   const [activeId, setActiveId] = useState(DEFAULT_BOARD_ID);
   const [loaded, setLoaded] = useState(false);

@@ -40,10 +40,13 @@ function panel() {
   return screen.getByRole('dialog', { name: 'Detalhes do card' });
 }
 
-async function configure(change: {
+/** O que o teste muda na janela "Configurar quadro". */
+interface BoardSetup {
   readonly doneLane?: string;
   readonly people?: readonly string[];
-}) {
+}
+
+async function configure(change: BoardSetup) {
   fireEvent.click(screen.getByRole('button', { name: 'Configurar quadro' }));
   const dialog = await screen.findByRole('dialog', {
     name: 'Configurar quadro',

@@ -15,17 +15,19 @@ function samePeople(
   );
 }
 
-/**
- * Aplica a janela de configuração de uma vez, para valer como um passo só do desfazer. Campo ausente fica como está;
- * nada mudando, devolve o próprio `board`.
- */
-export function configureBoard(params: {
+export interface ConfigureBoardParams {
   readonly board: Board;
   readonly keyPrefix?: string;
   /** `null` tira a coluna de conclusão. */
   readonly doneLaneId?: string | null;
   readonly people?: readonly BoardPerson[];
-}): Board {
+}
+
+/**
+ * Aplica a janela de configuração de uma vez, para valer como um passo só do desfazer. Campo ausente fica como está;
+ * nada mudando, devolve o próprio `board`.
+ */
+export function configureBoard(params: ConfigureBoardParams): Board {
   const { board } = params;
   let config = board.config;
   if (params.keyPrefix !== undefined) {

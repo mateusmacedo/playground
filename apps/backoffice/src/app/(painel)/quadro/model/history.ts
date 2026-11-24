@@ -14,23 +14,27 @@ export function startHistory<T>(present: T): History<T> {
   return { past: [], present, future: [] };
 }
 
-/** O registro seguinte com a mesma chave do anterior entra no mesmo passo do desfazer. */
-export function isCoalescing<T>(params: {
+export interface IsCoalescingParams<T> {
   readonly history: History<T>;
   readonly key?: string;
-}): boolean {
+}
+
+/** O registro seguinte com a mesma chave do anterior entra no mesmo passo do desfazer. */
+export function isCoalescing<T>(params: IsCoalescingParams<T>): boolean {
   return params.key !== undefined && params.key === params.history.lastKey;
+}
+
+export interface RecordChangeParams<T> {
+  readonly history: History<T>;
+  readonly next: T;
+  readonly key?: string;
 }
 
 /**
  * Registra um novo estado. Com a mesma chave do registro anterior, substitui o estado atual sem criar passo (digitação
  * seguida, movimento pelo teclado). Qualquer registro apaga o que havia para refazer.
  */
-export function recordChange<T>(params: {
-  readonly history: History<T>;
-  readonly next: T;
-  readonly key?: string;
-}): History<T> {
+export function recordChange<T>(params: RecordChangeParams<T>): History<T> {
   const { history, next, key } = params;
   if (next === history.present) {
     return history;

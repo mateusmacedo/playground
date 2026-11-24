@@ -6,6 +6,18 @@ import type { ArchivedView } from './dialogs/archived-card-dialog';
 import type { ArchiveEntry } from './model/board';
 import { cardKey } from './model/card-key';
 
+export interface ArchiveLaneProps {
+  readonly archive: readonly ArchiveEntry[];
+  readonly keyPrefix: string;
+  /** Um card arrastado está sobre a coluna e será arquivado ao soltar. */
+  readonly dropActive: boolean;
+  readonly onDragOver: (event: DragEvent<HTMLElement>) => void;
+  readonly onDragLeave: (event: DragEvent<HTMLElement>) => void;
+  readonly onDrop: (event: DragEvent<HTMLElement>) => void;
+  readonly onOpen: (view: ArchivedView) => void;
+  readonly onHide: () => void;
+}
+
 /**
  * Coluna automática, sempre a última, com os arquivamentos do mais recente para o mais antigo. Abrir um item mostra o
  * card só para leitura; soltar um card arrastado nela arquiva o card com os descendentes.
@@ -19,17 +31,7 @@ export function ArchiveLane({
   onDrop,
   onOpen,
   onHide,
-}: Readonly<{
-  archive: readonly ArchiveEntry[];
-  keyPrefix: string;
-  /** Um card arrastado está sobre a coluna e será arquivado ao soltar. */
-  dropActive: boolean;
-  onDragOver: (event: DragEvent<HTMLElement>) => void;
-  onDragLeave: (event: DragEvent<HTMLElement>) => void;
-  onDrop: (event: DragEvent<HTMLElement>) => void;
-  onOpen: (view: ArchivedView) => void;
-  onHide: () => void;
-}>) {
+}: Readonly<ArchiveLaneProps>) {
   const titleId = useId();
   return (
     <section

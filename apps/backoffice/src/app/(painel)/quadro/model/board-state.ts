@@ -14,17 +14,19 @@ export function archivedCards(board: Board): readonly BoardCard[] {
   return board.archive.flatMap((entry) => entry.cards.map(({ card }) => card));
 }
 
-/**
- * Monta o quadro a partir das colunas, com ou sem número nos cards. Quem não tem número ganha o próximo livre, na
- * ordem da tela, e o próximo número fica sempre acima de todos os que já existem.
- */
-export function createBoard(params: {
+export interface CreateBoardParams {
   readonly lanes: readonly BoardLane[];
   readonly labels?: readonly BoardLabel[];
   readonly archive?: readonly ArchiveEntry[];
   readonly nextNumber?: number;
   readonly config?: BoardConfig;
-}): Board {
+}
+
+/**
+ * Monta o quadro a partir das colunas, com ou sem número nos cards. Quem não tem número ganha o próximo livre, na
+ * ordem da tela, e o próximo número fica sempre acima de todos os que já existem.
+ */
+export function createBoard(params: CreateBoardParams): Board {
   const archive = params.archive ?? [];
   const labels = params.labels ?? [];
   const existing = [

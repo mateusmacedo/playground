@@ -26,11 +26,7 @@ import { InlineAddForm } from './inline-add-form';
 import { KanbanCard, type KanbanCardActions } from './kanban-card';
 import { KanbanLane } from './kanban-lane';
 import type { LaneHeaderActions } from './kanban-lane-header';
-import {
-  announcementText,
-  laneAnnouncementText,
-  type MoveAnnouncement,
-} from './model/announcements';
+import { announcementText, laneAnnouncementText } from './model/announcements';
 import { restoreArchived } from './model/archive';
 import {
   allCards,
@@ -73,21 +69,11 @@ import { useDragAndDrop } from './use-drag-and-drop';
 import {
   CARD_STEP_KEYS,
   LANE_STEP_KEYS,
+  type MoveEvent,
+  type MoveStep,
   useKeyboardMove,
 } from './use-keyboard-move';
 import { useLaneDrag } from './use-lane-drag';
-
-interface MoveStep<Direction> {
-  readonly lanes: readonly BoardLane[];
-  readonly id: string;
-  readonly direction: Direction;
-}
-
-interface MoveEvent {
-  readonly kind: MoveAnnouncement;
-  readonly lanes: readonly BoardLane[];
-  readonly id: string;
-}
 
 /** Passo do card pelo teclado; o passo que mexe numa coluna bloqueada não acontece. */
 const stepCardById = ({ lanes, id, direction }: MoveStep<StepDirection>) => {
@@ -116,11 +102,13 @@ interface OpenArchived {
   readonly open: boolean;
 }
 
-/** Arquivamento que contém o card. */
-function archiveEntryOf(params: {
+interface ArchiveEntryOfParams {
   readonly archive: Board['archive'];
   readonly cardId: string;
-}) {
+}
+
+/** Arquivamento que contém o card. */
+function archiveEntryOf(params: ArchiveEntryOfParams) {
   return params.archive.find((entry) =>
     entry.cards.some(({ card }) => card.id === params.cardId),
   );
@@ -142,6 +130,18 @@ type FocusTarget =
   | 'data-archive-lane'
   | 'data-board-undo';
 
+/** Janela de coluna a abrir, e de qual coluna. */
+interface LaneDialogTarget {
+  readonly kind: 'limit' | 'remove-lane';
+  readonly laneId: string;
+}
+
+/** Clique na alça de mover: o item que o teclado segura agora e o que o clique faz. */
+interface GrabClick {
+  readonly grabbedId: string | null;
+  readonly click: (id: string) => void;
+}
+
 /** Nome do quadro, que mora na lista de quadros, para a janela de configuração. */
 export interface BoardSettings {
   readonly name: string;
@@ -150,12 +150,14 @@ export interface BoardSettings {
   readonly onRename: (name: string) => void;
 }
 
-/** Colunas recolhidas que vão receber um card que ainda não está nelas. */
-function lanesReceiving(params: {
+interface LanesReceivingParams {
   readonly before: readonly BoardLane[];
   readonly after: readonly BoardLane[];
   readonly collapsed: ReadonlySet<string>;
-}): readonly string[] {
+}
+
+/** Colunas recolhidas que vão receber um card que ainda não está nelas. */
+function lanesReceiving(params: LanesReceivingParams): readonly string[] {
   return params.after
     .filter((lane) => {
       if (!params.collapsed.has(lane.id)) {
@@ -167,6 +169,35 @@ function lanesReceiving(params: {
       );
     })
     .map((lane) => lane.id);
+}
+
+export interface KanbanBoardProps {
+  readonly initialLanes: readonly BoardLane[];
+  readonly initialLabels?: readonly BoardLabel[];
+  readonly storageKey?: string;
+  /** Com ela, o quadro ganha a janela "Configurar quadro", com nome e prefixo do código. */
+  readonly settings?: BoardSettings;
+  /** O quadro tem conteúdo de exemplo para restaurar. */
+  readonly canReset?: boolean;
+  /** Nome de quem comenta nos cards. */
+  readonly author?: string;
+}
+
+interface FocusMarkedTarget {
+  readonly attribute: FocusTarget;
+  readonly id: string;
+}
+
+interface BlockedByLockChange {
+  readonly cardId: string;
+  readonly laneId?: string;
+}
+
+interface CardPlacement {
+  readonly card: BoardCard;
+  readonly lane: BoardLane;
+  readonly index: number;
+  readonly dropBefore: boolean;
 }
 
 /**
@@ -181,17 +212,7 @@ export function KanbanBoard({
   settings,
   canReset = true,
   author = 'Você',
-}: Readonly<{
-  initialLanes: readonly BoardLane[];
-  initialLabels?: readonly BoardLabel[];
-  storageKey?: string;
-  /** Com ela, o quadro ganha a janela "Configurar quadro", com nome e prefixo do código. */
-  settings?: BoardSettings;
-  /** O quadro tem conteúdo de exemplo para restaurar. */
-  canReset?: boolean;
-  /** Nome de quem comenta nos cards. */
-  author?: string;
-}>) {
+}: Readonly<KanbanBoardProps>) {
   const { board, canUndo, canRedo, loaded, storageFull, commands } = useBoard({
     initialLanes,
     initialLabels,
@@ -306,10 +327,7 @@ export function KanbanBoard({
   const panelVisible = Boolean(openCard?.open && openLocation);
 
   /** Foca o elemento do quadro marcado com `attribute` igual a `id`. */
-  function focusMarked(target: {
-    readonly attribute: FocusTarget;
-    readonly id: string;
-  }) {
+  function focusMarked(target: FocusMarkedTarget) {
     Array.from(
       rootRef.current?.querySelectorAll<HTMLElement>(`[${target.attribute}]`) ??
         [],
@@ -434,10 +452,10 @@ export function KanbanBoard({
     setDialog((current) => current && { ...current, open: false, focusLaneId });
   }
 
-  function requestForLane(kind: 'limit' | 'remove-lane', laneId: string) {
-    const lane = lanes.find((candidate) => candidate.id === laneId);
+  function requestForLane(request: LaneDialogTarget) {
+    const lane = lanes.find((candidate) => candidate.id === request.laneId);
     if (lane) {
-      openDialog({ kind, lane });
+      openDialog({ kind: request.kind, lane });
     }
   }
 
@@ -459,10 +477,7 @@ export function KanbanBoard({
   }
 
   /** Avisa e devolve `true` quando a coluna do card, ou a de destino, está bloqueada. */
-  function blockedByLock(change: {
-    readonly cardId: string;
-    readonly laneId?: string;
-  }): boolean {
+  function blockedByLock(change: BlockedByLockChange): boolean {
     const source = findCard({ lanes, cardId: change.cardId })?.lane;
     const target = lanes.find((lane) => lane.id === change.laneId);
     const locked = [source, target].find((lane) => lane?.locked);
@@ -582,29 +597,28 @@ export function KanbanBoard({
       ),
   };
 
-  const withNewGrab =
-    (
-      keyboard: { readonly grabbedId: string | null },
-      click: (id: string) => void,
-    ) =>
-    (id: string) => {
-      // NOTE: pegar um item abre um passo novo no desfazer; os passos das setas entram nele até soltar.
-      if (keyboard.grabbedId !== id) {
-        commands.seal();
-      }
-      click(id);
-    };
+  const withNewGrab = (grab: GrabClick) => (id: string) => {
+    // NOTE: pegar um item abre um passo novo no desfazer; os passos das setas entram nele até soltar.
+    if (grab.grabbedId !== id) {
+      commands.seal();
+    }
+    grab.click(id);
+  };
 
   const headerActions: LaneHeaderActions = {
     onHandleDragStart: laneDrag.onDragStart,
     onHandleDragEnd: laneDrag.onDragEnd,
-    onHandleClick: withNewGrab(laneKeyboard, laneKeyboard.onHandleClick),
+    onHandleClick: withNewGrab({
+      grabbedId: laneKeyboard.grabbedId,
+      click: laneKeyboard.onHandleClick,
+    }),
     onHandleKeyDown: laneKeyboard.onHandleKeyDown,
     onHandleBlur: laneKeyboard.onHandleBlur,
     registerHandle: laneKeyboard.registerHandle,
     onRename: commands.renameLane,
-    onRequestLimit: (laneId) => requestForLane('limit', laneId),
-    onRequestRemove: (laneId) => requestForLane('remove-lane', laneId),
+    onRequestLimit: (laneId) => requestForLane({ kind: 'limit', laneId }),
+    onRequestRemove: (laneId) =>
+      requestForLane({ kind: 'remove-lane', laneId }),
     onHide: (laneId) => {
       const lane = lanes.find((candidate) => candidate.id === laneId);
       const index = shown.findIndex((candidate) => candidate.id === laneId);
@@ -634,7 +648,10 @@ export function KanbanBoard({
     onOpen: openDetails,
     onDragStart: cardDrag.onDragStart,
     onDragEnd: cardDrag.onDragEnd,
-    onHandleClick: withNewGrab(cardKeyboard, cardKeyboard.onHandleClick),
+    onHandleClick: withNewGrab({
+      grabbedId: cardKeyboard.grabbedId,
+      click: cardKeyboard.onHandleClick,
+    }),
     onHandleKeyDown: cardKeyboard.onHandleKeyDown,
     onHandleBlur: cardKeyboard.onHandleBlur,
     registerHandle: cardKeyboard.registerHandle,
@@ -661,12 +678,7 @@ export function KanbanBoard({
     cardMatchesLabels({ card, labelIds: activeLabels });
   const lastIndex = shown.length - 1;
 
-  function renderCard(placement: {
-    readonly card: BoardCard;
-    readonly lane: BoardLane;
-    readonly index: number;
-    readonly dropBefore: boolean;
-  }) {
+  function renderCard(placement: CardPlacement) {
     const { card, lane, index } = placement;
     return (
       <KanbanCard

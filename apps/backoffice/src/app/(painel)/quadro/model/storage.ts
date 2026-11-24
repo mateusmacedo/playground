@@ -48,11 +48,15 @@ function isPositiveInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0;
 }
 
+/** Valor lido do armazenamento, que deveria ser uma lista, e como ler cada item dela. */
+interface StoredList<T> {
+  readonly value: unknown;
+  readonly parse: (item: unknown) => T | null;
+}
+
 /** Mantém só os itens que passam em `parse`; um item estragado não derruba o resto. */
-function keepValid<T>(
-  value: unknown,
-  parse: (item: unknown) => T | null,
-): T[] | undefined {
+function keepValid<T>(params: StoredList<T>): T[] | undefined {
+  const { value, parse } = params;
   if (!Array.isArray(value)) {
     return undefined;
   }
@@ -126,17 +130,18 @@ function optionalCardData(value: UnknownRecord): Partial<BoardCard> {
       : undefined;
   return {
     number: isPositiveInteger(value.number) ? value.number : undefined,
-    labelIds: keepValid(value.labelIds, (id) =>
-      typeof id === 'string' ? id : null,
-    ),
+    labelIds: keepValid({
+      value: value.labelIds,
+      parse: (id) => (typeof id === 'string' ? id : null),
+    }),
     dueDate,
     dueDone: dueDate && value.dueDone === true ? true : undefined,
-    checklist: keepValid(value.checklist, toChecklistItem),
-    activity: keepValid(value.activity, toActivity),
+    checklist: keepValid({ value: value.checklist, parse: toChecklistItem }),
+    activity: keepValid({ value: value.activity, parse: toActivity }),
     assigneeId:
       typeof value.assigneeId === 'string' ? value.assigneeId : undefined,
-    comments: keepValid(value.comments, toComment),
-    attachments: keepValid(value.attachments, toAttachment),
+    comments: keepValid({ value: value.comments, parse: toComment }),
+    attachments: keepValid({ value: value.attachments, parse: toAttachment }),
   };
 }
 
@@ -295,7 +300,7 @@ function toConfig(value: unknown): BoardConfig {
         ? keyPrefix
         : DEFAULT_CONFIG.keyPrefix,
     archiveLaneHidden: value.archiveLaneHidden === true ? true : undefined,
-    people: uniquePeople(keepValid(value.people, toPerson)),
+    people: uniquePeople(keepValid({ value: value.people, parse: toPerson })),
     doneLaneId:
       typeof value.doneLaneId === 'string' ? value.doneLaneId : undefined,
   };
@@ -340,8 +345,9 @@ function fromVersion2(data: UnknownRecord): Board | null {
     withKnownLabels(
       createBoard({
         lanes,
-        labels: keepValid(stored.labels, toLabel) ?? [],
-        archive: keepValid(stored.archive, toArchiveEntry) ?? [],
+        labels: keepValid({ value: stored.labels, parse: toLabel }) ?? [],
+        archive:
+          keepValid({ value: stored.archive, parse: toArchiveEntry }) ?? [],
         nextNumber: isPositiveInteger(stored.nextNumber)
           ? stored.nextNumber
           : undefined,
