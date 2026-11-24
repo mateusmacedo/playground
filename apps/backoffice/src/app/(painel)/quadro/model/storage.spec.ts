@@ -252,3 +252,93 @@ describe('estado das colunas gravado', () => {
     expect(parsed?.config.archiveLaneHidden).toBeUndefined();
   });
 });
+
+describe('pessoas, comentários e anexos gravados', () => {
+  const at = '2026-01-01T10:00:00.000Z';
+
+  it('devolve o que foi gravado', () => {
+    const board = createBoard({
+      lanes: [
+        { id: 'a', title: 'A', cards: [] },
+        {
+          id: 'b',
+          title: 'B',
+          cards: [
+            {
+              id: 'x',
+              title: 'X',
+              assigneeId: 'person-1',
+              comments: [{ id: 'comment-1', at, author: 'Ana', text: 'Oi' }],
+              attachments: [
+                { id: 'attachment-1', name: 'Doc', url: 'https://a.b', at },
+                {
+                  id: 'attachment-2',
+                  name: 'a.txt',
+                  url: 'data:text/plain,oi',
+                  at,
+                  size: 2,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      config: {
+        keyPrefix: 'QD',
+        people: [{ id: 'person-1', name: 'Ana' }],
+        doneLaneId: 'b',
+      },
+    });
+    const parsed = parseStoredBoard(serializeBoard(board));
+    const card = parsed?.lanes[1]?.cards[0];
+    expect(card?.assigneeId).toBe('person-1');
+    expect(card?.comments).toHaveLength(1);
+    expect(card?.attachments).toHaveLength(2);
+    expect(parsed?.config.people).toEqual([{ id: 'person-1', name: 'Ana' }]);
+    expect(parsed?.config.doneLaneId).toBe('b');
+  });
+
+  it('descarta referência solta e anexo com endereço perigoso', () => {
+    const raw = JSON.stringify({
+      version: 3,
+      board: {
+        lanes: [
+          {
+            id: 'a',
+            title: 'A',
+            cards: [
+              {
+                id: 'x',
+                title: 'X',
+                assigneeId: 'person-9',
+                comments: [{ id: 'c', at, author: 'A' }],
+                attachments: [
+                  { id: 'k', name: 'Mal', url: 'javascript:alert(1)', at },
+                  { id: 'l', name: 'Bom', url: 'https://a.b', at, size: -1 },
+                ],
+              },
+            ],
+          },
+        ],
+        config: {
+          keyPrefix: 'QD',
+          people: [
+            { id: 'person-1', name: 'Ana' },
+            { id: 'person-1', name: 'Repetida' },
+            { id: 'person-2', name: ' ' },
+          ],
+          doneLaneId: 'sumiu',
+        },
+      },
+    });
+    const parsed = parseStoredBoard(raw);
+    const card = parsed?.lanes[0]?.cards[0];
+    expect(card?.assigneeId).toBeUndefined();
+    expect(card?.comments).toBeUndefined();
+    expect(card?.attachments).toEqual([
+      { id: 'l', name: 'Bom', url: 'https://a.b', at, size: undefined },
+    ]);
+    expect(parsed?.config.people).toEqual([{ id: 'person-1', name: 'Ana' }]);
+    expect(parsed?.config.doneLaneId).toBeUndefined();
+  });
+});

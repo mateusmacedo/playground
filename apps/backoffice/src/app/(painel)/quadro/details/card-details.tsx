@@ -6,10 +6,13 @@ import { useId, useState } from 'react';
 import { InlineAddForm } from '../inline-add-form';
 import { type Board, type CardLocation, findCard } from '../model/board';
 import { cardKey } from '../model/card-key';
+import { childProgress, progressText } from '../model/completion';
 import { ancestorsOf, childrenOf, parentCandidates } from '../model/hierarchy';
 import type { BoardCommands } from '../use-board';
 import { ActivityList } from './activity-list';
+import { AttachmentsSection } from './attachments-section';
 import { ChecklistSection } from './checklist-section';
+import { CommentsSection } from './comments-section';
 import { DueField } from './due-field';
 import { LabelsField } from './labels-field';
 
@@ -27,6 +30,8 @@ export interface CardDetailsProps {
   readonly location: CardLocation;
   readonly board: Board;
   readonly commands: BoardCommands;
+  /** Nome de quem comenta. */
+  readonly author: string;
   readonly actions: CardDetailsActions;
 }
 
@@ -72,6 +77,7 @@ export function CardDetails({
   board,
   commands,
   actions,
+  author,
 }: Readonly<CardDetailsProps>) {
   const { card, lane } = location;
   const { lanes } = board;
@@ -82,6 +88,11 @@ export function CardDetails({
   const children = childrenOf({ lanes, cardId });
   const candidates = parentCandidates({ lanes, cardId });
   const laneTitle = (id: string) => findCard({ lanes, cardId: id })?.lane.title;
+  const progress = childProgress({
+    lanes,
+    doneLaneId: board.config.doneLaneId,
+  }).get(cardId);
+  const people = board.config.people ?? [];
 
   return (
     <div className="d-grid gap-3">
@@ -139,6 +150,29 @@ export function CardDetails({
         }
       />
       <LabelsField card={card} labels={board.labels} commands={commands} />
+      <CFormSelect
+        id={`${fieldId}-assignee`}
+        label="Responsável"
+        value={card.assigneeId ?? ''}
+        text={
+          people.length === 0
+            ? 'Cadastre as pessoas do quadro em "Configurar quadro".'
+            : undefined
+        }
+        onChange={(event) =>
+          commands.setAssignee({
+            cardId,
+            assigneeId: event.target.value || undefined,
+          })
+        }
+      >
+        <option value="">Ninguém</option>
+        {people.map((person) => (
+          <option key={person.id} value={person.id}>
+            {person.name}
+          </option>
+        ))}
+      </CFormSelect>
       <DueField card={card} commands={commands} />
       <ChecklistSection card={card} commands={commands} />
       <CFormSelect
@@ -176,6 +210,12 @@ export function CardDetails({
       <section aria-labelledby={childrenHeadingId}>
         <h3 id={childrenHeadingId} className="h6">
           Cards filhos
+          {progress ? (
+            <span className="fw-normal text-body-secondary">
+              {' '}
+              ({progressText(progress)})
+            </span>
+          ) : null}
         </h3>
         {children.length > 0 ? (
           <ul className="list-unstyled d-grid gap-1 mb-2">
@@ -206,6 +246,8 @@ export function CardDetails({
           }
         />
       </section>
+      <AttachmentsSection card={card} commands={commands} />
+      <CommentsSection card={card} author={author} commands={commands} />
       <ActivityList activity={card.activity ?? []} />
       <div className="d-flex flex-wrap gap-2 border-top pt-3">
         <CButton

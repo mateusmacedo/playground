@@ -413,4 +413,52 @@ test.describe('quadro kanban: busca, desfazer, arquivo e dados do card', () => {
     await page.getByRole('button', { name: 'Mostrar Concluído' }).click();
     await expect(lane(page, 'Concluído')).toBeVisible();
   });
+
+  test('configura conclusão e pessoas, e o card ganha responsável, comentário e anexo', async ({
+    page,
+  }) => {
+    await page.goto('/quadro');
+    const settings = page.getByRole('button', { name: 'Configurar quadro' });
+    const dialog = page.getByRole('dialog', { name: 'Configurar quadro' });
+    // WHY: antes da hidratação o botão não abre a janela; repete o clique até ela aparecer.
+    await expect(async () => {
+      if (!(await dialog.isVisible())) {
+        await settings.click();
+      }
+      await expect(dialog).toBeVisible({ timeout: 1000 });
+    }).toPass();
+    await dialog
+      .getByLabel('Coluna de conclusão')
+      .selectOption({ label: 'Em andamento' });
+    await dialog.getByLabel('Nome da nova pessoa').fill('Ana Souza');
+    await dialog.getByLabel('Nome da nova pessoa').press('Enter');
+    await dialog.getByRole('button', { name: 'Salvar' }).click();
+    await expect(dialog).toBeHidden();
+
+    const parent = page
+      .getByRole('listitem')
+      .filter({ has: page.getByRole('heading', { name: 'Item 1' }) });
+    await expect(parent).toContainText('0/2 filhos');
+
+    await page.getByRole('button', { name: 'Item 2', exact: true }).click();
+    const details = page.getByRole('dialog', { name: 'Detalhes do card' });
+    await details
+      .getByLabel('Responsável')
+      .selectOption({ label: 'Ana Souza' });
+    await details.getByLabel('Novo comentário').fill('Revisar amanhã');
+    await details.getByRole('button', { name: 'Comentar' }).click();
+    await details.getByLabel('Endereço do link').fill('https://exemplo.com');
+    await details.getByRole('button', { name: 'Anexar link' }).click();
+    await details.getByLabel('Coluna').selectOption({ label: 'Em andamento' });
+
+    await expect(parent).toContainText('1/2 filhos');
+    const child = page
+      .getByRole('listitem')
+      .filter({ has: page.getByRole('heading', { name: 'Item 2' }) });
+    await expect(child).toContainText('AS');
+    await expect(details.getByText('Revisar amanhã')).toBeVisible();
+    await expect(
+      details.getByRole('link', { name: 'https://exemplo.com' }),
+    ).toBeVisible();
+  });
 });

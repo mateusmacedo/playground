@@ -220,3 +220,28 @@
   outline: 2px solid var(--cui-primary);
   outline-offset: 2px;
 }
+
+// Progresso dos filhos no card: a barra fina no pé do selo acompanha a fração concluída.
+.kanban-card__progress {
+  position: relative;
+  overflow: hidden;
+}
+
+.kanban-card__progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background-color: var(--cui-success);
+}
+
+.kanban-card__assignee {
+  min-width: 1.75rem;
+}
+
+// Comentários e descrição do arquivado mantêm as quebras de linha digitadas.
+.kanban-comment__text,
+.kanban-archived__description {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

@@ -5,6 +5,7 @@ import type { DragEvent, KeyboardEvent } from 'react';
 import { KanbanCardMeta } from './kanban-card-meta';
 import type { BoardCard, BoardLabel } from './model/board';
 import { cardKey } from './model/card-key';
+import type { ChildProgress } from './model/completion';
 
 /** O que o quadro faz quando o card é aberto, arrastado ou comandado pelo teclado. */
 export interface KanbanCardActions {
@@ -31,6 +32,10 @@ export interface KanbanCardProps {
   /** Título do card pai, quando o card tem um. */
   readonly parentTitle?: string;
   readonly childCount: number;
+  /** Filhos na coluna de conclusão, quando o quadro tem uma. */
+  readonly progress?: ChildProgress;
+  /** Nome do responsável. */
+  readonly assignee?: string;
   /** Etiquetas do card, na ordem do catálogo. */
   readonly labels: readonly BoardLabel[];
   /** Hoje (`AAAA-MM-DD`), só depois de montar no navegador. */
@@ -77,6 +82,8 @@ export function KanbanCard({
   index,
   parentTitle,
   childCount,
+  progress,
+  assignee,
   labels,
   today,
   dimmed,
@@ -142,6 +149,8 @@ export function KanbanCard({
             labels={labels}
             childCount={childCount}
             today={today}
+            assignee={assignee}
+            progress={progress}
           />
           {dimmed ? (
             <span className="visually-hidden">Fora da busca.</span>

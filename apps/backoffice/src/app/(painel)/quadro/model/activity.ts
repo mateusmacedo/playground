@@ -74,6 +74,28 @@ function placeChange(params: {
   return { at, kind: 'moved', from: before.laneTitle, to: after.laneTitle };
 }
 
+/** Anexo que entrou ou saiu do card; um por vez, como a tela faz. */
+function attachmentChange(params: {
+  readonly before: BoardCard;
+  readonly after: BoardCard;
+  readonly at: string;
+}): CardActivity | undefined {
+  const { at } = params;
+  const before = params.before.attachments ?? [];
+  const after = params.after.attachments ?? [];
+  if (before === after) {
+    return undefined;
+  }
+  const added = after.find((item) => !before.some((old) => old.id === item.id));
+  const removed = before.find(
+    (item) => !after.some((current) => current.id === item.id),
+  );
+  if (!added && !removed) {
+    return undefined;
+  }
+  return { at, kind: 'attachment', added: added?.name, removed: removed?.name };
+}
+
 /** O que mudou num card que existia antes. */
 function changesOf(params: {
   readonly before: Placement;
@@ -114,6 +136,16 @@ function changesOf(params: {
   if (before.checklist !== after.checklist) {
     changes.push({ at, kind: 'checklist', ...checklistProgress(after) });
   }
+  if (before.assigneeId !== after.assigneeId) {
+    changes.push({
+      at,
+      kind: 'assignee',
+      to: boards.after.config.people?.find(
+        (person) => person.id === after.assigneeId,
+      )?.name,
+    });
+  }
+  changes.push(attachmentChange({ before, after, at }));
   return changes.filter((change) => change !== undefined);
 }
 
@@ -296,5 +328,11 @@ export function activityText(entry: CardActivity): string {
       return `Restaurado em ${entry.lane}.`;
     case 'duplicated':
       return `Duplicado de ${entry.from}.`;
+    case 'assignee':
+      return entry.to ? `Responsável: ${entry.to}.` : 'Responsável retirado.';
+    case 'attachment':
+      return entry.added
+        ? `Anexo ${entry.added} adicionado.`
+        : `Anexo ${entry.removed ?? ''} removido.`;
   }
 }

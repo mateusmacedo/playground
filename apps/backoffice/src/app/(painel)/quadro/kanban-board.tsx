@@ -42,6 +42,7 @@ import {
   stepCard,
 } from './model/board';
 import { cardKey } from './model/card-key';
+import { childProgress } from './model/completion';
 import { todayIso } from './model/due';
 import { childCounts } from './model/hierarchy';
 import { cardLabels } from './model/labels';
@@ -169,6 +170,7 @@ export function KanbanBoard({
   storageKey,
   settings,
   canReset = true,
+  author = 'Você',
 }: Readonly<{
   initialLanes: readonly BoardLane[];
   initialLabels?: readonly BoardLabel[];
@@ -177,8 +179,10 @@ export function KanbanBoard({
   settings?: BoardSettings;
   /** O quadro tem conteúdo de exemplo para restaurar. */
   canReset?: boolean;
+  /** Nome de quem comenta nos cards. */
+  author?: string;
 }>) {
-  const { board, canUndo, canRedo, loaded, commands } = useBoard({
+  const { board, canUndo, canRedo, loaded, storageFull, commands } = useBoard({
     initialLanes,
     initialLabels,
     storageKey,
@@ -623,6 +627,13 @@ export function KanbanBoard({
   const cards = allCards(shown);
   const titles = new Map(cards.map((card) => [card.id, card.title]));
   const counts = childCounts(lanes);
+  const progress = childProgress({
+    lanes,
+    doneLaneId: board.config.doneLaneId,
+  });
+  const people = new Map(
+    (board.config.people ?? []).map((person) => [person.id, person.name]),
+  );
   const activeLabels = new Set(
     labels
       .filter((label) => labelFilter.has(label.id))
@@ -636,6 +647,13 @@ export function KanbanBoard({
 
   return (
     <div ref={rootRef} className="kanban-board">
+      {storageFull ? (
+        <CAlert color="danger" className="py-2">
+          O navegador não tem mais espaço para gravar este quadro: as últimas
+          mudanças só valem até fechar a página. Remova anexos grandes ou
+          arquivados para liberar espaço.
+        </CAlert>
+      ) : null}
       {notice ? (
         <CAlert
           color={notice.color}
@@ -762,6 +780,10 @@ export function KanbanBoard({
                     card.parentId ? titles.get(card.parentId) : undefined
                   }
                   childCount={counts.get(card.id) ?? 0}
+                  progress={progress.get(card.id)}
+                  assignee={
+                    card.assigneeId ? people.get(card.assigneeId) : undefined
+                  }
                   labels={cardLabels({ card, labels })}
                   today={today}
                   dimmed={filtering && !matches(card)}
@@ -825,6 +847,7 @@ export function KanbanBoard({
               ? copyLink
               : undefined,
         }}
+        author={author}
         onClose={closeDetails}
       />
       <BoardDialogs dialog={dialog} lanes={lanes} handlers={dialogHandlers} />
@@ -880,12 +903,22 @@ export function KanbanBoard({
           visible={listDialog === 'settings'}
           title="Configurar quadro"
           confirmLabel="Salvar"
-          initial={{ name: settings.name, keyPrefix }}
+          initial={{
+            name: settings.name,
+            keyPrefix,
+            doneLaneId: board.config.doneLaneId,
+            people: board.config.people,
+          }}
+          lanes={lanes}
           validateName={settings.validateName}
           prefixHelp="Os links copiados com o prefixo antigo deixam de abrir o card."
           onSave={(values) => {
             settings.onRename(values.name);
-            commands.setKeyPrefix(values.keyPrefix);
+            commands.configure({
+              keyPrefix: values.keyPrefix,
+              doneLaneId: values.doneLaneId ?? null,
+              people: values.people,
+            });
             setListDialog(null);
             setAnnouncement('Configuração do quadro salva.');
           }}

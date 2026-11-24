@@ -5,6 +5,7 @@ import CIcon from '@coreui/icons-react';
 import { CButton, CFormSelect } from '@coreui/react';
 import { useEffect, useId, useRef, useState } from 'react';
 
+import { useOptionalSession } from '@/core/session/session-context';
 import { ConfirmModal } from '@/shared/ui/confirm-modal';
 
 import { BoardFormDialog } from './dialogs/board-form-dialog';
@@ -47,6 +48,7 @@ export function BoardWorkspace({
   sampleLanes: readonly BoardLane[];
   sampleLabels?: readonly BoardLabel[];
 }>) {
+  const author = useOptionalSession()?.user?.displayName;
   const { boards, activeId, loaded, commands } = useWorkspace({
     readRequestedId: readRequestedBoard,
   });
@@ -135,7 +137,9 @@ export function BoardWorkspace({
           </CButton>
         ) : null}
       </div>
-      {loaded && active ? (
+      {/* NOTE: antes de ler a lista gravada, mostra o quadro principal, que já vem pronto do servidor; se o aberto for
+          outro, a troca acontece no mesmo passo em que a lista é lida. */}
+      {active ? (
         <KanbanBoard
           key={active.id}
           initialLanes={
@@ -146,6 +150,7 @@ export function BoardWorkspace({
           }
           storageKey={boardStorageKey(active.id)}
           canReset={active.id === DEFAULT_BOARD_ID}
+          author={author}
           settings={{
             name: active.name,
             validateName: (name) =>
@@ -153,9 +158,7 @@ export function BoardWorkspace({
             onRename: (name) => commands.rename({ boardId: active.id, name }),
           }}
         />
-      ) : (
-        <p className="text-body-secondary">Carregando o quadro…</p>
-      )}
+      ) : null}
       {dialog?.kind === 'new' ? (
         <BoardFormDialog
           key={dialog.key}

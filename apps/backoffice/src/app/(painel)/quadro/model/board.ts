@@ -43,7 +43,40 @@ export type CardActivity =
     }
   | { readonly at: string; readonly kind: 'archived' }
   | { readonly at: string; readonly kind: 'restored'; readonly lane: string }
-  | { readonly at: string; readonly kind: 'duplicated'; readonly from: string };
+  | { readonly at: string; readonly kind: 'duplicated'; readonly from: string }
+  | { readonly at: string; readonly kind: 'assignee'; readonly to?: string }
+  | {
+      readonly at: string;
+      readonly kind: 'attachment';
+      readonly added?: string;
+      readonly removed?: string;
+    };
+
+/** Pessoa que pode ser responsável pelos cards do quadro. */
+export interface BoardPerson {
+  readonly id: string;
+  readonly name: string;
+}
+
+/** Comentário do card; o id só precisa ser único dentro do card. */
+export interface CardComment {
+  readonly id: string;
+  /** Data e hora, ISO 8601. */
+  readonly at: string;
+  readonly author: string;
+  readonly text: string;
+}
+
+/** Anexo do card: um link, ou um arquivo pequeno guardado como `data:` URL. */
+export interface CardAttachment {
+  readonly id: string;
+  readonly name: string;
+  readonly url: string;
+  /** Data e hora, ISO 8601. */
+  readonly at: string;
+  /** Tamanho do arquivo, em bytes; link não tem. */
+  readonly size?: number;
+}
 
 /** Card do quadro sem saber o que representa: identidade, texto e os dados genéricos de qualquer quadro. */
 export interface BoardCard {
@@ -61,6 +94,11 @@ export interface BoardCard {
   readonly checklist?: readonly ChecklistItem[];
   /** Histórico do card, do mais antigo para o mais recente. */
   readonly activity?: readonly CardActivity[];
+  /** Pessoa do quadro responsável pelo card. */
+  readonly assigneeId?: string;
+  /** Do mais antigo para o mais recente. */
+  readonly comments?: readonly CardComment[];
+  readonly attachments?: readonly CardAttachment[];
 }
 
 /** Coluna do quadro; a ordem de `cards` é a ordem na tela. */
@@ -111,6 +149,10 @@ export interface BoardConfig {
   readonly keyPrefix: string;
   /** A coluna automática dos arquivados está oculta. */
   readonly archiveLaneHidden?: boolean;
+  /** Pessoas que podem ser responsáveis pelos cards. */
+  readonly people?: readonly BoardPerson[];
+  /** Coluna que conta como concluída no progresso dos filhos de um card. */
+  readonly doneLaneId?: string;
 }
 
 /** O quadro inteiro: colunas, arquivados, etiquetas, configuração e o próximo número de card, que nunca volta atrás. */

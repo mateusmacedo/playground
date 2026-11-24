@@ -27,6 +27,11 @@ export function SessionProvider({
   return <SessionContext value={value}>{children}</SessionContext>;
 }
 
+/** A sessão, ou `null` fora do `SessionProvider`, para quem funciona também sem ela. */
+export function useOptionalSession(): Session | null {
+  return useContext(SessionContext);
+}
+
 export function useSession(): Session {
   const session = useContext(SessionContext);
   if (!session) {

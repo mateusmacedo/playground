@@ -7,15 +7,20 @@ export function readStorage(key: string): string | null {
   }
 }
 
-/** Grava no `localStorage`; cota cheia ou armazenamento bloqueado não interrompem a tela. */
+/**
+ * Grava no `localStorage`; cota cheia ou armazenamento bloqueado não interrompem a tela. Devolve `false` quando não
+ * gravou, para quem precisar avisar.
+ */
 export function writeStorage(params: {
   readonly key: string;
   readonly value: string;
-}): void {
+}): boolean {
   try {
     window.localStorage.setItem(params.key, params.value);
+    return true;
   } catch {
     // NOTE: sem armazenamento, o quadro segue só na memória.
+    return false;
   }
 }
 

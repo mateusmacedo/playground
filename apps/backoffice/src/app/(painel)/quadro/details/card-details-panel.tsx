@@ -16,6 +16,8 @@ export interface CardDetailsPanelProps {
   readonly board: Board;
   readonly commands: BoardCommands;
   readonly actions: CardDetailsActions;
+  /** Nome de quem comenta. */
+  readonly author: string;
   readonly onClose: () => void;
 }
 
@@ -29,6 +31,7 @@ export function CardDetailsPanel({
   board,
   commands,
   actions,
+  author,
   onClose,
 }: Readonly<CardDetailsPanelProps>) {
   const titleId = useId();
@@ -71,6 +74,7 @@ export function CardDetailsPanel({
             board={board}
             commands={commands}
             actions={actions}
+            author={author}
           />
         ) : null}
       </COffcanvasBody>

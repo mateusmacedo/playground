@@ -2,7 +2,11 @@ import { render, renderHook, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
 import type { Session } from './session';
-import { SessionProvider, useSession } from './session-context';
+import {
+  SessionProvider,
+  useOptionalSession,
+  useSession,
+} from './session-context';
 
 function Probe() {
   useSession();
@@ -62,5 +66,17 @@ describe('useSession', () => {
     expect(screen.queryByText('dentro')).toBeNull();
 
     vi.restoreAllMocks();
+  });
+
+  it('a sessão opcional devolve a sessão dentro do provedor e nada fora dele', () => {
+    const inside = renderHook(() => useOptionalSession(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <SessionProvider>{children}</SessionProvider>
+      ),
+    });
+    expect(inside.result.current?.user?.displayName).toBe('Usuário');
+
+    const outside = renderHook(() => useOptionalSession());
+    expect(outside.result.current).toBeNull();
   });
 });

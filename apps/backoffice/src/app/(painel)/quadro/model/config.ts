@@ -42,6 +42,22 @@ export function setArchiveLaneHidden(params: {
     : { ...params.config, archiveLaneHidden: params.hidden || undefined };
 }
 
+/** Define a coluna de conclusão; `undefined` tira, e coluna que não existe no quadro não muda nada. */
+export function setDoneLane(params: {
+  readonly config: BoardConfig;
+  readonly laneIds: readonly string[];
+  readonly doneLaneId: string | undefined;
+}): BoardConfig {
+  const { config, laneIds, doneLaneId } = params;
+  if (
+    config.doneLaneId === doneLaneId ||
+    (doneLaneId !== undefined && !laneIds.includes(doneLaneId))
+  ) {
+    return config;
+  }
+  return { ...config, doneLaneId };
+}
+
 export function setKeyPrefix(params: {
   readonly config: BoardConfig;
   readonly keyPrefix: string;

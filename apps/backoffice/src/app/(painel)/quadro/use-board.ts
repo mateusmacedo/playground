@@ -2,12 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { readStorage, subscribeStorage, writeStorage } from './browser-storage';
 import { withActivity } from './model/activity';
 import { archiveCard, deleteArchived, restoreArchived } from './model/archive';
+import { addAttachment, removeAttachment } from './model/attachments';
 import {
   allCards,
   type Board,
   type BoardLabel,
   type BoardLane,
+  type BoardPerson,
+  type CardAttachment,
 } from './model/board';
+import { configureBoard } from './model/board-settings';
 import { archivedCards, createBoard } from './model/board-state';
 import {
   addCard,
@@ -22,7 +26,8 @@ import {
   removeChecklistItem,
   toggleChecklistItem,
 } from './model/checklist';
-import { setArchiveLaneHidden, setKeyPrefix } from './model/config';
+import { addComment, removeComment } from './model/comments';
+import { setArchiveLaneHidden } from './model/config';
 import { setDueDate, setDueDone } from './model/due';
 import { setParent } from './model/hierarchy';
 import {
@@ -50,6 +55,7 @@ import {
   showAllLanes,
 } from './model/lane-state';
 import { addLane, removeLane, renameLane, setWipLimit } from './model/lanes';
+import { setAssignee } from './model/people';
 import { parseStoredBoard, serializeBoard } from './model/storage';
 
 /** O que as telas do quadro pedem; cada comando vira um passo do desfazer e um registro no histórico do card. */
@@ -144,8 +150,36 @@ export interface BoardCommands {
     readonly locked: boolean;
   }) => void;
   readonly setArchiveLaneHidden: (hidden: boolean) => void;
-  /** Troca o prefixo do código dos cards; prefixo inválido não muda nada. */
-  readonly setKeyPrefix: (keyPrefix: string) => void;
+  readonly setAssignee: (change: {
+    readonly cardId: string;
+    readonly assigneeId: string | undefined;
+  }) => void;
+  readonly addComment: (change: {
+    readonly cardId: string;
+    readonly author: string;
+    readonly text: string;
+  }) => void;
+  readonly removeComment: (change: {
+    readonly cardId: string;
+    readonly commentId: string;
+  }) => void;
+  readonly addAttachment: (change: {
+    readonly cardId: string;
+    readonly attachment: Omit<CardAttachment, 'id' | 'at'>;
+  }) => void;
+  readonly removeAttachment: (change: {
+    readonly cardId: string;
+    readonly attachmentId: string;
+  }) => void;
+  /**
+   * Aplica a configuração do quadro num passo só: prefixo do código (inválido não muda), coluna de conclusão (`null`
+   * tira) e pessoas (quem sai deixa de ser responsável pelos cards).
+   */
+  readonly configure: (settings: {
+    readonly keyPrefix?: string;
+    readonly doneLaneId?: string | null;
+    readonly people?: readonly BoardPerson[];
+  }) => void;
   /** Volta às colunas e aos cards iniciais, mantendo a configuração. */
   readonly reset: () => void;
 }
@@ -156,6 +190,8 @@ export interface BoardState {
   readonly canRedo: boolean;
   /** O quadro gravado já foi lido (ou não há o que ler). */
   readonly loaded: boolean;
+  /** A última gravação falhou, quase sempre por falta de espaço no navegador. */
+  readonly storageFull: boolean;
   readonly commands: BoardCommands;
 }
 
@@ -234,6 +270,7 @@ export function useBoard(params: {
     createBoard({ lanes: initialLanes, labels: initialLabels });
   const [history, setHistory] = useState(() => startHistory(initial()));
   const [loaded, setLoaded] = useState(!storageKey);
+  const [storageFull, setStorageFull] = useState(false);
   /** Último quadro lido do armazenamento, que não precisa ser gravado de volta. */
   const fromStorage = useRef<Board | null>(null);
   const board = history.present;
@@ -258,7 +295,9 @@ export function useBoard(params: {
   useEffect(() => {
     // NOTE: regravar o que veio de outra aba devolveria a ela, com outra ordem de campos, uma mudança que não houve.
     if (storageKey && loaded && board !== fromStorage.current) {
-      writeStorage({ key: storageKey, value: serializeBoard(board) });
+      setStorageFull(
+        !writeStorage({ key: storageKey, value: serializeBoard(board) }),
+      );
     }
   }, [storageKey, loaded, board]);
 
@@ -402,11 +441,34 @@ export function useBoard(params: {
         const config = setArchiveLaneHidden({ config: current.config, hidden });
         return config === current.config ? current : { ...current, config };
       }),
-    setKeyPrefix: (keyPrefix) =>
-      commit((current) => {
-        const config = setKeyPrefix({ config: current.config, keyPrefix });
-        return config === current.config ? current : { ...current, config };
-      }),
+    setAssignee: (change) =>
+      commit((current) => setAssignee({ board: current, ...change })),
+    addComment: ({ cardId, author, text }) =>
+      commit(
+        onLanes((lanes) =>
+          addComment({
+            lanes,
+            cardId,
+            comment: { author, text, at: new Date().toISOString() },
+          }),
+        ),
+      ),
+    removeComment: (change) =>
+      commit(onLanes((lanes) => removeComment({ lanes, ...change }))),
+    addAttachment: ({ cardId, attachment }) =>
+      commit(
+        onLanes((lanes) =>
+          addAttachment({
+            lanes,
+            cardId,
+            attachment: { ...attachment, at: new Date().toISOString() },
+          }),
+        ),
+      ),
+    removeAttachment: (change) =>
+      commit(onLanes((lanes) => removeAttachment({ lanes, ...change }))),
+    configure: (settings) =>
+      commit((current) => configureBoard({ board: current, ...settings })),
     reset: () =>
       commit(
         (current) =>
@@ -424,6 +486,7 @@ export function useBoard(params: {
     canUndo: history.past.length > 0,
     canRedo: history.future.length > 0,
     loaded,
+    storageFull,
     commands,
   };
 }

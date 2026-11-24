@@ -1,17 +1,23 @@
-import { CFormInput } from '@coreui/react';
+import { CFormInput, CFormSelect } from '@coreui/react';
 import { type FormEvent, type ReactNode, useId, useState } from 'react';
 
 import { ConfirmModal } from '@/shared/ui/confirm-modal';
 
+import type { BoardLane, BoardPerson } from '../model/board';
 import {
   isValidKeyPrefix,
   normalizeKeyPrefix,
   suggestKeyPrefix,
 } from '../model/config';
+import { PeopleEditor } from './people-editor';
 
 export interface BoardFormValues {
   readonly name: string;
   readonly keyPrefix: string;
+  /** Só na configuração de um quadro existente. */
+  readonly doneLaneId?: string;
+  /** Só na configuração de um quadro existente. */
+  readonly people?: readonly BoardPerson[];
 }
 
 /**
@@ -26,6 +32,7 @@ export function BoardFormDialog({
   suggestPrefix = false,
   validateName,
   prefixHelp,
+  lanes,
   onSave,
   onCancel,
   children,
@@ -40,6 +47,8 @@ export function BoardFormDialog({
   validateName: (name: string) => string | null;
   /** Texto de apoio do campo do prefixo. */
   prefixHelp?: string;
+  /** Colunas do quadro; com elas, a janela também configura a coluna de conclusão e as pessoas. */
+  lanes?: readonly BoardLane[];
   onSave: (values: BoardFormValues) => void;
   onCancel: () => void;
   /** Conteúdo extra da janela, depois dos campos. */
@@ -50,6 +59,9 @@ export function BoardFormDialog({
   const [name, setName] = useState(initial.name);
   const [prefix, setPrefix] = useState(initial.keyPrefix);
   const [prefixEdited, setPrefixEdited] = useState(!suggestPrefix);
+  const doneId = useId();
+  const [doneLaneId, setDoneLaneId] = useState(initial.doneLaneId ?? '');
+  const [people, setPeople] = useState(initial.people ?? []);
   const validName = validateName(name);
   const keyPrefix = normalizeKeyPrefix(prefix);
   const prefixValid = isValidKeyPrefix(keyPrefix);
@@ -58,7 +70,16 @@ export function BoardFormDialog({
   function save(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     if (validName && prefixValid) {
-      onSave({ name: validName, keyPrefix });
+      onSave(
+        lanes
+          ? {
+              name: validName,
+              keyPrefix,
+              doneLaneId: doneLaneId || undefined,
+              people,
+            }
+          : { name: validName, keyPrefix },
+      );
     }
   }
 
@@ -103,6 +124,27 @@ export function BoardFormDialog({
             setPrefixEdited(true);
           }}
         />
+        {lanes ? (
+          <>
+            <CFormSelect
+              id={doneId}
+              label="Coluna de conclusão"
+              text="O card pai mostra quantos filhos já estão nesta coluna."
+              value={
+                lanes.some((lane) => lane.id === doneLaneId) ? doneLaneId : ''
+              }
+              onChange={(event) => setDoneLaneId(event.target.value)}
+            >
+              <option value="">Nenhuma</option>
+              {lanes.map((lane) => (
+                <option key={lane.id} value={lane.id}>
+                  {lane.title}
+                </option>
+              ))}
+            </CFormSelect>
+            <PeopleEditor people={people} onChange={setPeople} />
+          </>
+        ) : null}
         {/* NOTE: sem botão de envio, o Enter nos campos não enviaria o formulário. */}
         <button type="submit" hidden aria-hidden="true" tabIndex={-1} />
       </form>

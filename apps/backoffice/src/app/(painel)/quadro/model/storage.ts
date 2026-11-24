@@ -1,3 +1,4 @@
+import { isWebLink } from './attachments';
 import {
   type ArchiveEntry,
   allCards,
@@ -6,7 +7,10 @@ import {
   type BoardConfig,
   type BoardLabel,
   type BoardLane,
+  type BoardPerson,
   type CardActivity,
+  type CardAttachment,
+  type CardComment,
   type ChecklistItem,
   type LabelColor,
 } from './board';
@@ -14,6 +18,7 @@ import { archivedCards, createBoard } from './board-state';
 import { DEFAULT_CONFIG, isValidKeyPrefix } from './config';
 import { isDateOnly } from './due';
 import { ancestorsOf } from './hierarchy';
+import { setPeople } from './people';
 
 /** Chave do quadro no `localStorage`; a versão do formato vai dentro do valor gravado. */
 export const BOARD_STORAGE_KEY = 'backoffice:quadro:v1';
@@ -64,6 +69,46 @@ function toChecklistItem(value: unknown): ChecklistItem | null {
     : null;
 }
 
+function toComment(value: unknown): CardComment | null {
+  return isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.at === 'string' &&
+    typeof value.author === 'string' &&
+    typeof value.text === 'string'
+    ? { id: value.id, at: value.at, author: value.author, text: value.text }
+    : null;
+}
+
+function toAttachment(value: unknown): CardAttachment | null {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== 'string' ||
+    typeof value.name !== 'string' ||
+    typeof value.url !== 'string' ||
+    typeof value.at !== 'string' ||
+    // SAFETY: o endereço vira `href`; só link web ou arquivo guardado, nunca `javascript:` vindo do armazenamento.
+    !(isWebLink(value.url) || value.url.startsWith('data:'))
+  ) {
+    return null;
+  }
+  return {
+    id: value.id,
+    name: value.name,
+    url: value.url,
+    at: value.at,
+    size: isPositiveInteger(value.size) ? value.size : undefined,
+  };
+}
+
+function toPerson(value: unknown): BoardPerson | null {
+  return isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    value.name.trim()
+    ? { id: value.id, name: value.name }
+    : null;
+}
+
 function toActivity(value: unknown): CardActivity | null {
   // NOTE: o histórico só é lido para exibir; basta ter data e tipo de texto.
   return isRecord(value) &&
@@ -88,6 +133,10 @@ function optionalCardData(value: UnknownRecord): Partial<BoardCard> {
     dueDone: dueDate && value.dueDone === true ? true : undefined,
     checklist: keepValid(value.checklist, toChecklistItem),
     activity: keepValid(value.activity, toActivity),
+    assigneeId:
+      typeof value.assigneeId === 'string' ? value.assigneeId : undefined,
+    comments: keepValid(value.comments, toComment),
+    attachments: keepValid(value.attachments, toAttachment),
   };
 }
 
@@ -246,7 +295,35 @@ function toConfig(value: unknown): BoardConfig {
         ? keyPrefix
         : DEFAULT_CONFIG.keyPrefix,
     archiveLaneHidden: value.archiveLaneHidden === true ? true : undefined,
+    people: uniquePeople(keepValid(value.people, toPerson)),
+    doneLaneId:
+      typeof value.doneLaneId === 'string' ? value.doneLaneId : undefined,
   };
+}
+
+/** Pessoas sem id repetido: a primeira com cada id fica. */
+function uniquePeople(
+  people: readonly BoardPerson[] | undefined,
+): readonly BoardPerson[] | undefined {
+  const seen = new Set<string>();
+  return people?.filter((person) => {
+    const fresh = !seen.has(person.id);
+    seen.add(person.id);
+    return fresh;
+  });
+}
+
+/** Tira da configuração a coluna de conclusão que não existe e dos cards o responsável que não está no quadro. */
+function withKnownReferences(board: Board): Board {
+  const { doneLaneId } = board.config;
+  const config =
+    doneLaneId && !board.lanes.some((lane) => lane.id === doneLaneId)
+      ? { ...board.config, doneLaneId: undefined }
+      : board.config;
+  return setPeople({
+    board: { ...board, config },
+    people: board.config.people ?? [],
+  });
 }
 
 /** Versões 2 e 3: a 3 só acrescentou a configuração, que na 2 fica com o padrão. */
@@ -259,16 +336,18 @@ function fromVersion2(data: UnknownRecord): Board | null {
   if (!lanes) {
     return null;
   }
-  return withKnownLabels(
-    createBoard({
-      lanes,
-      labels: keepValid(stored.labels, toLabel) ?? [],
-      archive: keepValid(stored.archive, toArchiveEntry) ?? [],
-      nextNumber: isPositiveInteger(stored.nextNumber)
-        ? stored.nextNumber
-        : undefined,
-      config: toConfig(stored.config),
-    }),
+  return withKnownReferences(
+    withKnownLabels(
+      createBoard({
+        lanes,
+        labels: keepValid(stored.labels, toLabel) ?? [],
+        archive: keepValid(stored.archive, toArchiveEntry) ?? [],
+        nextNumber: isPositiveInteger(stored.nextNumber)
+          ? stored.nextNumber
+          : undefined,
+        config: toConfig(stored.config),
+      }),
+    ),
   );
 }
 
