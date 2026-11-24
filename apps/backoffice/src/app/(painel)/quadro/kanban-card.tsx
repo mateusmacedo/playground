@@ -65,24 +65,30 @@ export interface CardPlacement {
 /** Desenha o card do quadro; as visões (colunas e linhas por card pai) recebem esta função pronta. */
 export type RenderCard = (placement: CardPlacement) => ReactNode;
 
-function cardClassName(
-  state: Pick<
-    KanbanCardProps,
-    'open' | 'dragging' | 'grabbed' | 'dropBefore' | 'dimmed'
-  >,
-): string {
-  const modifiers: readonly [boolean, string][] = [
-    [state.open, 'kanban-card--open'],
-    [state.dragging, 'kanban-card--dragging'],
-    [state.grabbed, 'kanban-card--grabbed'],
-    [state.dropBefore, 'kanban-card--drop-before'],
-    [state.dimmed, 'kanban-card--dimmed'],
-  ];
-  return modifiers.reduce(
-    (className, [active, modifier]) =>
-      active ? `${className} ${modifier}` : className,
-    'card kanban-card mb-2',
-  );
+/** Estados do card que mudam a aparência dele. */
+type CardVisualState = Pick<
+  KanbanCardProps,
+  'open' | 'dragging' | 'grabbed' | 'dropBefore' | 'dimmed'
+>;
+
+function cardClassName(state: CardVisualState): string {
+  const classes = ['card', 'kanban-card', 'mb-2'];
+  if (state.open) {
+    classes.push('kanban-card--open');
+  }
+  if (state.dragging) {
+    classes.push('kanban-card--dragging');
+  }
+  if (state.grabbed) {
+    classes.push('kanban-card--grabbed');
+  }
+  if (state.dropBefore) {
+    classes.push('kanban-card--drop-before');
+  }
+  if (state.dimmed) {
+    classes.push('kanban-card--dimmed');
+  }
+  return classes.join(' ');
 }
 
 export function KanbanCard({

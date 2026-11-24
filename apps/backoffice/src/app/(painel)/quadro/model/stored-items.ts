@@ -249,10 +249,17 @@ export function toConfig(value: unknown): BoardConfig {
 function uniquePeople(
   people: readonly BoardPerson[] | undefined,
 ): readonly BoardPerson[] | undefined {
+  if (!people) {
+    return undefined;
+  }
   const seen = new Set<string>();
-  return people?.filter((person) => {
-    const fresh = !seen.has(person.id);
+  const unique: BoardPerson[] = [];
+  for (const person of people) {
+    if (seen.has(person.id)) {
+      continue;
+    }
     seen.add(person.id);
-    return fresh;
-  });
+    unique.push(person);
+  }
+  return unique;
 }

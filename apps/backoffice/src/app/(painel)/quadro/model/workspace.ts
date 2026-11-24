@@ -100,19 +100,41 @@ export interface NeighborBoardParams {
 
 /** Quadro que fica aberto quando o quadro de `boardId` some: o vizinho da esquerda, ou o primeiro. */
 export function neighborBoard(params: NeighborBoardParams): string | undefined {
-  if (params.after.some((board) => board.id === params.boardId)) {
-    return params.boardId;
+  const { before, after, boardId } = params;
+  const stillThere = after.some((board) => board.id === boardId);
+  if (stillThere) {
+    return boardId;
   }
-  const index = params.before.findIndex((board) => board.id === params.boardId);
-  const left = params.before
-    .slice(0, Math.max(index, 0))
-    .reverse()
-    .find((board) => params.after.includes(board));
-  return (left ?? params.after[0])?.id;
+  const removedIndex = before.findIndex((board) => board.id === boardId);
+  for (let index = removedIndex - 1; index >= 0; index -= 1) {
+    const candidate = before[index];
+    if (candidate && after.includes(candidate)) {
+      return candidate.id;
+    }
+  }
+  return after[0]?.id;
 }
 
 export function serializeBoards(boards: readonly BoardSummary[]): string {
   return JSON.stringify({ version: 1, boards });
+}
+
+/** Um quadro da lista gravada; `undefined` quando o item não tem id e nome válidos. */
+function toBoardSummary(item: unknown): BoardSummary | undefined {
+  if (typeof item !== 'object' || item === null) {
+    return undefined;
+  }
+  if (!('id' in item) || !('name' in item)) {
+    return undefined;
+  }
+  if (typeof item.id !== 'string' || typeof item.name !== 'string') {
+    return undefined;
+  }
+  const name = item.name.trim();
+  if (name === '') {
+    return undefined;
+  }
+  return { id: item.id, name };
 }
 
 /** Lê a lista gravada; `null` quando não há nada, quando está estragada ou quando repete ids. */
@@ -136,17 +158,17 @@ export function parseStoredBoards(
   ) {
     return null;
   }
-  const boards = (data.boards as unknown[]).flatMap((item) =>
-    typeof item === 'object' &&
-    item !== null &&
-    'id' in item &&
-    'name' in item &&
-    typeof item.id === 'string' &&
-    typeof item.name === 'string' &&
-    item.name.trim()
-      ? [{ id: item.id, name: item.name.trim() }]
-      : [],
-  );
+  const boards: BoardSummary[] = [];
+  for (const item of data.boards as unknown[]) {
+    const board = toBoardSummary(item);
+    if (board) {
+      boards.push(board);
+    }
+  }
   const ids = new Set(boards.map((board) => board.id));
-  return boards.length > 0 && ids.size === boards.length ? boards : null;
+  const hasRepeatedIds = ids.size !== boards.length;
+  if (boards.length === 0 || hasRepeatedIds) {
+    return null;
+  }
+  return boards;
 }

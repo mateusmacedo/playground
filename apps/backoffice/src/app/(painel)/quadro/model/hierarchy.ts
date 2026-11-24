@@ -1,4 +1,10 @@
-import { allCards, type BoardCard, type BoardLane, findCard } from './board';
+import {
+  allCards,
+  type BoardCard,
+  type BoardLane,
+  findCard,
+  updateCardIn,
+} from './board';
 
 export interface ChildrenOfParams {
   readonly lanes: readonly BoardLane[];
@@ -106,14 +112,9 @@ export function setParent(params: SetParentParams): readonly BoardLane[] {
   ) {
     return lanes;
   }
-  return lanes.map((lane) =>
-    lane.id === location.lane.id
-      ? {
-          ...lane,
-          cards: lane.cards.map((card) =>
-            card.id === cardId ? { ...card, parentId } : card,
-          ),
-        }
-      : lane,
-  );
+  return updateCardIn({
+    lanes,
+    cardId,
+    update: (card) => ({ ...card, parentId }),
+  });
 }

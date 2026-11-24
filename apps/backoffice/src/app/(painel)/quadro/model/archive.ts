@@ -3,6 +3,7 @@ import {
   allCards,
   type Board,
   type BoardCard,
+  type BoardLane,
 } from './board';
 import { descendantIds } from './hierarchy';
 
@@ -35,15 +36,25 @@ export function archiveCard(params: ArchiveCardParams): Board {
     return board;
   }
   const cards = [root, ...archived.filter((item) => item !== root)];
-  return {
-    ...board,
-    lanes: board.lanes.map((lane) =>
-      lane.cards.some((card) => ids.has(card.id))
-        ? { ...lane, cards: lane.cards.filter((card) => !ids.has(card.id)) }
-        : lane,
-    ),
-    archive: [{ id: cardId, archivedAt: at, cards }, ...board.archive],
-  };
+  const lanes = board.lanes.map((lane) => withoutCards({ lane, ids }));
+  const entry = { id: cardId, archivedAt: at, cards };
+  return { ...board, lanes, archive: [entry, ...board.archive] };
+}
+
+interface WithoutCardsParams {
+  readonly lane: BoardLane;
+  /** Ids dos cards que saem da coluna. */
+  readonly ids: ReadonlySet<string>;
+}
+
+/** A coluna sem os cards dos ids dados; sem nenhum deles, a própria coluna. */
+function withoutCards(params: WithoutCardsParams): BoardLane {
+  const { lane, ids } = params;
+  const hasAny = lane.cards.some((card) => ids.has(card.id));
+  if (!hasAny) {
+    return lane;
+  }
+  return { ...lane, cards: lane.cards.filter((card) => !ids.has(card.id)) };
 }
 
 export interface RestoreArchivedParams {

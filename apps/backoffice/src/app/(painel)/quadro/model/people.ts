@@ -1,4 +1,10 @@
-import type { Board, BoardCard, BoardLane, BoardPerson } from './board';
+import type {
+  ArchiveEntry,
+  Board,
+  BoardCard,
+  BoardLane,
+  BoardPerson,
+} from './board';
 import { updateCardIn } from './board';
 import { nextId } from './ids';
 import { normalizeText } from './search';
@@ -41,12 +47,55 @@ interface AssigneeCheck {
   readonly known: ReadonlySet<string>;
 }
 
+/** O responsável do card saiu da lista de pessoas. */
+function hasUnknownAssignee(params: AssigneeCheck): boolean {
+  const { card, known } = params;
+  if (!card.assigneeId) {
+    return false;
+  }
+  return !known.has(card.assigneeId);
+}
+
 /** Tira do card o responsável que não está mais na lista. */
 function withKnownAssignee(params: AssigneeCheck): BoardCard {
-  const { card, known } = params;
-  return card.assigneeId && !known.has(card.assigneeId)
-    ? { ...card, assigneeId: undefined }
-    : card;
+  if (!hasUnknownAssignee(params)) {
+    return params.card;
+  }
+  return { ...params.card, assigneeId: undefined };
+}
+
+/** Coluna a conferir contra os ids das pessoas que continuam no quadro. */
+interface LaneAssigneesCheck {
+  readonly lane: BoardLane;
+  readonly known: ReadonlySet<string>;
+}
+
+/** A coluna sem os responsáveis que saíram; sem nenhum deles, a própria coluna. */
+function laneWithKnownAssignees(params: LaneAssigneesCheck): BoardLane {
+  const { lane, known } = params;
+  const hasUnknown = lane.cards.some((card) =>
+    hasUnknownAssignee({ card, known }),
+  );
+  if (!hasUnknown) {
+    return lane;
+  }
+  const cards = lane.cards.map((card) => withKnownAssignee({ card, known }));
+  return { ...lane, cards };
+}
+
+/** Arquivamento a conferir contra os ids das pessoas que continuam no quadro. */
+interface EntryAssigneesCheck {
+  readonly entry: ArchiveEntry;
+  readonly known: ReadonlySet<string>;
+}
+
+function entryWithKnownAssignees(params: EntryAssigneesCheck): ArchiveEntry {
+  const { entry, known } = params;
+  const cards = entry.cards.map((item) => ({
+    ...item,
+    card: withKnownAssignee({ card: item.card, known }),
+  }));
+  return { ...entry, cards };
 }
 
 export interface SetPeopleParams {
@@ -58,25 +107,17 @@ export interface SetPeopleParams {
 export function setPeople(params: SetPeopleParams): Board {
   const { board, people } = params;
   const known = new Set(people.map((person) => person.id));
-  const clean = (lane: BoardLane): BoardLane =>
-    lane.cards.some((card) => card.assigneeId && !known.has(card.assigneeId))
-      ? {
-          ...lane,
-          cards: lane.cards.map((card) => withKnownAssignee({ card, known })),
-        }
-      : lane;
-  return {
-    ...board,
-    config: { ...board.config, people: people.length > 0 ? people : undefined },
-    lanes: board.lanes.map(clean),
-    archive: board.archive.map((entry) => ({
-      ...entry,
-      cards: entry.cards.map((item) => ({
-        ...item,
-        card: withKnownAssignee({ card: item.card, known }),
-      })),
-    })),
+  const lanes = board.lanes.map((lane) =>
+    laneWithKnownAssignees({ lane, known }),
+  );
+  const archive = board.archive.map((entry) =>
+    entryWithKnownAssignees({ entry, known }),
+  );
+  const config = {
+    ...board.config,
+    people: people.length > 0 ? people : undefined,
   };
+  return { ...board, config, lanes, archive };
 }
 
 export interface SetAssigneeParams {
@@ -117,9 +158,10 @@ export function personName(params: PersonNameParams): string | undefined {
 /** Iniciais do nome, para o avatar do card. */
 export function initials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
-  const letters =
-    words.length > 1
-      ? `${words[0]?.[0] ?? ''}${words.at(-1)?.[0] ?? ''}`
-      : (words[0] ?? '').slice(0, 2);
-  return letters.toUpperCase();
+  const first = words[0] ?? '';
+  if (words.length < 2) {
+    return first.slice(0, 2).toUpperCase();
+  }
+  const last = words.at(-1) ?? '';
+  return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
 }

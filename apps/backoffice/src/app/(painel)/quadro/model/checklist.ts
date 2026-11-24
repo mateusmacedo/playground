@@ -43,15 +43,17 @@ export function toggleChecklistItem(
   return updateCardIn({
     lanes: params.lanes,
     cardId: params.cardId,
-    update: (card) =>
-      card.checklist?.some((item) => item.id === itemId)
-        ? {
-            ...card,
-            checklist: card.checklist.map((item) =>
-              item.id === itemId ? { ...item, done: !item.done } : item,
-            ),
-          }
-        : card,
+    update: (card) => {
+      const items = card.checklist ?? [];
+      const hasItem = items.some((item) => item.id === itemId);
+      if (!hasItem) {
+        return card;
+      }
+      const checklist = items.map((item) =>
+        item.id === itemId ? { ...item, done: !item.done } : item,
+      );
+      return { ...card, checklist };
+    },
   });
 }
 

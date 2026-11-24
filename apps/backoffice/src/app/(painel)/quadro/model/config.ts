@@ -17,20 +17,25 @@ export function isValidKeyPrefix(prefix: string): boolean {
   return KEY_PREFIX_PATTERN.test(prefix);
 }
 
+/** Palavras do nome que começam por letra, sem acento e em maiúsculas. */
+function prefixWords(name: string): readonly string[] {
+  const withoutAccents = name.normalize('NFD').replace(/\p{Diacritic}/gu, '');
+  const words = withoutAccents.toUpperCase().split(/[^A-Z0-9]+/);
+  return words.filter((word) => /^[A-Z]/.test(word));
+}
+
 /** Sugestão de prefixo a partir do nome do quadro: as iniciais das palavras, ou as primeiras letras de uma palavra só. */
 export function suggestKeyPrefix(name: string): string {
-  const words = name
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toUpperCase()
-    .split(/[^A-Z0-9]+/)
-    .filter((word) => /^[A-Z]/.test(word));
-  const prefix =
-    words.length > 1
-      ? words.map((word) => word[0]).join('')
-      : (words[0] ?? '').slice(0, 3);
+  const words = prefixWords(name);
+  let prefix = (words[0] ?? '').slice(0, 3);
+  if (words.length > 1) {
+    prefix = words.map((word) => word.charAt(0)).join('');
+  }
   const candidate = prefix.slice(0, 6);
-  return isValidKeyPrefix(candidate) ? candidate : DEFAULT_KEY_PREFIX;
+  if (!isValidKeyPrefix(candidate)) {
+    return DEFAULT_KEY_PREFIX;
+  }
+  return candidate;
 }
 
 export interface SetArchiveLaneHiddenParams {

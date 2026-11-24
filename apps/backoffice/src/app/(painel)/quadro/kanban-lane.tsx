@@ -56,24 +56,32 @@ interface LaneClassNameParams {
 
 function laneClassName(params: LaneClassNameParams): string {
   const { lane, moveState } = params;
-  const modifiers: readonly [boolean, string][] = [
-    [isOverLimit(lane), 'kanban-lane--over-limit'],
-    [moveState.dragging, 'kanban-lane--dragging'],
-    [moveState.grabbed, 'kanban-lane--grabbed'],
-    [moveState.dropBefore, 'kanban-lane--drop-before'],
-    [moveState.dropAfter, 'kanban-lane--drop-after'],
-    [moveState.collapsed, 'kanban-lane--collapsed'],
-    [Boolean(lane.locked), 'kanban-lane--locked'],
-    [
-      moveState.collapsed && moveState.cardDropAtEnd,
-      'kanban-lane--drop-target',
-    ],
-  ];
-  return modifiers.reduce(
-    (className, [active, modifier]) =>
-      active ? `${className} ${modifier}` : className,
-    'card kanban-lane bg-body-tertiary',
-  );
+  const classes = ['card', 'kanban-lane', 'bg-body-tertiary'];
+  if (isOverLimit(lane)) {
+    classes.push('kanban-lane--over-limit');
+  }
+  if (moveState.dragging) {
+    classes.push('kanban-lane--dragging');
+  }
+  if (moveState.grabbed) {
+    classes.push('kanban-lane--grabbed');
+  }
+  if (moveState.dropBefore) {
+    classes.push('kanban-lane--drop-before');
+  }
+  if (moveState.dropAfter) {
+    classes.push('kanban-lane--drop-after');
+  }
+  if (moveState.collapsed) {
+    classes.push('kanban-lane--collapsed');
+  }
+  if (lane.locked) {
+    classes.push('kanban-lane--locked');
+  }
+  if (moveState.collapsed && moveState.cardDropAtEnd) {
+    classes.push('kanban-lane--drop-target');
+  }
+  return classes.join(' ');
 }
 
 export function KanbanLane({

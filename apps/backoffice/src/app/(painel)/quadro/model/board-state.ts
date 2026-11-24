@@ -9,9 +9,30 @@ import {
 } from './board';
 import { DEFAULT_CONFIG } from './config';
 
+function cardsIn(archive: readonly ArchiveEntry[]): readonly BoardCard[] {
+  const cards: BoardCard[] = [];
+  for (const entry of archive) {
+    for (const item of entry.cards) {
+      cards.push(item.card);
+    }
+  }
+  return cards;
+}
+
 /** Cards arquivados, na ordem do arquivo. */
 export function archivedCards(board: Board): readonly BoardCard[] {
-  return board.archive.flatMap((entry) => entry.cards.map(({ card }) => card));
+  return cardsIn(board.archive);
+}
+
+/** Maior número já dado a um card; `0` quando nenhum tem número. */
+function highestNumber(cards: readonly BoardCard[]): number {
+  let highest = 0;
+  for (const card of cards) {
+    if (card.number !== undefined && card.number > highest) {
+      highest = card.number;
+    }
+  }
+  return highest;
 }
 
 export interface CreateBoardParams {
@@ -29,27 +50,29 @@ export interface CreateBoardParams {
 export function createBoard(params: CreateBoardParams): Board {
   const archive = params.archive ?? [];
   const labels = params.labels ?? [];
-  const existing = [
-    ...allCards(params.lanes),
-    ...archive.flatMap((entry) => entry.cards.map(({ card }) => card)),
-  ].map((card) => card.number ?? 0);
-  let nextNumber = Math.max(
-    params.nextNumber ?? 1,
-    Math.max(0, ...existing) + 1,
-  );
-  const numbered = (card: BoardCard): BoardCard => {
-    if (card.number !== undefined) {
-      return card;
+  const existing = [...allCards(params.lanes), ...cardsIn(archive)];
+  const firstFree = highestNumber(existing) + 1;
+
+  let nextNumber = Math.max(params.nextNumber ?? 1, firstFree);
+  const lanes: BoardLane[] = [];
+  for (const lane of params.lanes) {
+    const allNumbered = lane.cards.every((card) => card.number !== undefined);
+    if (allNumbered) {
+      lanes.push(lane);
+      continue;
     }
-    const withNumber = { ...card, number: nextNumber };
-    nextNumber += 1;
-    return withNumber;
-  };
-  const lanes = params.lanes.map((lane) =>
-    lane.cards.every((card) => card.number !== undefined)
-      ? lane
-      : { ...lane, cards: lane.cards.map(numbered) },
-  );
+    const cards: BoardCard[] = [];
+    for (const card of lane.cards) {
+      if (card.number !== undefined) {
+        cards.push(card);
+        continue;
+      }
+      cards.push({ ...card, number: nextNumber });
+      nextNumber += 1;
+    }
+    lanes.push({ ...lane, cards });
+  }
+
   return {
     lanes,
     archive,

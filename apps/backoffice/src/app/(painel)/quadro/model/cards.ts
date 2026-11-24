@@ -1,4 +1,10 @@
-import { type Board, type BoardCard, type BoardLane, findCard } from './board';
+import {
+  type Board,
+  type BoardCard,
+  type BoardLane,
+  findCard,
+  updateCardIn,
+} from './board';
 import { cardKey } from './card-key';
 import { moveCard } from './card-moves';
 
@@ -42,37 +48,49 @@ export interface UpdateCardParams {
   readonly patch: CardPatch;
 }
 
+/** O card e a edição que a pessoa fez nele. */
+interface CardEdit {
+  readonly card: BoardCard;
+  readonly patch: CardPatch;
+}
+
+/** Título depois da edição; o vazio mantém o anterior. */
+function editedTitle(edit: CardEdit): string {
+  const typed = edit.patch.title?.trim();
+  if (!typed) {
+    return edit.card.title;
+  }
+  return typed;
+}
+
+/** Descrição depois da edição; a que só tem espaços some. */
+function editedDescription(edit: CardEdit): string | undefined {
+  const { description } = edit.patch;
+  if (description === undefined) {
+    return edit.card.description;
+  }
+  // NOTE: a descrição não é aparada, para não comer o espaço que a pessoa acabou de digitar; só a vazia some.
+  if (description.trim() === '') {
+    return undefined;
+  }
+  return description;
+}
+
 /** Aplica a edição do card. Título vazio mantém o anterior, e descrição só com espaços some. */
 export function updateCard(params: UpdateCardParams): readonly BoardLane[] {
   const { lanes, cardId, patch } = params;
-  const location = findCard({ lanes, cardId });
-  if (!location) {
-    return lanes;
-  }
-  const { card } = location;
-  const title = patch.title?.trim() || card.title;
-  // NOTE: a descrição não é aparada, para não comer o espaço que a pessoa acabou de digitar; só a vazia some.
-  const description =
-    patch.description === undefined
-      ? card.description
-      : patch.description.trim()
-        ? patch.description
-        : undefined;
-  if (title === card.title && description === card.description) {
-    return lanes;
-  }
-  return lanes.map((lane) =>
-    lane.id === location.lane.id
-      ? {
-          ...lane,
-          cards: lane.cards.map((candidate) =>
-            candidate.id === cardId
-              ? { ...candidate, title, description }
-              : candidate,
-          ),
-        }
-      : lane,
-  );
+  return updateCardIn({
+    lanes,
+    cardId,
+    update: (card) => {
+      const title = editedTitle({ card, patch });
+      const description = editedDescription({ card, patch });
+      if (title === card.title && description === card.description) {
+        return card;
+      }
+      return { ...card, title, description };
+    },
+  });
 }
 
 export interface MoveCardToLaneParams {
@@ -111,14 +129,19 @@ export function removeCard(params: RemoveCardParams): readonly BoardLane[] {
     return lanes;
   }
   const grandparentId = location.card.parentId;
-  return lanes.map((lane) => ({
-    ...lane,
-    cards: lane.cards
-      .filter((card) => card.id !== cardId)
-      .map((card) =>
-        card.parentId === cardId ? { ...card, parentId: grandparentId } : card,
-      ),
-  }));
+  const nextLanes: BoardLane[] = [];
+  for (const lane of lanes) {
+    const cards: BoardCard[] = [];
+    for (const card of lane.cards) {
+      if (card.id === cardId) {
+        continue;
+      }
+      const isChild = card.parentId === cardId;
+      cards.push(isChild ? { ...card, parentId: grandparentId } : card);
+    }
+    nextLanes.push({ ...lane, cards });
+  }
+  return nextLanes;
 }
 
 export interface DuplicateCardParams {

@@ -211,12 +211,9 @@ export function updateCardIn(params: UpdateCardInParams): readonly BoardLane[] {
   if (next === location.card) {
     return lanes;
   }
-  return lanes.map((lane, index) =>
-    index === location.laneIndex
-      ? {
-          ...lane,
-          cards: lane.cards.map((card) => (card.id === cardId ? next : card)),
-        }
-      : lane,
-  );
+  const cards = [...location.lane.cards];
+  cards[location.cardIndex] = next;
+  const nextLanes = [...lanes];
+  nextLanes[location.laneIndex] = { ...location.lane, cards };
+  return nextLanes;
 }

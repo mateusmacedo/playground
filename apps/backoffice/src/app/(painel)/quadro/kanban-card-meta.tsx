@@ -7,11 +7,13 @@ import { type ChildProgress, progressText } from './model/completion';
 import { type DueStatus, dueStatus, formatShortDate } from './model/due';
 import { initials } from './model/people';
 
+const NEUTRAL_BADGE = 'bg-body-secondary text-body border';
+
 const DUE_STYLE: Readonly<Record<DueStatus, string>> = {
   overdue: 'text-bg-danger',
   today: 'text-bg-warning',
   done: 'text-bg-success',
-  upcoming: 'bg-body-secondary text-body border',
+  upcoming: NEUTRAL_BADGE,
 };
 
 const DUE_TEXT: Readonly<Record<DueStatus, string>> = {
@@ -67,72 +69,127 @@ export function KanbanCardMeta({
         </span>
       ))}
       {card.dueDate ? (
-        <span className={`badge ${DUE_STYLE[status ?? 'upcoming']}`}>
-          <span className="visually-hidden">Prazo: </span>
-          {formatShortDate(card.dueDate)}
-          <span className="visually-hidden">
-            {status ? DUE_TEXT[status] : ''}
-          </span>
-        </span>
+        <DueBadge dueDate={card.dueDate} status={status} />
       ) : null}
       {checklist.total > 0 ? (
-        <span
-          className={`badge ${checklist.done === checklist.total ? 'text-bg-success' : 'bg-body-secondary text-body border'}`}
-        >
-          <span aria-hidden="true">
-            <CIcon icon={cilCheckAlt} size="sm" className="me-1" />
-            {checklist.done}/{checklist.total}
-          </span>
-          <span className="visually-hidden">
-            Checklist: {checklist.done} de {checklist.total} itens feitos
-          </span>
-        </span>
+        <ChecklistBadge done={checklist.done} total={checklist.total} />
       ) : null}
-      {progress ? (
-        <ProgressBadge progress={progress} />
-      ) : childCount > 0 ? (
-        <span className="badge bg-body-secondary text-body border">
-          {childCount} {childCount === 1 ? 'filho' : 'filhos'}
-        </span>
-      ) : null}
-      {comments > 0 ? (
-        <span className="badge bg-body-secondary text-body border">
-          <CIcon
-            icon={cilCommentBubble}
-            size="sm"
-            className="me-1"
-            aria-hidden="true"
-          />
-          <span aria-hidden="true">{comments}</span>
-          <span className="visually-hidden">
-            {comments} {comments === 1 ? 'comentário' : 'comentários'}
-          </span>
-        </span>
-      ) : null}
-      {attachments > 0 ? (
-        <span className="badge bg-body-secondary text-body border">
-          <CIcon
-            icon={cilPaperclip}
-            size="sm"
-            className="me-1"
-            aria-hidden="true"
-          />
-          <span aria-hidden="true">{attachments}</span>
-          <span className="visually-hidden">
-            {attachments} {attachments === 1 ? 'anexo' : 'anexos'}
-          </span>
-        </span>
-      ) : null}
-      {assignee ? (
-        <span
-          className="kanban-card__assignee badge rounded-pill text-bg-primary ms-auto"
-          title={assignee}
-        >
-          <span aria-hidden="true">{initials(assignee)}</span>
-          <span className="visually-hidden">Responsável: {assignee}</span>
-        </span>
-      ) : null}
+      <ChildrenBadge progress={progress} childCount={childCount} />
+      <CountBadge
+        icon={cilCommentBubble}
+        count={comments}
+        singular="comentário"
+        plural="comentários"
+      />
+      <CountBadge
+        icon={cilPaperclip}
+        count={attachments}
+        singular="anexo"
+        plural="anexos"
+      />
+      {assignee ? <AssigneeBadge name={assignee} /> : null}
     </div>
+  );
+}
+
+interface DueBadgeProps {
+  readonly dueDate: string;
+  /** Situação do prazo; só existe depois que o dia de hoje chega do navegador. */
+  readonly status: DueStatus | undefined;
+}
+
+function DueBadge({ dueDate, status }: Readonly<DueBadgeProps>) {
+  return (
+    <span className={`badge ${DUE_STYLE[status ?? 'upcoming']}`}>
+      <span className="visually-hidden">Prazo: </span>
+      {formatShortDate(dueDate)}
+      <span className="visually-hidden">{status ? DUE_TEXT[status] : ''}</span>
+    </span>
+  );
+}
+
+interface ChecklistBadgeProps {
+  readonly done: number;
+  readonly total: number;
+}
+
+function ChecklistBadge({ done, total }: Readonly<ChecklistBadgeProps>) {
+  const style = done === total ? 'text-bg-success' : NEUTRAL_BADGE;
+  return (
+    <span className={`badge ${style}`}>
+      <span aria-hidden="true">
+        <CIcon icon={cilCheckAlt} size="sm" className="me-1" />
+        {done}/{total}
+      </span>
+      <span className="visually-hidden">
+        Checklist: {done} de {total} itens feitos
+      </span>
+    </span>
+  );
+}
+
+interface ChildrenBadgeProps {
+  readonly progress: ChildProgress | undefined;
+  readonly childCount: number;
+}
+
+/** Com coluna de conclusão no quadro, o progresso dos filhos; sem ela, só quantos são. */
+function ChildrenBadge({ progress, childCount }: Readonly<ChildrenBadgeProps>) {
+  if (progress) {
+    return <ProgressBadge progress={progress} />;
+  }
+  if (childCount === 0) {
+    return null;
+  }
+  return (
+    <span className={`badge ${NEUTRAL_BADGE}`}>
+      {childCount} {childCount === 1 ? 'filho' : 'filhos'}
+    </span>
+  );
+}
+
+interface CountBadgeProps {
+  readonly icon: string[];
+  readonly count: number;
+  /** Nome do que é contado, para o leitor de tela. */
+  readonly singular: string;
+  readonly plural: string;
+}
+
+/** Quantos comentários ou anexos o card tem; sem nenhum, o selo não aparece. */
+function CountBadge({
+  icon,
+  count,
+  singular,
+  plural,
+}: Readonly<CountBadgeProps>) {
+  if (count === 0) {
+    return null;
+  }
+  return (
+    <span className={`badge ${NEUTRAL_BADGE}`}>
+      <CIcon icon={icon} size="sm" className="me-1" aria-hidden="true" />
+      <span aria-hidden="true">{count}</span>
+      <span className="visually-hidden">
+        {count} {count === 1 ? singular : plural}
+      </span>
+    </span>
+  );
+}
+
+interface AssigneeBadgeProps {
+  readonly name: string;
+}
+
+function AssigneeBadge({ name }: Readonly<AssigneeBadgeProps>) {
+  return (
+    <span
+      className="kanban-card__assignee badge rounded-pill text-bg-primary ms-auto"
+      title={name}
+    >
+      <span aria-hidden="true">{initials(name)}</span>
+      <span className="visually-hidden">Responsável: {name}</span>
+    </span>
   );
 }
 
@@ -144,10 +201,9 @@ interface ProgressBadgeProps {
 function ProgressBadge({ progress }: Readonly<ProgressBadgeProps>) {
   const complete = progress.done === progress.total;
   const percent = Math.round((progress.done / progress.total) * 100);
+  const style = complete ? 'text-bg-success' : NEUTRAL_BADGE;
   return (
-    <span
-      className={`badge kanban-card__progress ${complete ? 'text-bg-success' : 'bg-body-secondary text-body border'}`}
-    >
+    <span className={`badge kanban-card__progress ${style}`}>
       <span aria-hidden="true">
         {progress.done}/{progress.total} filhos
       </span>

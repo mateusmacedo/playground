@@ -46,6 +46,14 @@ export function mergeVisible(params: MergeVisibleParams): readonly BoardLane[] {
   return [...merged, ...extras];
 }
 
+/** Marca de coluna oculta ou bloqueada: `true` quando ligada; desligada, some do objeto em vez de ficar `false`. */
+function markOf(on: boolean): true | undefined {
+  if (on) {
+    return true;
+  }
+  return undefined;
+}
+
 export interface SetLaneHiddenParams {
   readonly lanes: readonly BoardLane[];
   readonly laneId: string;
@@ -67,10 +75,9 @@ export function setLaneHidden(
   if (hidden && otherVisible.length === 0) {
     return lanes;
   }
+  const hiddenMark = markOf(hidden);
   return lanes.map((candidate) =>
-    candidate.id === laneId
-      ? { ...candidate, hidden: hidden ? true : undefined }
-      : candidate,
+    candidate.id === laneId ? { ...candidate, hidden: hiddenMark } : candidate,
   );
 }
 
@@ -102,10 +109,9 @@ export function setLaneLocked(
   if (!lane || Boolean(lane.locked) === locked) {
     return lanes;
   }
+  const lockedMark = markOf(locked);
   return lanes.map((candidate) =>
-    candidate.id === laneId
-      ? { ...candidate, locked: locked ? true : undefined }
-      : candidate,
+    candidate.id === laneId ? { ...candidate, locked: lockedMark } : candidate,
   );
 }
 
