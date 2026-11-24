@@ -13,7 +13,9 @@ import {
   type BoardDialogRequest,
   BoardDialogs,
 } from './dialogs/board-dialogs';
+import { BoardFormDialog } from './dialogs/board-form-dialog';
 import { LabelsDialog } from './dialogs/labels-dialog';
+import { OnClosed } from './dialogs/on-closed';
 import { InlineAddForm } from './inline-add-form';
 import { KanbanCard, type KanbanCardActions } from './kanban-card';
 import { KanbanLane } from './kanban-lane';
@@ -93,7 +95,16 @@ type FocusTarget =
   | 'data-board-reset'
   | 'data-board-archive'
   | 'data-board-labels'
+  | 'data-board-settings'
   | 'data-board-undo';
+
+/** Nome do quadro, que mora na lista de quadros, para a janela de configuração. */
+export interface BoardSettings {
+  readonly name: string;
+  /** Devolve o nome que vale, ou `null` quando ele está vazio ou repetido. */
+  readonly validateName: (name: string) => string | null;
+  readonly onRename: (name: string) => void;
+}
 
 /** Colunas recolhidas que vão receber um card que ainda não está nelas. */
 function lanesReceiving(params: {
@@ -123,10 +134,16 @@ export function KanbanBoard({
   initialLanes,
   initialLabels,
   storageKey,
+  settings,
+  canReset = true,
 }: Readonly<{
   initialLanes: readonly BoardLane[];
   initialLabels?: readonly BoardLabel[];
   storageKey?: string;
+  /** Com ela, o quadro ganha a janela "Configurar quadro", com nome e prefixo do código. */
+  settings?: BoardSettings;
+  /** O quadro tem conteúdo de exemplo para restaurar. */
+  canReset?: boolean;
 }>) {
   const { board, canUndo, canRedo, loaded, commands } = useBoard({
     initialLanes,
@@ -134,6 +151,7 @@ export function KanbanBoard({
     storageKey,
   });
   const { lanes, labels } = board;
+  const { keyPrefix } = board.config;
   const collapsedLanes = useCollapsedLanes(storageKey);
   const { collapsed } = collapsedLanes;
   const isClient = useIsClient();
@@ -146,9 +164,11 @@ export function KanbanBoard({
   );
   const [openCard, setOpenCard] = useState<OpenCard | null>(null);
   const [dialog, setDialog] = useState<BoardDialog | null>(null);
-  const [listDialog, setListDialog] = useState<'archive' | 'labels' | null>(
-    null,
-  );
+  const [listDialog, setListDialog] = useState<
+    'archive' | 'labels' | 'settings' | null
+  >(null);
+  /** Muda a cada abertura da configuração, para os campos começarem do valor atual. */
+  const [settingsKey, setSettingsKey] = useState(0);
   const dialogCount = useRef(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -259,7 +279,9 @@ export function KanbanBoard({
     ready: loaded,
     board,
     openKey:
-      panelVisible && openLocation ? cardKey(openLocation.card) : undefined,
+      panelVisible && openLocation
+        ? cardKey({ card: openLocation.card, prefix: keyPrefix })
+        : undefined,
     onOpen: openDetails,
     onUnavailable: (text) => setNotice({ color: 'warning', text }),
   });
@@ -344,7 +366,7 @@ export function KanbanBoard({
     if (!location) {
       return;
     }
-    const key = cardKey(location.card);
+    const key = cardKey({ card: location.card, prefix: keyPrefix });
     const url = new URL(window.location.href);
     url.searchParams.set('card', key);
     navigator.clipboard.writeText(url.href).then(
@@ -458,7 +480,7 @@ export function KanbanBoard({
   );
   const filtering = query.trim() !== '' || activeLabels.size > 0;
   const matches = (card: BoardCard) =>
-    cardMatchesQuery({ card, query, labels }) &&
+    cardMatchesQuery({ card, query, labels, keyPrefix }) &&
     cardMatchesLabels({ card, labelIds: activeLabels });
   const lastIndex = lanes.length - 1;
 
@@ -505,7 +527,15 @@ export function KanbanBoard({
         }}
         archivedCount={board.archive.length}
         onOpenArchive={() => setListDialog('archive')}
-        onReset={() => openDialog({ kind: 'reset' })}
+        onOpenSettings={
+          settings
+            ? () => {
+                setSettingsKey((key) => key + 1);
+                setListDialog('settings');
+              }
+            : undefined
+        }
+        onReset={canReset ? () => openDialog({ kind: 'reset' }) : undefined}
       />
       {/* biome-ignore lint/a11y/noStaticElementInteractions: só recebe o arraste das colunas, que pode terminar entre duas delas; pelo teclado, a coluna se move pela alça */}
       <div
@@ -552,6 +582,7 @@ export function KanbanBoard({
                 <KanbanCard
                   key={card.id}
                   card={card}
+                  keyPrefix={keyPrefix}
                   index={index}
                   parentTitle={
                     card.parentId ? titles.get(card.parentId) : undefined
@@ -604,6 +635,7 @@ export function KanbanBoard({
       <ArchiveDialog
         visible={listDialog === 'archive'}
         archive={board.archive}
+        keyPrefix={keyPrefix}
         onRestore={(entryId) => {
           const title = archivedTitle(entryId);
           commands.restoreArchived(entryId);
@@ -619,6 +651,32 @@ export function KanbanBoard({
           focusMarked({ attribute: 'data-board-archive', id: '' })
         }
       />
+      {settings && settingsKey > 0 ? (
+        <BoardFormDialog
+          key={settingsKey}
+          visible={listDialog === 'settings'}
+          title="Configurar quadro"
+          confirmLabel="Salvar"
+          initial={{ name: settings.name, keyPrefix }}
+          validateName={settings.validateName}
+          prefixHelp="Os links copiados com o prefixo antigo deixam de abrir o card."
+          onSave={(values) => {
+            settings.onRename(values.name);
+            commands.setKeyPrefix(values.keyPrefix);
+            setListDialog(null);
+            setAnnouncement('Configuração do quadro salva.');
+          }}
+          onCancel={() => setListDialog(null)}
+        >
+          <OnClosed
+            onClosed={() => {
+              if (listDialog !== 'settings') {
+                focusMarked({ attribute: 'data-board-settings', id: '' });
+              }
+            }}
+          />
+        </BoardFormDialog>
+      ) : null}
       <LabelsDialog
         visible={listDialog === 'labels'}
         labels={labels}

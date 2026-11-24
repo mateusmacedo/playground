@@ -19,10 +19,12 @@ const moment = new Intl.DateTimeFormat('pt-BR', {
 
 function ArchiveItem({
   entry,
+  keyPrefix,
   onRestore,
   onDelete,
 }: Readonly<{
   entry: ArchiveEntry;
+  keyPrefix: string;
   onRestore: (entryId: string) => void;
   onDelete: (entryId: string) => void;
 }>) {
@@ -36,7 +38,7 @@ function ArchiveItem({
     <li className="d-flex flex-wrap align-items-center justify-content-between gap-2 border rounded p-2">
       <div>
         <span className="badge bg-body-secondary text-body border me-2">
-          {cardKey(root)}
+          {cardKey({ card: root, prefix: keyPrefix })}
         </span>
         <strong>{root.title}</strong>
         {children > 0 ? (
@@ -81,6 +83,7 @@ function ArchiveItem({
 export function ArchiveDialog({
   visible,
   archive,
+  keyPrefix,
   onRestore,
   onDelete,
   onClose,
@@ -88,6 +91,8 @@ export function ArchiveDialog({
 }: Readonly<{
   visible: boolean;
   archive: readonly ArchiveEntry[];
+  /** Prefixo do código dos cards do quadro. */
+  keyPrefix: string;
   onRestore: (entryId: string) => void;
   onDelete: (entryId: string) => void;
   onClose: () => void;
@@ -119,6 +124,7 @@ export function ArchiveDialog({
               <ArchiveItem
                 key={entry.id}
                 entry={entry}
+                keyPrefix={keyPrefix}
                 onRestore={onRestore}
                 onDelete={onDelete}
               />

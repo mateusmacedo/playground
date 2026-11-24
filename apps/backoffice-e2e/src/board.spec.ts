@@ -330,4 +330,38 @@ test.describe('quadro kanban: busca, desfazer, arquivo e dados do card', () => {
     await expect(card(page, 'Item 2')).toHaveClass(/kanban-card--dimmed/);
     await expect(card(page, 'Item 4')).not.toHaveClass(/kanban-card--dimmed/);
   });
+
+  test('cria outro quadro com prefixo próprio e volta ao principal', async ({
+    page,
+  }) => {
+    await page.goto('/quadro');
+    await page.getByRole('button', { name: 'Novo quadro' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Novo quadro' });
+    await dialog.getByLabel('Nome do quadro').fill('Operações de TI');
+    await expect(dialog.getByLabel('Prefixo do código dos cards')).toHaveValue(
+      'ODT',
+    );
+    await dialog.getByRole('button', { name: 'Criar' }).click();
+
+    await expect(page).toHaveURL(/quadro=board-2/);
+    const todo = lane(page, 'A fazer');
+    await todo.getByRole('button', { name: 'Adicionar card' }).click();
+    await todo
+      .getByRole('textbox', { name: 'Título do novo card em A fazer' })
+      .fill('Trocar servidor');
+    await page.keyboard.press('Enter');
+    await expect(todo.getByText('ODT-1')).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByLabel('Quadro', { exact: true })).toHaveValue(
+      'board-2',
+    );
+    await expect(cardTitles(page, 'A fazer')).toHaveText(['Trocar servidor']);
+
+    await page.getByLabel('Quadro', { exact: true }).selectOption({
+      label: 'Quadro principal',
+    });
+    await expect(page).toHaveURL(/quadro=board-1/);
+    await expect(cardTitles(page, 'A fazer').first()).toHaveText('Item 1');
+  });
 });

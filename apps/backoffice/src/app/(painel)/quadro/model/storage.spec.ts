@@ -192,3 +192,31 @@ describe('gravação do quadro', () => {
     ).toBeNull();
   });
 });
+
+describe('configuração gravada', () => {
+  it('devolve o prefixo gravado na versão 3', () => {
+    const board = createBoard({
+      lanes: sampleLanes,
+      config: { keyPrefix: 'OPS' },
+    });
+    expect(parseStoredBoard(serializeBoard(board))?.config).toEqual({
+      keyPrefix: 'OPS',
+    });
+  });
+
+  it('usa o prefixo padrão na versão 2 e no prefixo inválido', () => {
+    expect(parseStoredBoard(v2({ lanes: sampleLanes }))?.config).toEqual({
+      keyPrefix: 'QD',
+    });
+    const broken = JSON.stringify({
+      version: 3,
+      board: { lanes: sampleLanes, config: { keyPrefix: '1-x' } },
+    });
+    expect(parseStoredBoard(broken)?.config.keyPrefix).toBe('QD');
+    const noConfig = JSON.stringify({
+      version: 3,
+      board: { lanes: sampleLanes, config: 'x' },
+    });
+    expect(parseStoredBoard(noConfig)?.config.keyPrefix).toBe('QD');
+  });
+});

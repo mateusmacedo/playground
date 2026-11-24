@@ -87,7 +87,7 @@ export function CardDetails({
     <div className="d-grid gap-3">
       <div className="d-flex align-items-center justify-content-between gap-2">
         <span className="badge bg-body-secondary text-body border fs-6">
-          {cardKey(card)}
+          {cardKey({ card, prefix: board.config.keyPrefix })}
         </span>
         {actions.onCopyLink ? (
           <CButton

@@ -101,13 +101,20 @@ export interface ArchiveEntry {
   readonly cards: readonly ArchivedCard[];
 }
 
-/** O quadro inteiro: colunas, arquivados, etiquetas e o próximo número de card, que nunca volta atrás. */
+/** Configuração própria de cada quadro. */
+export interface BoardConfig {
+  /** Prefixo do código dos cards (`QD` em `QD-12`). */
+  readonly keyPrefix: string;
+}
+
+/** O quadro inteiro: colunas, arquivados, etiquetas, configuração e o próximo número de card, que nunca volta atrás. */
 export interface Board {
   readonly lanes: readonly BoardLane[];
   /** Do arquivamento mais recente para o mais antigo. */
   readonly archive: readonly ArchiveEntry[];
   readonly labels: readonly BoardLabel[];
   readonly nextNumber: number;
+  readonly config: BoardConfig;
 }
 
 export interface CardLocation {

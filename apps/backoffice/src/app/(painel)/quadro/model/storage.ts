@@ -3,6 +3,7 @@ import {
   allCards,
   type Board,
   type BoardCard,
+  type BoardConfig,
   type BoardLabel,
   type BoardLane,
   type CardActivity,
@@ -10,13 +11,14 @@ import {
   type LabelColor,
 } from './board';
 import { archivedCards, createBoard } from './board-state';
+import { DEFAULT_CONFIG, isValidKeyPrefix } from './config';
 import { isDateOnly } from './due';
 import { ancestorsOf } from './hierarchy';
 
 /** Chave do quadro no `localStorage`; a versão do formato vai dentro do valor gravado. */
 export const BOARD_STORAGE_KEY = 'backoffice:quadro:v1';
 
-const BOARD_VERSION = 2;
+const BOARD_VERSION = 3;
 
 const LABEL_COLORS: readonly LabelColor[] = [
   'danger',
@@ -225,6 +227,21 @@ function withKnownLabels(board: Board): Board {
   };
 }
 
+/** Configuração gravada; o que vier fora do formato volta ao padrão, sem invalidar o quadro. */
+function toConfig(value: unknown): BoardConfig {
+  if (!isRecord(value)) {
+    return DEFAULT_CONFIG;
+  }
+  const { keyPrefix } = value;
+  return {
+    keyPrefix:
+      typeof keyPrefix === 'string' && isValidKeyPrefix(keyPrefix)
+        ? keyPrefix
+        : DEFAULT_CONFIG.keyPrefix,
+  };
+}
+
+/** Versões 2 e 3: a 3 só acrescentou a configuração, que na 2 fica com o padrão. */
 function fromVersion2(data: UnknownRecord): Board | null {
   const stored = data.board;
   if (!isRecord(stored)) {
@@ -242,6 +259,7 @@ function fromVersion2(data: UnknownRecord): Board | null {
       nextNumber: isPositiveInteger(stored.nextNumber)
         ? stored.nextNumber
         : undefined,
+      config: toConfig(stored.config),
     }),
   );
 }
@@ -251,7 +269,7 @@ export function serializeBoard(board: Board): string {
 }
 
 /**
- * Lê o quadro gravado, na versão atual ou na 1 (só colunas, que ganham os números dos cards na ordem da tela). Devolve
+ * Lê o quadro gravado, na versão atual, na 2 (sem configuração) ou na 1 (só colunas, que ganham os números dos cards na ordem da tela). Devolve
  * `null` quando não há nada, quando o JSON é inválido ou de versão desconhecida, ou quando o conteúdo não forma um
  * quadro coerente; quem chama continua com o quadro que já tem.
  */
@@ -272,7 +290,7 @@ export function parseStoredBoard(raw: string | null): Board | null {
   if (data.version === 1) {
     const lanes = toLanes(data.lanes);
     board = lanes ? createBoard({ lanes }) : null;
-  } else if (data.version === BOARD_VERSION) {
+  } else if (data.version === 2 || data.version === BOARD_VERSION) {
     board = fromVersion2(data);
   }
   return board && isConsistent(board) ? board : null;

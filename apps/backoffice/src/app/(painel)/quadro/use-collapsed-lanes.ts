@@ -19,12 +19,17 @@ export interface CollapsedLanes {
   readonly expand: (laneIds: Iterable<string>) => void;
 }
 
+/** Chave das colunas recolhidas do quadro gravado em `storageKey`. */
+export function collapsedLanesKey(storageKey: string): string {
+  return `${storageKey}:recolhidas`;
+}
+
 /**
  * Colunas recolhidas, uma preferência de tela: com `storageKey`, ficam gravadas numa chave própria e não entram no
  * desfazer do quadro.
  */
 export function useCollapsedLanes(storageKey?: string): CollapsedLanes {
-  const key = storageKey ? `${storageKey}:recolhidas` : undefined;
+  const key = storageKey ? collapsedLanesKey(storageKey) : undefined;
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(
     () => new Set(),
   );

@@ -120,21 +120,35 @@ describe('busca', () => {
     if (!x || !y) {
       throw new Error('cards de teste ausentes');
     }
-    expect(cardMatchesQuery({ card: x, query: '', labels })).toBe(true);
     expect(
-      cardMatchesQuery({ card: x, query: 'revisao contrato', labels }),
+      cardMatchesQuery({ card: x, query: '', labels, keyPrefix: 'QD' }),
     ).toBe(true);
-    expect(cardMatchesQuery({ card: x, query: 'urgente', labels })).toBe(true);
-    expect(cardMatchesQuery({ card: x, query: 'qd-1', labels })).toBe(true);
-    expect(cardMatchesQuery({ card: y, query: 'acao', labels })).toBe(true);
-    expect(cardMatchesQuery({ card: y, query: 'contrato', labels })).toBe(
-      false,
-    );
+    expect(
+      cardMatchesQuery({
+        card: x,
+        query: 'revisao contrato',
+        labels,
+        keyPrefix: 'QD',
+      }),
+    ).toBe(true);
+    expect(
+      cardMatchesQuery({ card: x, query: 'urgente', labels, keyPrefix: 'QD' }),
+    ).toBe(true);
+    expect(
+      cardMatchesQuery({ card: x, query: 'qd-1', labels, keyPrefix: 'QD' }),
+    ).toBe(true);
+    expect(
+      cardMatchesQuery({ card: y, query: 'acao', labels, keyPrefix: 'QD' }),
+    ).toBe(true);
+    expect(
+      cardMatchesQuery({ card: y, query: 'contrato', labels, keyPrefix: 'QD' }),
+    ).toBe(false);
     expect(
       cardMatchesQuery({
         card: { ...y, checklist: [{ id: 'i', text: 'Ligar', done: false }] },
         query: 'ligar',
         labels,
+        keyPrefix: 'QD',
       }),
     ).toBe(true);
   });

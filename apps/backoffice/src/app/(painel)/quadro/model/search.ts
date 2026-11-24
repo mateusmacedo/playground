@@ -17,8 +17,10 @@ export function cardMatchesQuery(params: {
   readonly card: BoardCard;
   readonly query: string;
   readonly labels: readonly BoardLabel[];
+  /** Prefixo do código dos cards do quadro. */
+  readonly keyPrefix: string;
 }): boolean {
-  const { card, query, labels } = params;
+  const { card, query, labels, keyPrefix } = params;
   const words = normalizeText(query).split(/\s+/).filter(Boolean);
   if (words.length === 0) {
     return true;
@@ -30,7 +32,7 @@ export function cardMatchesQuery(params: {
     [
       card.title,
       card.description ?? '',
-      cardKey(card),
+      cardKey({ card, prefix: keyPrefix }),
       ...labelNames,
       ...(card.checklist ?? []).map((item) => item.text),
     ].join(' '),

@@ -3,9 +3,11 @@ import {
   allCards,
   type Board,
   type BoardCard,
+  type BoardConfig,
   type BoardLabel,
   type BoardLane,
 } from './board';
+import { DEFAULT_CONFIG } from './config';
 
 /** Cards arquivados, na ordem do arquivo. */
 export function archivedCards(board: Board): readonly BoardCard[] {
@@ -21,6 +23,7 @@ export function createBoard(params: {
   readonly labels?: readonly BoardLabel[];
   readonly archive?: readonly ArchiveEntry[];
   readonly nextNumber?: number;
+  readonly config?: BoardConfig;
 }): Board {
   const archive = params.archive ?? [];
   const labels = params.labels ?? [];
@@ -45,5 +48,11 @@ export function createBoard(params: {
       ? lane
       : { ...lane, cards: lane.cards.map(numbered) },
   );
-  return { lanes, archive, labels, nextNumber };
+  return {
+    lanes,
+    archive,
+    labels,
+    nextNumber,
+    config: params.config ?? DEFAULT_CONFIG,
+  };
 }

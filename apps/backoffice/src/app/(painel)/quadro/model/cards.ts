@@ -134,7 +134,13 @@ export function duplicateCard(params: {
     id: newId,
     title: `${card.title} (cópia)`,
     number: board.nextNumber,
-    activity: [{ at, kind: 'duplicated', from: cardKey(card) }],
+    activity: [
+      {
+        at,
+        kind: 'duplicated',
+        from: cardKey({ card, prefix: board.config.keyPrefix }),
+      },
+    ],
   };
   return {
     ...board,

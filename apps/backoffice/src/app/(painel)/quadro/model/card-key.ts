@@ -1,18 +1,21 @@
 import { allCards, type Board, type BoardCard } from './board';
 import { archivedCards } from './board-state';
 
-/** Prefixo do código dos cards; fixo até o quadro ganhar uma especialidade que defina o dela. */
-export const CARD_KEY_PREFIX = 'QD';
-
-/** Código curto do card, como no Jira e no Linear: `QD-12`. */
-export function cardKey(card: Pick<BoardCard, 'number'>): string {
-  return `${CARD_KEY_PREFIX}-${card.number ?? '?'}`;
+/** Código curto do card, como no Jira e no Linear: o prefixo do quadro e o número (`QD-12`). */
+export function cardKey(params: {
+  readonly card: Pick<BoardCard, 'number'>;
+  readonly prefix: string;
+}): string {
+  return `${params.prefix}-${params.card.number ?? '?'}`;
 }
 
-/** Número do código escrito pela pessoa (`QD-12`, `qd-12`); `undefined` quando não é um código. */
-export function parseCardKey(text: string): number | undefined {
-  const match = new RegExp(`^${CARD_KEY_PREFIX}-(\\d+)$`, 'i').exec(
-    text.trim(),
+/** Número do código escrito pela pessoa (`QD-12`, `qd-12`); `undefined` quando não é um código do prefixo. */
+export function parseCardKey(params: {
+  readonly text: string;
+  readonly prefix: string;
+}): number | undefined {
+  const match = new RegExp(`^${params.prefix}-(\\d+)$`, 'i').exec(
+    params.text.trim(),
   );
   return match ? Number(match[1]) : undefined;
 }
@@ -27,7 +30,10 @@ export function findByKey(params: {
   readonly board: Board;
   readonly key: string;
 }): CardLookup {
-  const number = parseCardKey(params.key);
+  const number = parseCardKey({
+    text: params.key,
+    prefix: params.board.config.keyPrefix,
+  });
   if (number === undefined) {
     return { kind: 'missing' };
   }

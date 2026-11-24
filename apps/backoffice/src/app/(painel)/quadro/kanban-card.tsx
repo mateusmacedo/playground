@@ -25,6 +25,8 @@ export interface KanbanCardActions {
 
 export interface KanbanCardProps {
   readonly card: BoardCard;
+  /** Prefixo do código dos cards do quadro. */
+  readonly keyPrefix: string;
   readonly index: number;
   /** Título do card pai, quando o card tem um. */
   readonly parentTitle?: string;
@@ -69,6 +71,7 @@ function cardClassName(
 
 export function KanbanCard({
   card,
+  keyPrefix,
   index,
   parentTitle,
   childCount,
@@ -106,7 +109,7 @@ export function KanbanCard({
         </button>
         <div className="flex-grow-1 min-w-0">
           <span className="kanban-card__key small text-body-secondary">
-            {cardKey(card)}
+            {cardKey({ card, prefix: keyPrefix })}
           </span>
           <h3 className="h6 mb-0">
             {/* NOTE: o `stretched-link` estende o clique ao card inteiro; a alça fica por cima dele no CSS. */}

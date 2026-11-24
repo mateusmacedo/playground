@@ -16,11 +16,11 @@ describe('createBoard', () => {
         },
       ],
     });
-    expect(board.lanes.flatMap((lane) => lane.cards.map(cardKey))).toEqual([
-      'QD-8',
-      'QD-7',
-      'QD-9',
-    ]);
+    expect(
+      board.lanes.flatMap((lane) =>
+        lane.cards.map((card) => cardKey({ card, prefix: 'QD' })),
+      ),
+    ).toEqual(['QD-8', 'QD-7', 'QD-9']);
     expect(board.nextNumber).toBe(10);
     expect(board.labels).toEqual([]);
     expect(board.archive).toEqual([]);
@@ -63,10 +63,11 @@ describe('código do card', () => {
   });
 
   it('forma e lê o código, sem diferenciar maiúsculas', () => {
-    expect(cardKey({ number: 12 })).toBe('QD-12');
-    expect(cardKey({})).toBe('QD-?');
-    expect(parseCardKey(' qd-12 ')).toBe(12);
-    expect(parseCardKey('XY-12')).toBeUndefined();
+    expect(cardKey({ card: { number: 12 }, prefix: 'QD' })).toBe('QD-12');
+    expect(cardKey({ card: {}, prefix: 'OPS' })).toBe('OPS-?');
+    expect(parseCardKey({ text: ' qd-12 ', prefix: 'QD' })).toBe(12);
+    expect(parseCardKey({ text: 'XY-12', prefix: 'QD' })).toBeUndefined();
+    expect(parseCardKey({ text: 'xy-3', prefix: 'XY' })).toBe(3);
   });
 
   it('acha o card no quadro, no arquivo ou em lugar nenhum', () => {

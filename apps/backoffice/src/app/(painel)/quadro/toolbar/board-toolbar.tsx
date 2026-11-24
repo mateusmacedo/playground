@@ -1,4 +1,4 @@
-import { cilInbox, cilReload } from '@coreui/icons';
+import { cilInbox, cilReload, cilSettings } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
 import { CButton } from '@coreui/react';
 import type { Ref } from 'react';
@@ -32,7 +32,10 @@ export interface BoardToolbarProps {
   };
   readonly archivedCount: number;
   readonly onOpenArchive: () => void;
-  readonly onReset: () => void;
+  /** Sem ela, o quadro não tem configuração na tela. */
+  readonly onOpenSettings?: () => void;
+  /** Sem ela, o quadro não tem conteúdo de exemplo para restaurar. */
+  readonly onReset?: () => void;
 }
 
 /** Barra do quadro: busca e filtro à esquerda, histórico e ações gerais à direita, e as instruções de uso. */
@@ -43,6 +46,7 @@ export function BoardToolbar({
   history,
   archivedCount,
   onOpenArchive,
+  onOpenSettings,
   onReset,
 }: Readonly<BoardToolbarProps>) {
   return (
@@ -63,17 +67,32 @@ export function BoardToolbar({
             <CIcon icon={cilInbox} aria-hidden="true" className="me-1" />
             Arquivados ({archivedCount})
           </CButton>
-          <CButton
-            type="button"
-            color="secondary"
-            variant="outline"
-            size="sm"
-            data-board-reset=""
-            onClick={onReset}
-          >
-            <CIcon icon={cilReload} aria-hidden="true" className="me-1" />
-            Restaurar exemplo
-          </CButton>
+          {onOpenSettings ? (
+            <CButton
+              type="button"
+              color="secondary"
+              variant="outline"
+              size="sm"
+              data-board-settings=""
+              onClick={onOpenSettings}
+            >
+              <CIcon icon={cilSettings} aria-hidden="true" className="me-1" />
+              Configurar quadro
+            </CButton>
+          ) : null}
+          {onReset ? (
+            <CButton
+              type="button"
+              color="secondary"
+              variant="outline"
+              size="sm"
+              data-board-reset=""
+              onClick={onReset}
+            >
+              <CIcon icon={cilReload} aria-hidden="true" className="me-1" />
+              Restaurar exemplo
+            </CButton>
+          ) : null}
         </div>
       </div>
       <p id={instructionsId} className="small text-body-secondary mb-0">

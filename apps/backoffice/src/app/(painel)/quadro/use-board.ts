@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { readStorage, writeStorage } from './browser-storage';
+import { useEffect, useRef, useState } from 'react';
+import { readStorage, subscribeStorage, writeStorage } from './browser-storage';
 import { withActivity } from './model/activity';
 import { archiveCard, deleteArchived, restoreArchived } from './model/archive';
 import {
@@ -22,6 +22,7 @@ import {
   removeChecklistItem,
   toggleChecklistItem,
 } from './model/checklist';
+import { setKeyPrefix } from './model/config';
 import { setDueDate, setDueDone } from './model/due';
 import { setParent } from './model/hierarchy';
 import {
@@ -126,7 +127,9 @@ export interface BoardCommands {
     readonly cardId: string;
     readonly itemId: string;
   }) => void;
-  /** Volta ao quadro inicial. */
+  /** Troca o prefixo do código dos cards; prefixo inválido não muda nada. */
+  readonly setKeyPrefix: (keyPrefix: string) => void;
+  /** Volta às colunas e aos cards iniciais, mantendo a configuração. */
   readonly reset: () => void;
 }
 
@@ -145,7 +148,8 @@ function sameContent(a: Board, b: Board): boolean {
     a.lanes === b.lanes &&
     a.archive === b.archive &&
     a.labels === b.labels &&
-    a.nextNumber === b.nextNumber
+    a.nextNumber === b.nextNumber &&
+    a.config === b.config
   );
 }
 
@@ -191,6 +195,7 @@ function editKey(change: {
 /**
  * Estado do quadro com desfazer e refazer, os comandos de edição e, com `storageKey`, a gravação no navegador. O
  * servidor e a primeira renderização usam o quadro inicial; depois de montar, o quadro gravado e válido o substitui.
+ * O que outra aba grava na mesma chave substitui o quadro desta aba e recomeça o desfazer.
  */
 export function useBoard(params: {
   readonly initialLanes: readonly BoardLane[];
@@ -202,21 +207,30 @@ export function useBoard(params: {
     createBoard({ lanes: initialLanes, labels: initialLabels });
   const [history, setHistory] = useState(() => startHistory(initial()));
   const [loaded, setLoaded] = useState(!storageKey);
+  /** Último quadro lido do armazenamento, que não precisa ser gravado de volta. */
+  const fromStorage = useRef<Board | null>(null);
   const board = history.present;
 
   useEffect(() => {
     if (!storageKey) {
       return;
     }
-    const stored = parseStoredBoard(readStorage(storageKey));
-    if (stored) {
-      setHistory(startHistory(stored));
-    }
+    const receive = (raw: string | null) => {
+      const stored = parseStoredBoard(raw);
+      if (stored) {
+        fromStorage.current = stored;
+        // WHY: desfazer depois da mudança de outra aba gravaria por cima dela um quadro que ela já não tem.
+        setHistory(startHistory(stored));
+      }
+    };
+    receive(readStorage(storageKey));
     setLoaded(true);
+    return subscribeStorage({ key: storageKey, onChange: receive });
   }, [storageKey]);
 
   useEffect(() => {
-    if (storageKey && loaded) {
+    // NOTE: regravar o que veio de outra aba devolveria a ela, com outra ordem de campos, uma mudança que não houve.
+    if (storageKey && loaded && board !== fromStorage.current) {
       writeStorage({ key: storageKey, value: serializeBoard(board) });
     }
   }, [storageKey, loaded, board]);
@@ -351,7 +365,21 @@ export function useBoard(params: {
       commit(onLanes((lanes) => toggleChecklistItem({ lanes, ...change }))),
     removeChecklistItem: (change) =>
       commit(onLanes((lanes) => removeChecklistItem({ lanes, ...change }))),
-    reset: () => commit(() => initial(), { log: false }),
+    setKeyPrefix: (keyPrefix) =>
+      commit((current) => {
+        const config = setKeyPrefix({ config: current.config, keyPrefix });
+        return config === current.config ? current : { ...current, config };
+      }),
+    reset: () =>
+      commit(
+        (current) =>
+          createBoard({
+            lanes: initialLanes,
+            labels: initialLabels,
+            config: current.config,
+          }),
+        { log: false },
+      ),
   };
 
   return {
