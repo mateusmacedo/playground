@@ -9,7 +9,13 @@ export default function BoardPage() {
   return (
     <div className="card mb-4 page-fill">
       <div className="card-body kanban-page__body">
-        <h1 className="h4">Quadro</h1>
+        <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+          <h1 className="h4 mb-0">Quadro</h1>
+          <span className="badge text-bg-info">Beta</span>
+          <span className="small text-body-secondary">
+            Em teste: pode mudar, e os dados ficam só neste navegador.
+          </span>
+        </div>
         <BoardWorkspace sampleLanes={sampleLanes} sampleLabels={sampleLabels} />
       </div>
     </div>

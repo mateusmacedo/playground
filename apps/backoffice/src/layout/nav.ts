@@ -43,7 +43,13 @@ export type NavItem = NavTitle | NavLink | NavGroup;
 /** Menu lateral do painel. As páginas novas entram aqui e em `routes.ts`, para o breadcrumb. */
 export const navItems: readonly NavItem[] = [
   { kind: 'link', name: 'Início', href: '/', icon: cilHome },
-  { kind: 'link', name: 'Quadro', href: '/quadro', icon: cilColumns },
+  {
+    kind: 'link',
+    name: 'Quadro',
+    href: '/quadro',
+    icon: cilColumns,
+    badge: { text: 'Beta', color: 'info' },
+  },
 ];
 
 /** Tira do menu o que a sessão não libera, os grupos que ficaram sem filhos e os títulos que ficaram sem itens. */

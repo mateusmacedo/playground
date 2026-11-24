@@ -1,4 +1,4 @@
-import { buildNav, isActivePath, type NavItem } from './nav';
+import { buildNav, isActivePath, type NavItem, navItems } from './nav';
 
 const items: NavItem[] = [
   { kind: 'title', name: 'Comercial' },
@@ -31,6 +31,15 @@ const names = (nav: NavItem[]) =>
       ? `${item.name}[${item.items.map((link) => link.name).join(',')}]`
       : item.name,
   );
+
+describe('navItems', () => {
+  it('marca o Quadro como beta', () => {
+    const board = navItems.find(
+      (item) => item.kind === 'link' && item.href === '/quadro',
+    );
+    expect(board).toMatchObject({ badge: { text: 'Beta', color: 'info' } });
+  });
+});
 
 describe('buildNav', () => {
   it('mantém os itens liberados e os que não exigem permissão', () => {

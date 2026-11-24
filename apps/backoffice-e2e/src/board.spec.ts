@@ -30,6 +30,9 @@ test.describe('quadro kanban', () => {
       page.getByRole('heading', { level: 1, name: 'Quadro' }),
     ).toBeVisible();
     await expect(page.getByLabel('breadcrumb')).toContainText('Quadro');
+    await expect(
+      page.getByRole('main').getByText('Beta', { exact: true }),
+    ).toBeVisible();
     // NOTE: as 3 colunas de exemplo e a coluna automática dos arquivados.
     await expect(page.getByRole('main').getByRole('region')).toHaveCount(4);
   });
