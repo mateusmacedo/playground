@@ -42,7 +42,7 @@ function cardTitles(laneName: string): string[] {
 }
 
 function announcement(): string {
-  return document.querySelector('[aria-live]')?.textContent ?? '';
+  return document.querySelector('[aria-live="assertive"]')?.textContent ?? '';
 }
 
 function openLaneMenu(laneName: string, item: string) {
@@ -326,7 +326,7 @@ describe('KanbanBoard: colunas', () => {
     );
   });
 
-  it('exclui a coluna vazia e a coluna com cards, levando os cards ao destino', async () => {
+  it('exclui a coluna vazia e leva o foco à coluna vizinha', async () => {
     render(<KanbanBoard initialLanes={lanes} />);
 
     openLaneMenu('Concluído', 'Excluir coluna');
@@ -340,6 +340,12 @@ describe('KanbanBoard: colunas', () => {
       expect(document.activeElement).toBe(
         within(lane('Em andamento')).getByRole('heading', { level: 2 }),
       ),
+    );
+  });
+
+  it('exclui a coluna com cards levando-os ao destino, e não exclui a última', async () => {
+    render(
+      <KanbanBoard initialLanes={lanes.filter((item) => item.id !== 'done')} />,
     );
 
     openLaneMenu('A fazer', 'Excluir coluna');

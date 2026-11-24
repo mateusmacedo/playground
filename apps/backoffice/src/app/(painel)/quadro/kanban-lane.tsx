@@ -1,7 +1,13 @@
+import { cilChevronRight } from '@coreui/icons';
+import CIcon from '@coreui/icons-react';
 import { type DragEvent, type ReactNode, useId } from 'react';
 
 import { InlineAddForm } from './inline-add-form';
-import { KanbanLaneHeader, type LaneHeaderActions } from './kanban-lane-header';
+import {
+  CardCount,
+  KanbanLaneHeader,
+  type LaneHeaderActions,
+} from './kanban-lane-header';
 import type { BoardLane } from './model/board';
 import { isOverLimit } from './model/lanes';
 
@@ -17,6 +23,8 @@ export interface LaneMoveState {
   readonly dropAfter: boolean;
   /** Linha de inserção de card depois do último card. */
   readonly cardDropAtEnd: boolean;
+  /** Coluna recolhida numa faixa estreita, que ainda recebe cards arrastados. */
+  readonly collapsed: boolean;
 }
 
 export interface KanbanLaneProps {
@@ -49,6 +57,11 @@ function laneClassName(params: {
     [moveState.grabbed, 'kanban-lane--grabbed'],
     [moveState.dropBefore, 'kanban-lane--drop-before'],
     [moveState.dropAfter, 'kanban-lane--drop-after'],
+    [moveState.collapsed, 'kanban-lane--collapsed'],
+    [
+      moveState.collapsed && moveState.cardDropAtEnd,
+      'kanban-lane--drop-target',
+    ],
   ];
   return modifiers.reduce(
     (className, [active, modifier]) =>
@@ -71,7 +84,6 @@ export function KanbanLane({
   children,
 }: Readonly<KanbanLaneProps>) {
   const titleId = useId();
-  const count = lane.cards.length;
 
   return (
     // WHY: a coluna inteira recebe o drop, inclusive o cabeçalho e o espaço vazio abaixo do último card.
@@ -83,6 +95,62 @@ export function KanbanLane({
       onDragLeave={(event) => onDragLeave(event, lane.id)}
       onDrop={(event) => onDrop(event, lane)}
     >
+      {moveState.collapsed ? (
+        <div className="kanban-lane__strip d-flex flex-column align-items-center gap-2 py-2">
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost-secondary"
+            aria-label={`Expandir a coluna ${lane.title}`}
+            aria-expanded={false}
+            onClick={() => headerActions.onToggleCollapse(lane.id)}
+          >
+            <CIcon icon={cilChevronRight} aria-hidden="true" />
+          </button>
+          <CardCount lane={lane} />
+          <h2
+            id={titleId}
+            tabIndex={-1}
+            data-lane-title={lane.id}
+            className="h6 mb-0 kanban-lane__strip-title"
+          >
+            {lane.title}
+          </h2>
+        </div>
+      ) : (
+        <LaneContent
+          lane={lane}
+          titleId={titleId}
+          moveState={moveState}
+          canRemove={canRemove}
+          instructionsId={instructionsId}
+          headerActions={headerActions}
+          onAddCard={onAddCard}
+        >
+          {children}
+        </LaneContent>
+      )}
+    </section>
+  );
+}
+
+/** Cabeçalho, cards e inclusão de card da coluna expandida. */
+function LaneContent({
+  lane,
+  titleId,
+  moveState,
+  canRemove,
+  instructionsId,
+  headerActions,
+  onAddCard,
+  children,
+}: Readonly<
+  Omit<KanbanLaneProps, 'index' | 'onDragOver' | 'onDragLeave' | 'onDrop'> & {
+    titleId: string;
+  }
+>) {
+  const count = lane.cards.length;
+  return (
+    <>
       <KanbanLaneHeader
         lane={lane}
         titleId={titleId}
@@ -110,6 +178,6 @@ export function KanbanLane({
           onAdd={(title) => onAddCard({ laneId: lane.id, title })}
         />
       </div>
-    </section>
+    </>
   );
 }

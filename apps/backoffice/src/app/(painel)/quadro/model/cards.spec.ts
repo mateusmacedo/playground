@@ -34,6 +34,15 @@ describe('addCard', () => {
     });
   });
 
+  it('guarda o número do card quando ele vem junto', () => {
+    const next = addCard({
+      lanes,
+      laneId: 'todo',
+      card: { id: 'd', title: 'D', number: 7 },
+    });
+    expect(next[0]?.cards.at(-1)?.number).toBe(7);
+  });
+
   it('não cria card sem título ou em coluna inexistente', () => {
     const card = { id: 'd', title: 'D' };
     expect(

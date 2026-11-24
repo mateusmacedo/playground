@@ -1,38 +1,121 @@
-import type { BoardLane } from './board';
-import { sampleLanes } from './sample-board';
+import type { Board } from './board';
+import { createBoard } from './board-state';
+import { sampleLabels, sampleLanes } from './sample-board';
 import { parseStoredBoard, serializeBoard } from './storage';
 
-const stored = (lanes: unknown, version: unknown = 1) =>
+/** Formato da versão 1: só as colunas. */
+const v1 = (lanes: unknown, version: unknown = 1) =>
   JSON.stringify({ version, lanes });
 
-describe('serializeBoard e parseStoredBoard', () => {
-  it('devolve o mesmo quadro que foi gravado', () => {
-    const lanes: readonly BoardLane[] = [
-      ...sampleLanes,
-      { id: 'lane-1', title: 'Limitada', cards: [], wipLimit: 2 },
-    ];
-    expect(parseStoredBoard(serializeBoard(lanes))).toEqual(lanes);
+/** Formato da versão 2: o quadro inteiro. */
+const v2 = (board: unknown) => JSON.stringify({ version: 2, board });
+
+const sample: Board = createBoard({ lanes: sampleLanes, labels: sampleLabels });
+
+describe('gravação do quadro', () => {
+  it('devolve o mesmo quadro que foi gravado, com arquivo, etiquetas e histórico', () => {
+    const board: Board = {
+      ...sample,
+      lanes: [
+        ...sample.lanes,
+        { id: 'lane-1', title: 'Limitada', cards: [], wipLimit: 2 },
+      ],
+      archive: [
+        {
+          id: 'card-9',
+          archivedAt: '2026-11-24T10:00:00Z',
+          cards: [
+            {
+              laneId: 'todo',
+              card: {
+                id: 'card-9',
+                title: 'Arquivado',
+                number: 9,
+                dueDate: '2026-11-28',
+                dueDone: true,
+                activity: [{ at: '2026-11-24T10:00:00Z', kind: 'archived' }],
+              },
+            },
+          ],
+        },
+      ],
+      nextNumber: 10,
+    };
+    expect(parseStoredBoard(serializeBoard(board))).toEqual(board);
   });
 
-  it('ignora ausência, JSON inválido e outra versão', () => {
+  it('migra a versão 1 numerando os cards na ordem da tela', () => {
+    const board = parseStoredBoard(v1(sampleLanes));
+    expect(
+      board?.lanes.flatMap((lane) => lane.cards.map((card) => card.number)),
+    ).toEqual([1, 2, 3, 4]);
+    expect(board?.nextNumber).toBe(5);
+    expect(board?.labels).toEqual([]);
+  });
+
+  it('descarta dados opcionais estragados sem perder o card', () => {
+    const board = parseStoredBoard(
+      v2({
+        lanes: [
+          {
+            id: 'a',
+            title: 'A',
+            cards: [
+              {
+                id: 'x',
+                title: 'X',
+                number: -1,
+                labelIds: ['label-1', 'fantasma', 3],
+                dueDate: '2026-02-30',
+                dueDone: true,
+                checklist: [
+                  { id: 'i', text: 'Passo', done: false },
+                  { id: 'j' },
+                ],
+                activity: [{ at: 'agora', kind: 'archived' }, 'lixo'],
+              },
+            ],
+          },
+        ],
+        labels: [...sampleLabels, { id: 'cor', name: 'Cor', color: 'rosa' }],
+        archive: 'nada',
+        nextNumber: 'dez',
+      }),
+    );
+    expect(board?.lanes[0]?.cards[0]).toEqual({
+      id: 'x',
+      title: 'X',
+      number: 1,
+      labelIds: ['label-1'],
+      checklist: [{ id: 'i', text: 'Passo', done: false }],
+      activity: [{ at: 'agora', kind: 'archived' }],
+    });
+    expect(board?.labels).toEqual(sampleLabels);
+    expect(board?.archive).toEqual([]);
+  });
+
+  it('ignora ausência, JSON inválido e versão desconhecida', () => {
     expect(parseStoredBoard(null)).toBeNull();
     expect(parseStoredBoard('')).toBeNull();
     expect(parseStoredBoard('{quebrado')).toBeNull();
-    expect(parseStoredBoard(stored(sampleLanes, 2))).toBeNull();
+    expect(parseStoredBoard(v1(sampleLanes, 3))).toBeNull();
     expect(parseStoredBoard('[]')).toBeNull();
-    expect(parseStoredBoard(stored('colunas'))).toBeNull();
+    expect(parseStoredBoard(v1('colunas'))).toBeNull();
+    expect(
+      parseStoredBoard(JSON.stringify({ version: 2, board: 'x' })),
+    ).toBeNull();
+    expect(parseStoredBoard(v2({ lanes: [] }))).toBeNull();
   });
 
-  it('ignora quadro sem colunas ou com coluna ou card fora do formato', () => {
-    expect(parseStoredBoard(stored([]))).toBeNull();
-    expect(parseStoredBoard(stored([{ id: 'a', title: 'A' }]))).toBeNull();
-    expect(parseStoredBoard(stored([null]))).toBeNull();
+  it('ignora quadro com coluna ou card fora do formato', () => {
+    expect(parseStoredBoard(v1([{ id: 'a', title: 'A' }]))).toBeNull();
+    expect(parseStoredBoard(v1([null]))).toBeNull();
     expect(
-      parseStoredBoard(stored([{ id: 'a', title: 'A', cards: [{ id: 1 }] }])),
+      parseStoredBoard(v1([{ id: 'a', title: 'A', cards: [{ id: 1 }] }])),
     ).toBeNull();
     expect(
       parseStoredBoard(
-        stored([
+        v1([
           {
             id: 'a',
             title: 'A',
@@ -41,23 +124,37 @@ describe('serializeBoard e parseStoredBoard', () => {
         ]),
       ),
     ).toBeNull();
-  });
-
-  it('ignora limite que não é inteiro positivo', () => {
     for (const wipLimit of [0, -1, 1.5, '3']) {
       expect(
-        parseStoredBoard(
-          stored([{ id: 'a', title: 'A', cards: [], wipLimit }]),
-        ),
+        parseStoredBoard(v1([{ id: 'a', title: 'A', cards: [], wipLimit }])),
       ).toBeNull();
     }
   });
 
-  it('ignora ids repetidos, pai inexistente e ciclo na hierarquia', () => {
+  it('ignora arquivamento estragado sem perder o resto', () => {
+    const board = parseStoredBoard(
+      v2({
+        lanes: [{ id: 'a', title: 'A', cards: [] }],
+        archive: [
+          { id: 'x', archivedAt: 'agora', cards: [] },
+          { id: 'y', archivedAt: 'agora', cards: [{ laneId: 'a' }] },
+          {
+            id: 'z',
+            archivedAt: 'agora',
+            cards: [{ laneId: 'a', card: { id: 'z', title: 'Z' } }],
+          },
+          null,
+        ],
+      }),
+    );
+    expect(board?.archive.map((entry) => entry.id)).toEqual(['z']);
+  });
+
+  it('ignora ids ou números repetidos, pai inexistente e ciclo na hierarquia', () => {
     const lane = (cards: unknown[], id = 'a') => ({ id, title: id, cards });
     expect(
       parseStoredBoard(
-        stored([
+        v1([
           lane([
             { id: 'x', title: 'X' },
             { id: 'x', title: 'Y' },
@@ -65,15 +162,27 @@ describe('serializeBoard e parseStoredBoard', () => {
         ]),
       ),
     ).toBeNull();
-    expect(parseStoredBoard(stored([lane([]), lane([])]))).toBeNull();
     expect(
       parseStoredBoard(
-        stored([lane([{ id: 'x', title: 'X', parentId: 'ghost' }])]),
+        v2({
+          lanes: [
+            lane([
+              { id: 'x', title: 'X', number: 1 },
+              { id: 'y', title: 'Y', number: 1 },
+            ]),
+          ],
+        }),
+      ),
+    ).toBeNull();
+    expect(parseStoredBoard(v1([lane([]), lane([])]))).toBeNull();
+    expect(
+      parseStoredBoard(
+        v1([lane([{ id: 'x', title: 'X', parentId: 'fantasma' }])]),
       ),
     ).toBeNull();
     expect(
       parseStoredBoard(
-        stored([
+        v1([
           lane([
             { id: 'x', title: 'X', parentId: 'y' },
             { id: 'y', title: 'Y', parentId: 'x' },

@@ -36,6 +36,8 @@ export interface LaneHeaderActions {
   }) => void;
   readonly onRequestLimit: (laneId: string) => void;
   readonly onRequestRemove: (laneId: string) => void;
+  /** Recolhe a coluna expandida, ou expande a recolhida. */
+  readonly onToggleCollapse: (laneId: string) => void;
 }
 
 export interface KanbanLaneHeaderProps {
@@ -50,7 +52,8 @@ export interface KanbanLaneHeaderProps {
   readonly actions: LaneHeaderActions;
 }
 
-function CardCount({ lane }: Readonly<{ lane: BoardLane }>) {
+/** Contador de cards da coluna, com o limite e o aviso de excesso para o leitor de tela. */
+export function CardCount({ lane }: Readonly<{ lane: BoardLane }>) {
   const count = lane.cards.length;
   const over = isOverLimit(lane);
   return (
@@ -168,6 +171,13 @@ export function KanbanLaneHeader({
             onClick={() => actions.onRequestLimit(lane.id)}
           >
             Limite de cards
+          </CDropdownItem>
+          <CDropdownItem
+            as="button"
+            type="button"
+            onClick={() => actions.onToggleCollapse(lane.id)}
+          >
+            Recolher coluna
           </CDropdownItem>
           <CDropdownItem
             as="button"

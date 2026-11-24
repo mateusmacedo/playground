@@ -1,10 +1,31 @@
-import { allCards, type BoardCard, type BoardLane } from './board';
+import {
+  type ArchiveEntry,
+  allCards,
+  type Board,
+  type BoardCard,
+  type BoardLabel,
+  type BoardLane,
+  type CardActivity,
+  type ChecklistItem,
+  type LabelColor,
+} from './board';
+import { archivedCards, createBoard } from './board-state';
+import { isDateOnly } from './due';
 import { ancestorsOf } from './hierarchy';
 
-/** Chave do quadro no `localStorage`; o sufixo acompanha a versão do formato gravado. */
+/** Chave do quadro no `localStorage`; a versão do formato vai dentro do valor gravado. */
 export const BOARD_STORAGE_KEY = 'backoffice:quadro:v1';
 
-const BOARD_VERSION = 1;
+const BOARD_VERSION = 2;
+
+const LABEL_COLORS: readonly LabelColor[] = [
+  'danger',
+  'warning',
+  'success',
+  'info',
+  'primary',
+  'secondary',
+];
 
 type UnknownRecord = Readonly<Record<string, unknown>>;
 
@@ -14,6 +35,58 @@ function isRecord(value: unknown): value is UnknownRecord {
 
 function isOptionalString(value: unknown): value is string | undefined {
   return value === undefined || typeof value === 'string';
+}
+
+function isPositiveInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0;
+}
+
+/** Mantém só os itens que passam em `parse`; um item estragado não derruba o resto. */
+function keepValid<T>(
+  value: unknown,
+  parse: (item: unknown) => T | null,
+): T[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const items = value.map(parse).filter((item): item is T => item !== null);
+  return items.length > 0 ? items : undefined;
+}
+
+function toChecklistItem(value: unknown): ChecklistItem | null {
+  return isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.text === 'string' &&
+    typeof value.done === 'boolean'
+    ? { id: value.id, text: value.text, done: value.done }
+    : null;
+}
+
+function toActivity(value: unknown): CardActivity | null {
+  // NOTE: o histórico só é lido para exibir; basta ter data e tipo de texto.
+  return isRecord(value) &&
+    typeof value.at === 'string' &&
+    typeof value.kind === 'string'
+    ? (value as unknown as CardActivity)
+    : null;
+}
+
+/** Dados opcionais do card: o que vier fora do formato é descartado, sem invalidar o card. */
+function optionalCardData(value: UnknownRecord): Partial<BoardCard> {
+  const dueDate =
+    typeof value.dueDate === 'string' && isDateOnly(value.dueDate)
+      ? value.dueDate
+      : undefined;
+  return {
+    number: isPositiveInteger(value.number) ? value.number : undefined,
+    labelIds: keepValid(value.labelIds, (id) =>
+      typeof id === 'string' ? id : null,
+    ),
+    dueDate,
+    dueDone: dueDate && value.dueDone === true ? true : undefined,
+    checklist: keepValid(value.checklist, toChecklistItem),
+    activity: keepValid(value.activity, toActivity),
+  };
 }
 
 function toCard(value: unknown): BoardCard | null {
@@ -31,74 +104,158 @@ function toCard(value: unknown): BoardCard | null {
     title: value.title,
     description: value.description,
     parentId: value.parentId,
+    ...optionalCardData(value),
   };
+}
+
+function toCards(value: unknown): BoardCard[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const cards = value.map(toCard);
+  return cards.some((card) => card === null) ? null : (cards as BoardCard[]);
 }
 
 function toLane(value: unknown): BoardLane | null {
   if (
     !isRecord(value) ||
     typeof value.id !== 'string' ||
-    typeof value.title !== 'string' ||
-    !Array.isArray(value.cards)
+    typeof value.title !== 'string'
   ) {
     return null;
   }
   const { wipLimit } = value;
+  const cards = toCards(value.cards);
+  if (!cards || (wipLimit !== undefined && !isPositiveInteger(wipLimit))) {
+    return null;
+  }
+  return { id: value.id, title: value.title, cards, wipLimit };
+}
+
+function toLanes(value: unknown): BoardLane[] | null {
+  if (!Array.isArray(value) || value.length === 0) {
+    return null;
+  }
+  const lanes = value.map(toLane);
+  return lanes.some((lane) => lane === null) ? null : (lanes as BoardLane[]);
+}
+
+function toLabel(value: unknown): BoardLabel | null {
+  return isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    LABEL_COLORS.includes(value.color as LabelColor)
+    ? { id: value.id, name: value.name, color: value.color as LabelColor }
+    : null;
+}
+
+function toArchiveEntry(value: unknown): ArchiveEntry | null {
   if (
-    wipLimit !== undefined &&
-    !(
-      typeof wipLimit === 'number' &&
-      Number.isInteger(wipLimit) &&
-      wipLimit > 0
-    )
+    !isRecord(value) ||
+    typeof value.id !== 'string' ||
+    typeof value.archivedAt !== 'string' ||
+    !Array.isArray(value.cards)
   ) {
     return null;
   }
-  const cards = value.cards.map(toCard);
-  if (cards.some((card) => card === null)) {
+  const cards = value.cards.map((item: unknown) => {
+    const card = isRecord(item) ? toCard(item.card) : null;
+    return card && isRecord(item) && typeof item.laneId === 'string'
+      ? { card, laneId: item.laneId }
+      : null;
+  });
+  if (cards.length === 0 || cards.some((item) => item === null)) {
     return null;
   }
   return {
     id: value.id,
-    title: value.title,
-    cards: cards as BoardCard[],
-    wipLimit,
+    archivedAt: value.archivedAt,
+    cards: cards as ArchiveEntry['cards'],
   };
 }
 
-/** Ids únicos, pais que existem e nenhum ciclo na hierarquia. */
-function isConsistent(lanes: readonly BoardLane[]): boolean {
-  const cards = allCards(lanes);
-  const cardIds = new Set(cards.map((card) => card.id));
-  const laneIds = new Set(lanes.map((lane) => lane.id));
-  if (cardIds.size !== cards.length || laneIds.size !== lanes.length) {
+/** Ids e números únicos, pais que existem no quadro e nenhum ciclo na hierarquia das colunas. */
+function isConsistent(board: Board): boolean {
+  const live = allCards(board.lanes);
+  const every = [...live, ...archivedCards(board)];
+  const ids = new Set(every.map((card) => card.id));
+  const numbers = new Set(every.map((card) => card.number));
+  const laneIds = new Set(board.lanes.map((lane) => lane.id));
+  if (
+    ids.size !== every.length ||
+    numbers.size !== every.length ||
+    laneIds.size !== board.lanes.length
+  ) {
     return false;
   }
-  return cards.every((card) => {
+  const liveIds = new Set(live.map((card) => card.id));
+  return live.every((card) => {
     if (card.parentId === undefined) {
       return true;
     }
-    if (!cardIds.has(card.parentId)) {
+    if (!liveIds.has(card.parentId)) {
       return false;
     }
-    const ancestors = ancestorsOf({ lanes, cardId: card.id });
-    const root = ancestors.at(-1);
+    const root = ancestorsOf({ lanes: board.lanes, cardId: card.id }).at(-1);
     // NOTE: o `ancestorsOf` para num ciclo; numa cadeia válida, a raiz não tem pai.
     return root !== undefined && root.parentId === undefined;
   });
 }
 
-export function serializeBoard(lanes: readonly BoardLane[]): string {
-  return JSON.stringify({ version: BOARD_VERSION, lanes });
+/** Tira dos cards as etiquetas que não estão no catálogo. */
+function withKnownLabels(board: Board): Board {
+  const known = new Set(board.labels.map((label) => label.id));
+  const clean = (card: BoardCard): BoardCard => {
+    if (!card.labelIds?.some((id) => !known.has(id))) {
+      return card;
+    }
+    const labelIds = card.labelIds.filter((id) => known.has(id));
+    return { ...card, labelIds: labelIds.length > 0 ? labelIds : undefined };
+  };
+  return {
+    ...board,
+    lanes: board.lanes.map((lane) => ({
+      ...lane,
+      cards: lane.cards.map(clean),
+    })),
+    archive: board.archive.map((entry) => ({
+      ...entry,
+      cards: entry.cards.map((item) => ({ ...item, card: clean(item.card) })),
+    })),
+  };
+}
+
+function fromVersion2(data: UnknownRecord): Board | null {
+  const stored = data.board;
+  if (!isRecord(stored)) {
+    return null;
+  }
+  const lanes = toLanes(stored.lanes);
+  if (!lanes) {
+    return null;
+  }
+  return withKnownLabels(
+    createBoard({
+      lanes,
+      labels: keepValid(stored.labels, toLabel) ?? [],
+      archive: keepValid(stored.archive, toArchiveEntry) ?? [],
+      nextNumber: isPositiveInteger(stored.nextNumber)
+        ? stored.nextNumber
+        : undefined,
+    }),
+  );
+}
+
+export function serializeBoard(board: Board): string {
+  return JSON.stringify({ version: BOARD_VERSION, board });
 }
 
 /**
- * Lê o quadro gravado. Devolve `null` quando não há nada, quando o JSON é inválido ou de outra versão, ou quando o
- * conteúdo não forma um quadro coerente; quem chama continua com o quadro que já tem.
+ * Lê o quadro gravado, na versão atual ou na 1 (só colunas, que ganham os números dos cards na ordem da tela). Devolve
+ * `null` quando não há nada, quando o JSON é inválido ou de versão desconhecida, ou quando o conteúdo não forma um
+ * quadro coerente; quem chama continua com o quadro que já tem.
  */
-export function parseStoredBoard(
-  raw: string | null,
-): readonly BoardLane[] | null {
+export function parseStoredBoard(raw: string | null): Board | null {
   if (!raw) {
     return null;
   }
@@ -108,17 +265,15 @@ export function parseStoredBoard(
   } catch {
     return null;
   }
-  if (
-    !isRecord(data) ||
-    data.version !== BOARD_VERSION ||
-    !Array.isArray(data.lanes)
-  ) {
+  if (!isRecord(data)) {
     return null;
   }
-  const lanes = data.lanes.map(toLane);
-  if (lanes.length === 0 || lanes.some((lane) => lane === null)) {
-    return null;
+  let board: Board | null = null;
+  if (data.version === 1) {
+    const lanes = toLanes(data.lanes);
+    board = lanes ? createBoard({ lanes }) : null;
+  } else if (data.version === BOARD_VERSION) {
+    board = fromVersion2(data);
   }
-  const board = lanes as BoardLane[];
-  return isConsistent(board) ? board : null;
+  return board && isConsistent(board) ? board : null;
 }

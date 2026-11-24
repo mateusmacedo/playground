@@ -171,3 +171,42 @@
     align-self: flex-start;
   }
 }
+
+.kanban-search {
+  min-width: min(100%, 22rem);
+}
+
+.kanban-label-filter {
+  min-width: 14rem;
+}
+
+.kanban-label-name {
+  max-width: 12rem;
+}
+
+.kanban-card__key {
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+
+// WHY: fora da busca o card esmaece em vez de sumir; continua no lugar para arrastar e abrir.
+.kanban-card--dimmed {
+  opacity: 0.35;
+}
+
+// A coluna recolhida vira uma faixa estreita, com o nome na vertical; ela ainda recebe cards arrastados.
+.kanban-lane.kanban-lane--collapsed {
+  flex: 0 0 3rem;
+  min-width: 3rem;
+  max-width: 3rem;
+}
+
+.kanban-lane__strip-title {
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+}
+
+.kanban-lane--drop-target {
+  outline: 2px solid var(--cui-primary);
+  outline-offset: 2px;
+}

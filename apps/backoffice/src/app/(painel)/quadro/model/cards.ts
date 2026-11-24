@@ -1,4 +1,11 @@
-import { type BoardCard, type BoardLane, findCard, moveCard } from './board';
+import {
+  type Board,
+  type BoardCard,
+  type BoardLane,
+  findCard,
+  moveCard,
+} from './board';
+import { cardKey } from './card-key';
 
 export type CardPatch = Partial<Pick<BoardCard, 'title' | 'description'>>;
 
@@ -10,6 +17,7 @@ export function addCard(params: {
     readonly id: string;
     readonly title: string;
     readonly parentId?: string;
+    readonly number?: number;
   };
 }): readonly BoardLane[] {
   const { lanes, laneId, card } = params;
@@ -17,7 +25,12 @@ export function addCard(params: {
   if (!title || !lanes.some((lane) => lane.id === laneId)) {
     return lanes;
   }
-  const created: BoardCard = { id: card.id, title, parentId: card.parentId };
+  const created: BoardCard = {
+    id: card.id,
+    title,
+    parentId: card.parentId,
+    number: card.number,
+  };
   return lanes.map((lane) =>
     lane.id === laneId ? { ...lane, cards: [...lane.cards, created] } : lane,
   );
@@ -98,4 +111,45 @@ export function removeCard(params: {
         card.parentId === cardId ? { ...card, parentId: grandparentId } : card,
       ),
   }));
+}
+
+/**
+ * Duplica o card logo abaixo do original, com o título marcado como cópia, os mesmos dados e o mesmo pai, mas sem os
+ * filhos nem o histórico, que começa registrando de onde a cópia veio.
+ */
+export function duplicateCard(params: {
+  readonly board: Board;
+  readonly cardId: string;
+  readonly newId: string;
+  readonly at: string;
+}): Board {
+  const { board, cardId, newId, at } = params;
+  const location = findCard({ lanes: board.lanes, cardId });
+  if (!location) {
+    return board;
+  }
+  const { card } = location;
+  const copy: BoardCard = {
+    ...card,
+    id: newId,
+    title: `${card.title} (cópia)`,
+    number: board.nextNumber,
+    activity: [{ at, kind: 'duplicated', from: cardKey(card) }],
+  };
+  return {
+    ...board,
+    nextNumber: board.nextNumber + 1,
+    lanes: board.lanes.map((lane, index) =>
+      index === location.laneIndex
+        ? {
+            ...lane,
+            cards: [
+              ...lane.cards.slice(0, location.cardIndex + 1),
+              copy,
+              ...lane.cards.slice(location.cardIndex + 1),
+            ],
+          }
+        : lane,
+    ),
+  };
 }

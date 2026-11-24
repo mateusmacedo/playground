@@ -1,0 +1,143 @@
+import {
+  CButton,
+  CModal,
+  CModalBody,
+  CModalFooter,
+  CModalHeader,
+  CModalTitle,
+} from '@coreui/react';
+import { useId } from 'react';
+
+import type { ArchiveEntry } from '../model/board';
+import { cardKey } from '../model/card-key';
+import { OnClosed } from './on-closed';
+
+const moment = new Intl.DateTimeFormat('pt-BR', {
+  dateStyle: 'short',
+  timeStyle: 'short',
+});
+
+function ArchiveItem({
+  entry,
+  onRestore,
+  onDelete,
+}: Readonly<{
+  entry: ArchiveEntry;
+  onRestore: (entryId: string) => void;
+  onDelete: (entryId: string) => void;
+}>) {
+  const root = entry.cards[0]?.card;
+  if (!root) {
+    return null;
+  }
+  const children = entry.cards.length - 1;
+  const date = new Date(entry.archivedAt);
+  return (
+    <li className="d-flex flex-wrap align-items-center justify-content-between gap-2 border rounded p-2">
+      <div>
+        <span className="badge bg-body-secondary text-body border me-2">
+          {cardKey(root)}
+        </span>
+        <strong>{root.title}</strong>
+        {children > 0 ? (
+          <span className="small text-body-secondary">
+            {' '}
+            e {children} {children === 1 ? 'card filho' : 'cards filhos'}
+          </span>
+        ) : null}
+        {Number.isNaN(date.getTime()) ? null : (
+          <div className="small text-body-secondary">
+            Arquivado em {moment.format(date)}
+          </div>
+        )}
+      </div>
+      <div className="d-flex gap-2">
+        <CButton
+          type="button"
+          color="primary"
+          variant="outline"
+          size="sm"
+          aria-label={`Restaurar ${root.title}`}
+          onClick={() => onRestore(entry.id)}
+        >
+          Restaurar
+        </CButton>
+        <CButton
+          type="button"
+          color="danger"
+          variant="ghost"
+          size="sm"
+          aria-label={`Excluir de vez ${root.title}`}
+          onClick={() => onDelete(entry.id)}
+        >
+          Excluir de vez
+        </CButton>
+      </div>
+    </li>
+  );
+}
+
+/** Lista dos cards arquivados, com restaurar e excluir de vez; as duas ações podem ser desfeitas. */
+export function ArchiveDialog({
+  visible,
+  archive,
+  onRestore,
+  onDelete,
+  onClose,
+  onClosed,
+}: Readonly<{
+  visible: boolean;
+  archive: readonly ArchiveEntry[];
+  onRestore: (entryId: string) => void;
+  onDelete: (entryId: string) => void;
+  onClose: () => void;
+  /** A janela terminou de fechar. */
+  onClosed: () => void;
+}>) {
+  const titleId = useId();
+  return (
+    <CModal
+      visible={visible}
+      size="lg"
+      scrollable
+      aria-labelledby={titleId}
+      onClose={() => {
+        if (visible) {
+          onClose();
+        }
+      }}
+    >
+      <CModalHeader>
+        <CModalTitle id={titleId}>Cards arquivados</CModalTitle>
+      </CModalHeader>
+      <CModalBody>
+        {archive.length === 0 ? (
+          <p className="mb-0 text-body-secondary">Nenhum card arquivado.</p>
+        ) : (
+          <ul className="list-unstyled d-grid gap-2 mb-0">
+            {archive.map((entry) => (
+              <ArchiveItem
+                key={entry.id}
+                entry={entry}
+                onRestore={onRestore}
+                onDelete={onDelete}
+              />
+            ))}
+          </ul>
+        )}
+        <OnClosed
+          onClosed={() => {
+            if (!visible) {
+              onClosed();
+            }
+          }}
+        />
+      </CModalBody>
+      <CModalFooter>
+        <CButton type="button" color="secondary" onClick={onClose}>
+          Fechar
+        </CButton>
+      </CModalFooter>
+    </CModal>
+  );
+}

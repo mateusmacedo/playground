@@ -1,7 +1,6 @@
 import { ConfirmModal } from '@/shared/ui/confirm-modal';
-
+import type { BoardCard, BoardLane } from '../model/board';
 import { LaneLimitDialog, RemoveLaneDialog } from './lane-dialogs';
-import type { BoardCard, BoardLane } from './model/board';
 import { OnClosed } from './on-closed';
 
 export type BoardDialogRequest =

@@ -3,7 +3,7 @@ import { type FormEvent, type ReactNode, useId, useState } from 'react';
 
 import { ConfirmModal } from '@/shared/ui/confirm-modal';
 
-import type { BoardLane } from './model/board';
+import type { BoardLane } from '../model/board';
 
 /** Lê o campo do limite: vazio tira o limite, inteiro positivo vale e o resto é `null` (inválido). */
 function parseLimit(value: string): number | undefined | null {

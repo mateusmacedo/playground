@@ -7,22 +7,27 @@ import {
 } from '@testing-library/react';
 
 import { KanbanBoard } from './kanban-board';
-import type { BoardLane } from './model/board';
+import type { Board, BoardLane } from './model/board';
+import { createBoard } from './model/board-state';
 import { sampleLanes } from './model/sample-board';
 import { BOARD_STORAGE_KEY, serializeBoard } from './model/storage';
 
-const saved: readonly BoardLane[] = [
-  {
-    id: 'lane-1',
-    title: 'Gravada',
-    cards: [{ id: 'card-1', title: 'Card gravado' }],
-  },
-];
+const saved: Board = createBoard({
+  lanes: [
+    {
+      id: 'lane-1',
+      title: 'Gravada',
+      cards: [{ id: 'card-1', title: 'Card gravado' }],
+    },
+  ],
+});
 
 function storedLaneTitles(): string[] {
   const raw = localStorage.getItem(BOARD_STORAGE_KEY);
-  const data = raw ? (JSON.parse(raw) as { lanes: BoardLane[] }) : null;
-  return data?.lanes.map((lane) => lane.title) ?? [];
+  const data = raw
+    ? (JSON.parse(raw) as { board: { lanes: BoardLane[] } })
+    : null;
+  return data?.board.lanes.map((lane) => lane.title) ?? [];
 }
 
 function addLane(title: string) {
@@ -104,7 +109,7 @@ describe('KanbanBoard: quadro gravado no navegador', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Restaurar' }));
 
     expect(screen.getByRole('region', { name: 'A fazer' })).toBeTruthy();
-    expect(document.querySelector('[aria-live]')?.textContent).toBe(
+    expect(document.querySelector('[aria-live="assertive"]')?.textContent).toBe(
       'Quadro de exemplo restaurado.',
     );
     await waitFor(() => expect(storedLaneTitles()).toHaveLength(3));

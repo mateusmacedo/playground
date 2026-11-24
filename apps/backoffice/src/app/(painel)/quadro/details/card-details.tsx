@@ -1,38 +1,81 @@
-import { cilTrash } from '@coreui/icons';
+import { cilClone, cilInbox, cilLink, cilTrash } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
 import { CButton, CFormInput, CFormSelect, CFormTextarea } from '@coreui/react';
 import { useId, useState } from 'react';
 
-import { InlineAddForm } from './inline-add-form';
-import { type BoardLane, type CardLocation, findCard } from './model/board';
-import { ancestorsOf, childrenOf, parentCandidates } from './model/hierarchy';
-import type { BoardCommands } from './use-board';
+import { InlineAddForm } from '../inline-add-form';
+import { type Board, type CardLocation, findCard } from '../model/board';
+import { cardKey } from '../model/card-key';
+import { ancestorsOf, childrenOf, parentCandidates } from '../model/hierarchy';
+import type { BoardCommands } from '../use-board';
+import { ActivityList } from './activity-list';
+import { ChecklistSection } from './checklist-section';
+import { DueField } from './due-field';
+import { LabelsField } from './labels-field';
 
-export type CardDetailsCommands = Pick<
-  BoardCommands,
-  'updateCard' | 'moveCardToLane' | 'setParent' | 'addCard'
->;
+/** Ações do card que passam pelo quadro (confirmação, foco, anúncio). */
+export interface CardDetailsActions {
+  readonly onOpenCard: (cardId: string) => void;
+  readonly onRequestRemove: (cardId: string) => void;
+  readonly onArchive: (cardId: string) => void;
+  readonly onDuplicate: (cardId: string) => void;
+  /** Sem a área de transferência no navegador, o botão de copiar o link não aparece. */
+  readonly onCopyLink?: (cardId: string) => void;
+}
 
 export interface CardDetailsProps {
   readonly location: CardLocation;
-  readonly lanes: readonly BoardLane[];
-  readonly commands: CardDetailsCommands;
-  readonly onOpenCard: (cardId: string) => void;
-  readonly onRequestRemove: (cardId: string) => void;
+  readonly board: Board;
+  readonly commands: BoardCommands;
+  readonly actions: CardDetailsActions;
 }
 
-/** Formulário do card aberto: texto, coluna, hierarquia (pai, caminho e filhos) e exclusão. */
+/** Título do card com rascunho: o vazio não chega ao quadro, e uma mudança de fora (o desfazer) substitui o rascunho. */
+function TitleField({
+  id,
+  cardId,
+  title,
+  commands,
+}: Readonly<{
+  id: string;
+  cardId: string;
+  title: string;
+  commands: Pick<BoardCommands, 'updateCard'>;
+}>) {
+  const [draft, setDraft] = useState(title);
+  const [seen, setSeen] = useState(title);
+  if (seen !== title) {
+    setSeen(title);
+    if (draft.trim() !== title) {
+      setDraft(title);
+    }
+  }
+  return (
+    <CFormInput
+      id={id}
+      label="Título"
+      value={draft}
+      invalid={!draft.trim()}
+      feedbackInvalid="O título não pode ficar vazio."
+      onChange={(event) => {
+        setDraft(event.target.value);
+        commands.updateCard({ cardId, patch: { title: event.target.value } });
+      }}
+      onBlur={() => setDraft(title)}
+    />
+  );
+}
+
+/** Formulário do card aberto: texto, dados, coluna, hierarquia, histórico e as ações do card. */
 export function CardDetails({
   location,
-  lanes,
+  board,
   commands,
-  onOpenCard,
-  onRequestRemove,
+  actions,
 }: Readonly<CardDetailsProps>) {
   const { card, lane } = location;
+  const { lanes } = board;
   const cardId = card.id;
-  // NOTE: o título vazio não chega ao quadro; o rascunho guarda o que está no campo até ele perder o foco.
-  const [titleDraft, setTitleDraft] = useState(card.title);
   const fieldId = useId();
   const childrenHeadingId = useId();
   const path = [...ancestorsOf({ lanes, cardId })].reverse();
@@ -42,6 +85,23 @@ export function CardDetails({
 
   return (
     <div className="d-grid gap-3">
+      <div className="d-flex align-items-center justify-content-between gap-2">
+        <span className="badge bg-body-secondary text-body border fs-6">
+          {cardKey(card)}
+        </span>
+        {actions.onCopyLink ? (
+          <CButton
+            type="button"
+            color="secondary"
+            variant="ghost"
+            size="sm"
+            onClick={() => actions.onCopyLink?.(cardId)}
+          >
+            <CIcon icon={cilLink} aria-hidden="true" className="me-1" />
+            Copiar link
+          </CButton>
+        ) : null}
+      </div>
       {path.length > 0 ? (
         <nav aria-label="Caminho do card na hierarquia">
           <ol className="breadcrumb small mb-0">
@@ -50,7 +110,7 @@ export function CardDetails({
                 <button
                   type="button"
                   className="btn btn-link btn-sm p-0 align-baseline"
-                  onClick={() => onOpenCard(ancestor.id)}
+                  onClick={() => actions.onOpenCard(ancestor.id)}
                 >
                   {ancestor.title}
                 </button>
@@ -60,17 +120,11 @@ export function CardDetails({
           </ol>
         </nav>
       ) : null}
-      <CFormInput
+      <TitleField
         id={`${fieldId}-title`}
-        label="Título"
-        value={titleDraft}
-        invalid={!titleDraft.trim()}
-        feedbackInvalid="O título não pode ficar vazio."
-        onChange={(event) => {
-          setTitleDraft(event.target.value);
-          commands.updateCard({ cardId, patch: { title: event.target.value } });
-        }}
-        onBlur={() => setTitleDraft(card.title)}
+        cardId={cardId}
+        title={card.title}
+        commands={commands}
       />
       <CFormTextarea
         id={`${fieldId}-description`}
@@ -84,6 +138,9 @@ export function CardDetails({
           })
         }
       />
+      <LabelsField card={card} labels={board.labels} commands={commands} />
+      <DueField card={card} commands={commands} />
+      <ChecklistSection card={card} commands={commands} />
       <CFormSelect
         id={`${fieldId}-lane`}
         label="Coluna"
@@ -127,7 +184,7 @@ export function CardDetails({
                 <button
                   type="button"
                   className="btn btn-link p-0 text-start align-baseline"
-                  onClick={() => onOpenCard(child.id)}
+                  onClick={() => actions.onOpenCard(child.id)}
                 >
                   {child.title}
                 </button>{' '}
@@ -149,13 +206,34 @@ export function CardDetails({
           }
         />
       </section>
-      <div>
+      <ActivityList activity={card.activity ?? []} />
+      <div className="d-flex flex-wrap gap-2 border-top pt-3">
+        <CButton
+          type="button"
+          color="secondary"
+          variant="outline"
+          size="sm"
+          onClick={() => actions.onDuplicate(cardId)}
+        >
+          <CIcon icon={cilClone} aria-hidden="true" className="me-1" />
+          Duplicar card
+        </CButton>
+        <CButton
+          type="button"
+          color="secondary"
+          variant="outline"
+          size="sm"
+          onClick={() => actions.onArchive(cardId)}
+        >
+          <CIcon icon={cilInbox} aria-hidden="true" className="me-1" />
+          Arquivar card
+        </CButton>
         <CButton
           type="button"
           color="danger"
           variant="outline"
           size="sm"
-          onClick={() => onRequestRemove(cardId)}
+          onClick={() => actions.onRequestRemove(cardId)}
         >
           <CIcon icon={cilTrash} aria-hidden="true" className="me-1" />
           Excluir card

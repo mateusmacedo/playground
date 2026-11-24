@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import { KanbanBoard } from './kanban-board';
-import { sampleLanes } from './model/sample-board';
+import { sampleLabels, sampleLanes } from './model/sample-board';
 import { BOARD_STORAGE_KEY } from './model/storage';
 
 export const metadata: Metadata = { title: 'Quadro' };
@@ -13,6 +13,7 @@ export default function BoardPage() {
         <h1 className="h4">Quadro</h1>
         <KanbanBoard
           initialLanes={sampleLanes}
+          initialLabels={sampleLabels}
           storageKey={BOARD_STORAGE_KEY}
         />
       </div>

@@ -236,3 +236,98 @@ test.describe('quadro kanban em tela estreita', () => {
     expect(last.x + last.width).toBeGreaterThan(800);
   });
 });
+
+test.describe('quadro kanban: busca, desfazer, arquivo e dados do card', () => {
+  /** Abre o card pelo clique, repetindo enquanto a página ainda não hidratou. */
+  async function openCard(page: Page, title: string) {
+    const details = page.getByRole('dialog', { name: 'Detalhes do card' });
+    await expect(async () => {
+      if (!(await details.isVisible())) {
+        await page.getByRole('button', { name: title, exact: true }).click();
+      }
+      await expect(details).toBeVisible({ timeout: 1000 });
+    }).toPass();
+    return details;
+  }
+
+  function card(page: Page, title: string): Locator {
+    return page
+      .getByRole('listitem')
+      .filter({ has: page.getByRole('heading', { name: title, exact: true }) });
+  }
+
+  test('a busca esmaece os cards que não batem e a barra leva até ela', async ({
+    page,
+  }) => {
+    await page.goto('/quadro');
+    const search = page.getByRole('searchbox', { name: 'Buscar cards' });
+    await expect(async () => {
+      await page.locator('body').press('/');
+      await expect(search).toBeFocused({ timeout: 1000 });
+    }).toPass();
+
+    await page.keyboard.type('qd-4');
+    await expect(page.getByText('1 de 4 cards')).toBeVisible();
+    await expect(card(page, 'Item 1')).toHaveClass(/kanban-card--dimmed/);
+    await expect(card(page, 'Item 4')).not.toHaveClass(/kanban-card--dimmed/);
+  });
+
+  test('desfaz o arraste com Ctrl+Z e refaz com Ctrl+Shift+Z', async ({
+    page,
+  }) => {
+    await page.goto('/quadro');
+    await expect(async () => {
+      await card(page, 'Item 4').dragTo(lane(page, 'Concluído'));
+      await expect(cardTitles(page, 'Concluído')).toHaveText(['Item 4'], {
+        timeout: 1000,
+      });
+    }).toPass();
+
+    await page.locator('body').press('Control+z');
+    await expect(cardTitles(page, 'Em andamento')).toHaveText(['Item 4']);
+    await page.locator('body').press('Control+Shift+z');
+    await expect(cardTitles(page, 'Concluído')).toHaveText(['Item 4']);
+  });
+
+  test('arquiva o card pelo painel e restaura pela lista de arquivados', async ({
+    page,
+  }) => {
+    await page.goto('/quadro');
+    const details = await openCard(page, 'Item 4');
+    await details.getByRole('button', { name: 'Arquivar card' }).click();
+    await expect(cardTitles(page, 'Em andamento')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Arquivados (1)' }).click();
+    const list = page.getByRole('dialog', { name: 'Cards arquivados' });
+    await list.getByRole('button', { name: 'Restaurar Item 4' }).click();
+    await list.getByRole('button', { name: 'Fechar', exact: true }).click();
+    await expect(cardTitles(page, 'Em andamento')).toHaveText(['Item 4']);
+  });
+
+  test('abre o card pelo endereço e marca etiqueta e checklist', async ({
+    page,
+  }) => {
+    await page.goto('/quadro?card=QD-1');
+    const details = page.getByRole('dialog', { name: 'Detalhes do card' });
+    await expect(details.getByLabel('Título')).toHaveValue('Item 1');
+
+    await details
+      .getByRole('group', { name: 'Etiquetas' })
+      .getByRole('checkbox', { name: 'Urgente' })
+      .check();
+    await details.getByRole('checkbox', { name: 'Segundo passo' }).check();
+    await expect(card(page, 'Item 1')).toContainText('Urgente');
+    await expect(card(page, 'Item 1')).toContainText(
+      'Checklist: 2 de 2 itens feitos',
+    );
+
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: /^Etiquetas/ }).click();
+    await page
+      .locator('.kanban-label-filter')
+      .getByRole('checkbox', { name: 'Urgente' })
+      .check();
+    await expect(card(page, 'Item 2')).toHaveClass(/kanban-card--dimmed/);
+    await expect(card(page, 'Item 4')).not.toHaveClass(/kanban-card--dimmed/);
+  });
+});

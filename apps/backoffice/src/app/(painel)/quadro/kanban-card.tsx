@@ -2,7 +2,9 @@ import { cilMove } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
 import type { DragEvent, KeyboardEvent } from 'react';
 
-import type { BoardCard } from './model/board';
+import { KanbanCardMeta } from './kanban-card-meta';
+import type { BoardCard, BoardLabel } from './model/board';
+import { cardKey } from './model/card-key';
 
 /** O que o quadro faz quando o card é aberto, arrastado ou comandado pelo teclado. */
 export interface KanbanCardActions {
@@ -27,6 +29,12 @@ export interface KanbanCardProps {
   /** Título do card pai, quando o card tem um. */
   readonly parentTitle?: string;
   readonly childCount: number;
+  /** Etiquetas do card, na ordem do catálogo. */
+  readonly labels: readonly BoardLabel[];
+  /** Hoje (`AAAA-MM-DD`), só depois de montar no navegador. */
+  readonly today: string | undefined;
+  /** Fora da busca ou do filtro: fica esmaecido, mas continua utilizável. */
+  readonly dimmed: boolean;
   /** Card aberto no painel de detalhes. */
   readonly open: boolean;
   /** Card sendo arrastado pelo mouse ou pelo toque. */
@@ -40,13 +48,17 @@ export interface KanbanCardProps {
 }
 
 function cardClassName(
-  state: Pick<KanbanCardProps, 'open' | 'dragging' | 'grabbed' | 'dropBefore'>,
+  state: Pick<
+    KanbanCardProps,
+    'open' | 'dragging' | 'grabbed' | 'dropBefore' | 'dimmed'
+  >,
 ): string {
   const modifiers: readonly [boolean, string][] = [
     [state.open, 'kanban-card--open'],
     [state.dragging, 'kanban-card--dragging'],
     [state.grabbed, 'kanban-card--grabbed'],
     [state.dropBefore, 'kanban-card--drop-before'],
+    [state.dimmed, 'kanban-card--dimmed'],
   ];
   return modifiers.reduce(
     (className, [active, modifier]) =>
@@ -60,6 +72,9 @@ export function KanbanCard({
   index,
   parentTitle,
   childCount,
+  labels,
+  today,
+  dimmed,
   open,
   dragging,
   grabbed,
@@ -69,7 +84,7 @@ export function KanbanCard({
 }: Readonly<KanbanCardProps>) {
   return (
     <li
-      className={cardClassName({ open, dragging, grabbed, dropBefore })}
+      className={cardClassName({ open, dragging, grabbed, dropBefore, dimmed })}
       draggable
       data-card-index={index}
       onDragStart={(event) => actions.onDragStart(event, card.id)}
@@ -90,6 +105,9 @@ export function KanbanCard({
           <CIcon icon={cilMove} aria-hidden="true" />
         </button>
         <div className="flex-grow-1 min-w-0">
+          <span className="kanban-card__key small text-body-secondary">
+            {cardKey(card)}
+          </span>
           <h3 className="h6 mb-0">
             {/* NOTE: o `stretched-link` estende o clique ao card inteiro; a alça fica por cima dele no CSS. */}
             <button
@@ -112,10 +130,14 @@ export function KanbanCard({
               {card.description}
             </p>
           ) : null}
-          {childCount > 0 ? (
-            <span className="badge bg-body-secondary text-body border mt-2">
-              {childCount} {childCount === 1 ? 'filho' : 'filhos'}
-            </span>
+          <KanbanCardMeta
+            card={card}
+            labels={labels}
+            childCount={childCount}
+            today={today}
+          />
+          {dimmed ? (
+            <span className="visually-hidden">Fora da busca.</span>
           ) : null}
         </div>
       </div>

@@ -221,7 +221,7 @@ describe('KanbanBoard: detalhes e hierarquia', () => {
     expect(
       within(cardItem('Item C')).getByText('Filho de Item A'),
     ).toBeTruthy();
-    expect(document.querySelector('[aria-live]')?.textContent).toBe(
+    expect(document.querySelector('[aria-live="assertive"]')?.textContent).toBe(
       'Card Item B excluído.',
     );
     await waitFor(() =>

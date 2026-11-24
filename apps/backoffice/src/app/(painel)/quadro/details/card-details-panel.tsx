@@ -5,18 +5,17 @@ import {
   COffcanvasHeader,
 } from '@coreui/react';
 import { useEffect, useId, useRef } from 'react';
-
-import { CardDetails, type CardDetailsCommands } from './card-details';
-import type { BoardLane, CardLocation } from './model/board';
+import type { Board, CardLocation } from '../model/board';
+import type { BoardCommands } from '../use-board';
+import { CardDetails, type CardDetailsActions } from './card-details';
 
 export interface CardDetailsPanelProps {
   readonly visible: boolean;
   /** Card aberto; some quando o card é excluído. */
   readonly location: CardLocation | undefined;
-  readonly lanes: readonly BoardLane[];
-  readonly commands: CardDetailsCommands;
-  readonly onOpenCard: (cardId: string) => void;
-  readonly onRequestRemove: (cardId: string) => void;
+  readonly board: Board;
+  readonly commands: BoardCommands;
+  readonly actions: CardDetailsActions;
   readonly onClose: () => void;
 }
 
@@ -27,10 +26,9 @@ export interface CardDetailsPanelProps {
 export function CardDetailsPanel({
   visible,
   location,
-  lanes,
+  board,
   commands,
-  onOpenCard,
-  onRequestRemove,
+  actions,
   onClose,
 }: Readonly<CardDetailsPanelProps>) {
   const titleId = useId();
@@ -70,10 +68,9 @@ export function CardDetailsPanel({
           <CardDetails
             key={location.card.id}
             location={location}
-            lanes={lanes}
+            board={board}
             commands={commands}
-            onOpenCard={onOpenCard}
-            onRequestRemove={onRequestRemove}
+            actions={actions}
           />
         ) : null}
       </COffcanvasBody>

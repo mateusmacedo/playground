@@ -1,10 +1,66 @@
-/** Card do quadro sem saber o que representa: só a identidade e o que aparece na tela. */
+/** Item do checklist de um card; o id só precisa ser único dentro do card. */
+export interface ChecklistItem {
+  readonly id: string;
+  readonly text: string;
+  readonly done: boolean;
+}
+
+/** Registro do histórico do card, com o que mudou na hora em que mudou (`at`, ISO 8601). */
+export type CardActivity =
+  | { readonly at: string; readonly kind: 'created'; readonly lane: string }
+  | {
+      readonly at: string;
+      readonly kind: 'moved';
+      readonly from: string;
+      readonly to: string;
+    }
+  | {
+      readonly at: string;
+      readonly kind: 'renamed';
+      readonly from: string;
+      readonly to: string;
+    }
+  | { readonly at: string; readonly kind: 'description' }
+  | {
+      readonly at: string;
+      readonly kind: 'parent';
+      readonly from?: string;
+      readonly to?: string;
+    }
+  | {
+      readonly at: string;
+      readonly kind: 'labels';
+      readonly added: readonly string[];
+      readonly removed: readonly string[];
+    }
+  | { readonly at: string; readonly kind: 'due'; readonly to?: string }
+  | { readonly at: string; readonly kind: 'due-done'; readonly done: boolean }
+  | {
+      readonly at: string;
+      readonly kind: 'checklist';
+      readonly done: number;
+      readonly total: number;
+    }
+  | { readonly at: string; readonly kind: 'archived' }
+  | { readonly at: string; readonly kind: 'restored'; readonly lane: string }
+  | { readonly at: string; readonly kind: 'duplicated'; readonly from: string };
+
+/** Card do quadro sem saber o que representa: identidade, texto e os dados genéricos de qualquer quadro. */
 export interface BoardCard {
   readonly id: string;
   readonly title: string;
   readonly description?: string;
   /** Card pai na hierarquia; pai e filho podem estar em colunas diferentes. */
   readonly parentId?: string;
+  /** Número sequencial no quadro, que forma o código (`QD-12`); só dado de entrada chega sem ele. */
+  readonly number?: number;
+  readonly labelIds?: readonly string[];
+  /** Data do prazo, no formato `AAAA-MM-DD`. */
+  readonly dueDate?: string;
+  readonly dueDone?: boolean;
+  readonly checklist?: readonly ChecklistItem[];
+  /** Histórico do card, do mais antigo para o mais recente. */
+  readonly activity?: readonly CardActivity[];
 }
 
 /** Coluna do quadro; a ordem de `cards` é a ordem na tela. */
@@ -14,6 +70,44 @@ export interface BoardLane {
   readonly cards: readonly BoardCard[];
   /** Máximo de cards esperado na coluna (o limite de WIP); passar dele só gera destaque, não bloqueia. */
   readonly wipLimit?: number;
+}
+
+export type LabelColor =
+  | 'danger'
+  | 'warning'
+  | 'success'
+  | 'info'
+  | 'primary'
+  | 'secondary';
+
+/** Etiqueta do catálogo do quadro; os cards guardam só o id. */
+export interface BoardLabel {
+  readonly id: string;
+  readonly name: string;
+  readonly color: LabelColor;
+}
+
+/** Card que saiu do quadro arquivado, com a coluna de onde saiu para voltar a ela. */
+export interface ArchivedCard {
+  readonly card: BoardCard;
+  readonly laneId: string;
+}
+
+/** Um arquivamento: o card escolhido (o primeiro da lista) e os descendentes, que saem e voltam juntos. */
+export interface ArchiveEntry {
+  /** Id do card escolhido. */
+  readonly id: string;
+  readonly archivedAt: string;
+  readonly cards: readonly ArchivedCard[];
+}
+
+/** O quadro inteiro: colunas, arquivados, etiquetas e o próximo número de card, que nunca volta atrás. */
+export interface Board {
+  readonly lanes: readonly BoardLane[];
+  /** Do arquivamento mais recente para o mais antigo. */
+  readonly archive: readonly ArchiveEntry[];
+  readonly labels: readonly BoardLabel[];
+  readonly nextNumber: number;
 }
 
 export interface CardLocation {
@@ -43,6 +137,31 @@ export function findCard(params: {
 /** Todos os cards do quadro, coluna por coluna, na ordem da tela. */
 export function allCards(lanes: readonly BoardLane[]): readonly BoardCard[] {
   return lanes.flatMap((lane) => lane.cards);
+}
+
+/** Aplica `update` ao card; card inexistente ou `update` que devolve o mesmo card mantêm o próprio `lanes`. */
+export function updateCardIn(params: {
+  readonly lanes: readonly BoardLane[];
+  readonly cardId: string;
+  readonly update: (card: BoardCard) => BoardCard;
+}): readonly BoardLane[] {
+  const { lanes, cardId, update } = params;
+  const location = findCard({ lanes, cardId });
+  if (!location) {
+    return lanes;
+  }
+  const next = update(location.card);
+  if (next === location.card) {
+    return lanes;
+  }
+  return lanes.map((lane, index) =>
+    index === location.laneIndex
+      ? {
+          ...lane,
+          cards: lane.cards.map((card) => (card.id === cardId ? next : card)),
+        }
+      : lane,
+  );
 }
 
 /**
