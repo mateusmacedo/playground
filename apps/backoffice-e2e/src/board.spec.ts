@@ -461,4 +461,33 @@ test.describe('quadro kanban: busca, desfazer, arquivo e dados do card', () => {
       details.getByRole('link', { name: 'https://exemplo.com' }),
     ).toBeVisible();
   });
+
+  test('mostra a lista ordenável e as linhas por card pai', async ({
+    page,
+  }) => {
+    await page.goto('/quadro');
+    const list = page.getByRole('button', { name: 'Lista' });
+    const table = page.getByRole('table');
+    // WHY: antes da hidratação o botão não troca a visão; repete o clique até a lista aparecer.
+    await expect(async () => {
+      if (!(await table.isVisible())) {
+        await list.click();
+      }
+      await expect(table).toBeVisible({ timeout: 1000 });
+    }).toPass();
+    await expect(table.getByRole('row')).toHaveCount(5);
+    await table.getByRole('button', { name: 'Coluna' }).click();
+    await table.getByRole('button', { name: 'Coluna' }).click();
+    await expect(table.getByRole('row').nth(1)).toContainText('Em andamento');
+
+    await page.getByRole('button', { name: 'Quadro', exact: true }).click();
+    await page.getByLabel('Linhas por card pai').check();
+    const parentRow = page.getByRole('region', { name: 'QD-1 Item 1' });
+    await expect(
+      parentRow.getByRole('group', { name: 'A fazer em Item 1' }),
+    ).toContainText('Item 2');
+    await expect(
+      page.getByRole('region', { name: 'Sem card pai' }),
+    ).toContainText('Item 4');
+  });
 });

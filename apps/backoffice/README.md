@@ -49,7 +49,7 @@ apps/backoffice/
     │   └── (painel)/         # grupo de rotas que ganha o shell
     │       ├── layout.tsx    # envolve as páginas no DefaultLayout
     │       ├── page.tsx      # início
-    │       ├── quadro/       # quadro kanban: colunas e cards agnósticos com hierarquia, busca, desfazer, arquivo e gravação no navegador
+    │       ├── quadro/       # quadro kanban: vários quadros com prefixo próprio, cards com hierarquia, responsável, comentários e anexos, colunas ocultas e bloqueadas, coluna de arquivados, visão em lista e linhas por card pai, busca, desfazer e gravação no navegador sincronizada entre abas
     │       └── sem-acesso/   # destino de quem não tem nenhuma permissão
     ├── core/
     │   ├── config/           # configuração pública (NEXT_PUBLIC_*)

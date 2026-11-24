@@ -4,10 +4,12 @@ import { CButton } from '@coreui/react';
 import type { Ref } from 'react';
 
 import type { BoardLabel } from '../model/board';
+import type { BoardView } from '../use-board-view';
 import { HiddenLanes, type HiddenLanesProps } from './hidden-lanes';
 import { HistoryButtons } from './history-buttons';
 import { LabelFilter } from './label-filter';
 import { SearchBox } from './search-box';
+import { ViewSwitch } from './view-switch';
 
 export interface BoardToolbarProps {
   readonly instructionsId: string;
@@ -31,6 +33,10 @@ export interface BoardToolbarProps {
     readonly onUndo: () => void;
     readonly onRedo: () => void;
   };
+  readonly view: {
+    readonly view: BoardView;
+    readonly onChange: (change: Partial<BoardView>) => void;
+  };
   readonly hiddenLanes: HiddenLanesProps;
   readonly archivedCount: number;
   readonly onOpenArchive: () => void;
@@ -46,6 +52,7 @@ export function BoardToolbar({
   search,
   filter,
   history,
+  view,
   hiddenLanes,
   archivedCount,
   onOpenArchive,
@@ -57,6 +64,7 @@ export function BoardToolbar({
       <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
         <SearchBox {...search} />
         <LabelFilter {...filter} />
+        <ViewSwitch {...view} />
         <div className="d-flex flex-wrap gap-2 ms-auto">
           <HistoryButtons {...history} />
           <HiddenLanes {...hiddenLanes} />

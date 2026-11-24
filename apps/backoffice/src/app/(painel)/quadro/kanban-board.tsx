@@ -6,6 +6,7 @@ import { type DragEvent, useId, useRef, useState } from 'react';
 import { useIsClient } from '@/shared/hooks/use-is-client';
 
 import { ArchiveLane } from './archive-lane';
+import { BoardList } from './board-list';
 import { CardDetailsPanel } from './details/card-details-panel';
 import { ArchiveDialog } from './dialogs/archive-dialog';
 import {
@@ -54,9 +55,18 @@ import {
 } from './model/lane-state';
 import { type LaneDirection, stepLane } from './model/lanes';
 import { cardMatchesLabels, cardMatchesQuery } from './model/search';
+import {
+  groupByParent,
+  type ListSort,
+  type ListSortKey,
+  listRows,
+  sortRows,
+} from './model/views';
+import { type CellTarget, cellId, Swimlanes } from './swimlanes';
 import { BoardToolbar } from './toolbar/board-toolbar';
 import { useBoard } from './use-board';
 import { useBoardShortcuts } from './use-board-shortcuts';
+import { useBoardView } from './use-board-view';
 import { useCardUrl } from './use-card-url';
 import { useCollapsedLanes } from './use-collapsed-lanes';
 import { useDragAndDrop } from './use-drag-and-drop';
@@ -203,6 +213,12 @@ export function KanbanBoard({
   const [openCard, setOpenCard] = useState<OpenCard | null>(null);
   const [openArchived, setOpenArchived] = useState<OpenArchived | null>(null);
   const [archiveDrop, setArchiveDrop] = useState(false);
+  const { view, setView } = useBoardView(storageKey);
+  const [listSort, setListSort] = useState<ListSort>({
+    key: 'key',
+    direction: 'ascending',
+  });
+  const [swimlaneDrop, setSwimlaneDrop] = useState<string | null>(null);
   const [dialog, setDialog] = useState<BoardDialog | null>(null);
   const [listDialog, setListDialog] = useState<
     'archive' | 'labels' | 'settings' | null
@@ -645,6 +661,93 @@ export function KanbanBoard({
     cardMatchesLabels({ card, labelIds: activeLabels });
   const lastIndex = shown.length - 1;
 
+  function renderCard(placement: {
+    readonly card: BoardCard;
+    readonly lane: BoardLane;
+    readonly index: number;
+    readonly dropBefore: boolean;
+  }) {
+    const { card, lane, index } = placement;
+    return (
+      <KanbanCard
+        key={card.id}
+        card={card}
+        keyPrefix={keyPrefix}
+        index={index}
+        parentTitle={card.parentId ? titles.get(card.parentId) : undefined}
+        childCount={counts.get(card.id) ?? 0}
+        progress={progress.get(card.id)}
+        assignee={card.assigneeId ? people.get(card.assigneeId) : undefined}
+        labels={cardLabels({ card, labels })}
+        today={today}
+        dimmed={filtering && !matches(card)}
+        open={panelVisible && openCard?.id === card.id}
+        dragging={cardDrag.draggedId === card.id}
+        grabbed={cardKeyboard.grabbedId === card.id}
+        dropBefore={placement.dropBefore}
+        locked={lane.locked}
+        instructionsId={instructionsId}
+        actions={cardActions}
+      />
+    );
+  }
+
+  /** Solta o card arrastado na célula da linha: vai para o fim da coluna, com o pai da linha. */
+  const swimlaneDropHandlers = {
+    onDragOver: (event: DragEvent<HTMLElement>, target: CellTarget) => {
+      const cardId = cardDrag.draggedId;
+      if (!cardId || target.lane.locked) {
+        return;
+      }
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      setSwimlaneDrop(cellId(target));
+    },
+    onDragLeave: (event: DragEvent<HTMLElement>) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+        setSwimlaneDrop(null);
+      }
+    },
+    onDrop: (event: DragEvent<HTMLElement>, target: CellTarget) => {
+      setSwimlaneDrop(null);
+      const cardId = cardDrag.draggedId;
+      if (!cardId) {
+        return;
+      }
+      event.preventDefault();
+      cardDrag.onDragEnd();
+      const location = findCard({ lanes, cardId });
+      if (
+        !location ||
+        location.lane.id === target.lane.id ||
+        blockedByLock({ cardId, laneId: target.lane.id })
+      ) {
+        return;
+      }
+      commands.moveCardToLane({ cardId, laneId: target.lane.id });
+      setAnnouncement(
+        `Card ${location.card.title} movido para ${target.lane.title}.`,
+      );
+    },
+  };
+
+  const rows = sortRows({
+    rows: listRows({ lanes: shown, people }).filter(
+      (row) => !filtering || matches(row.card),
+    ),
+    sort: listSort,
+  });
+
+  function sortBy(key: ListSortKey) {
+    setListSort((current) => ({
+      key,
+      direction:
+        current.key === key && current.direction === 'ascending'
+          ? 'descending'
+          : 'ascending',
+    }));
+  }
+
   return (
     <div ref={rootRef} className="kanban-board">
       {storageFull ? (
@@ -693,6 +796,7 @@ export function KanbanBoard({
           onUndo: () => runHistory('undo'),
           onRedo: () => runHistory('redo'),
         }}
+        view={{ view, onChange: setView }}
         hiddenLanes={{
           lanes: lanes.filter((lane) => lane.hidden),
           archiveHidden: Boolean(board.config.archiveLaneHidden),
@@ -723,108 +827,116 @@ export function KanbanBoard({
         }
         onReset={canReset ? () => openDialog({ kind: 'reset' }) : undefined}
       />
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: só recebe o arraste das colunas, que pode terminar entre duas delas; pelo teclado, a coluna se move pela alça */}
-      <div
-        className="kanban-board__lanes d-flex gap-3 overflow-x-auto p-2"
-        onDragOver={laneDrag.onDragOver}
-        onDragLeave={laneDrag.onDragLeave}
-        onDrop={laneDrag.onDrop}
-      >
-        {shown.map((lane, laneIndex) => {
-          const cardDrop =
-            cardDrag.visibleDrop?.laneId === lane.id
-              ? cardDrag.visibleDrop
-              : null;
-          return (
-            <KanbanLane
-              key={lane.id}
-              lane={lane}
-              index={laneIndex}
-              moveState={{
-                dragging: laneDrag.draggedLaneId === lane.id,
-                grabbed: laneKeyboard.grabbedId === lane.id,
-                dropBefore: laneDrag.visibleSlot === laneIndex,
-                dropAfter:
-                  laneIndex === lastIndex &&
-                  laneDrag.visibleSlot === shown.length,
-                cardDropAtEnd: cardDrop?.slot === lane.cards.length,
-                collapsed: collapsed.has(lane.id),
+      {view.mode === 'list' ? (
+        <BoardList
+          rows={rows}
+          keyPrefix={keyPrefix}
+          labels={labels}
+          today={today}
+          progress={progress}
+          sort={listSort}
+          onSort={sortBy}
+          onOpen={openDetails}
+        />
+      ) : null}
+      {view.mode === 'board' && view.grouped ? (
+        <Swimlanes
+          groups={groupByParent({ lanes: shown, allLanes: lanes })}
+          keyPrefix={keyPrefix}
+          progress={progress}
+          dropTarget={swimlaneDrop}
+          renderCard={(card, lane, index) =>
+            renderCard({ card, lane, index, dropBefore: false })
+          }
+          {...swimlaneDropHandlers}
+        />
+      ) : null}
+      {view.mode === 'board' && !view.grouped ? (
+        // biome-ignore lint/a11y/noStaticElementInteractions: só recebe o arraste das colunas, que pode terminar entre duas delas; pelo teclado, a coluna se move pela alça
+        <div
+          className="kanban-board__lanes d-flex gap-3 overflow-x-auto p-2"
+          onDragOver={laneDrag.onDragOver}
+          onDragLeave={laneDrag.onDragLeave}
+          onDrop={laneDrag.onDrop}
+        >
+          {shown.map((lane, laneIndex) => {
+            const cardDrop =
+              cardDrag.visibleDrop?.laneId === lane.id
+                ? cardDrag.visibleDrop
+                : null;
+            return (
+              <KanbanLane
+                key={lane.id}
+                lane={lane}
+                index={laneIndex}
+                moveState={{
+                  dragging: laneDrag.draggedLaneId === lane.id,
+                  grabbed: laneKeyboard.grabbedId === lane.id,
+                  dropBefore: laneDrag.visibleSlot === laneIndex,
+                  dropAfter:
+                    laneIndex === lastIndex &&
+                    laneDrag.visibleSlot === shown.length,
+                  cardDropAtEnd: cardDrop?.slot === lane.cards.length,
+                  collapsed: collapsed.has(lane.id),
+                }}
+                canRemove={lanes.length > 1}
+                canHide={shown.length > 1}
+                instructionsId={instructionsId}
+                headerActions={headerActions}
+                onDragOver={(event, target) => {
+                  // NOTE: sem o `preventDefault`, o navegador não aceita soltar o card na coluna bloqueada.
+                  if (!target.locked) {
+                    cardDrag.onDragOver(event, target);
+                  }
+                }}
+                onDragLeave={cardDrag.onDragLeave}
+                onDrop={cardDrag.onDrop}
+                onAddCard={(card) => {
+                  if (commands.addCard(card)) {
+                    setAnnouncement(
+                      `Card ${card.title.trim()} criado em ${lane.title}.`,
+                    );
+                  }
+                }}
+              >
+                {lane.cards.map((card, index) =>
+                  renderCard({
+                    card,
+                    lane,
+                    index,
+                    dropBefore: cardDrop?.slot === index,
+                  }),
+                )}
+              </KanbanLane>
+            );
+          })}
+          {board.config.archiveLaneHidden ? null : (
+            <ArchiveLane
+              archive={board.archive}
+              keyPrefix={keyPrefix}
+              dropActive={archiveDrop}
+              {...archiveDropHandlers}
+              onOpen={openArchivedView}
+              onHide={() => {
+                commands.setArchiveLaneHidden(true);
+                setAnnouncement('Coluna Arquivados oculta.');
+                focusMarked({ attribute: 'data-board-archive', id: '' });
               }}
-              canRemove={lanes.length > 1}
-              canHide={shown.length > 1}
-              instructionsId={instructionsId}
-              headerActions={headerActions}
-              onDragOver={(event, target) => {
-                // NOTE: sem o `preventDefault`, o navegador não aceita soltar o card na coluna bloqueada.
-                if (!target.locked) {
-                  cardDrag.onDragOver(event, target);
+            />
+          )}
+          <div className="kanban-board__add-lane">
+            <InlineAddForm
+              buttonLabel="Adicionar coluna"
+              inputLabel="Nome da nova coluna"
+              onAdd={(title) => {
+                if (commands.addLane(title)) {
+                  setAnnouncement(`Coluna ${title.trim()} criada.`);
                 }
               }}
-              onDragLeave={cardDrag.onDragLeave}
-              onDrop={cardDrag.onDrop}
-              onAddCard={(card) => {
-                if (commands.addCard(card)) {
-                  setAnnouncement(
-                    `Card ${card.title.trim()} criado em ${lane.title}.`,
-                  );
-                }
-              }}
-            >
-              {lane.cards.map((card, index) => (
-                <KanbanCard
-                  key={card.id}
-                  card={card}
-                  keyPrefix={keyPrefix}
-                  index={index}
-                  parentTitle={
-                    card.parentId ? titles.get(card.parentId) : undefined
-                  }
-                  childCount={counts.get(card.id) ?? 0}
-                  progress={progress.get(card.id)}
-                  assignee={
-                    card.assigneeId ? people.get(card.assigneeId) : undefined
-                  }
-                  labels={cardLabels({ card, labels })}
-                  today={today}
-                  dimmed={filtering && !matches(card)}
-                  open={panelVisible && openCard?.id === card.id}
-                  dragging={cardDrag.draggedId === card.id}
-                  grabbed={cardKeyboard.grabbedId === card.id}
-                  dropBefore={cardDrop?.slot === index}
-                  locked={lane.locked}
-                  instructionsId={instructionsId}
-                  actions={cardActions}
-                />
-              ))}
-            </KanbanLane>
-          );
-        })}
-        {board.config.archiveLaneHidden ? null : (
-          <ArchiveLane
-            archive={board.archive}
-            keyPrefix={keyPrefix}
-            dropActive={archiveDrop}
-            {...archiveDropHandlers}
-            onOpen={openArchivedView}
-            onHide={() => {
-              commands.setArchiveLaneHidden(true);
-              setAnnouncement('Coluna Arquivados oculta.');
-              focusMarked({ attribute: 'data-board-archive', id: '' });
-            }}
-          />
-        )}
-        <div className="kanban-board__add-lane">
-          <InlineAddForm
-            buttonLabel="Adicionar coluna"
-            inputLabel="Nome da nova coluna"
-            onAdd={(title) => {
-              if (commands.addLane(title)) {
-                setAnnouncement(`Coluna ${title.trim()} criada.`);
-              }
-            }}
-          />
+            />
+          </div>
         </div>
-      </div>
+      ) : null}
       <CardDetailsPanel
         visible={panelVisible}
         location={openLocation}

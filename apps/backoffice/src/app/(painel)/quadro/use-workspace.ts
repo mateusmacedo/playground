@@ -24,6 +24,7 @@ import {
   renameBoard,
   serializeBoards,
 } from './model/workspace';
+import { boardViewKey } from './use-board-view';
 import { collapsedLanesKey } from './use-collapsed-lanes';
 
 /** Colunas de um quadro novo. */
@@ -148,6 +149,7 @@ export function useWorkspace(params: {
       }
       removeStorage(boardStorageKey(boardId));
       removeStorage(collapsedLanesKey(boardStorageKey(boardId)));
+      removeStorage(boardViewKey(boardStorageKey(boardId)));
       setBoards(next);
       setActiveId(
         (active) =>
