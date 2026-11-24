@@ -67,18 +67,20 @@ src/
 
 ## Anatomia de um componente
 
-Modelo real, `shared/ui/states.tsx`: arquivo com `'use client'` quando usa CoreUI interativo ou hook, props pequenas inline em `Readonly<{...}>`, TSDoc em PT-BR só para o contrato que não é óbvio.
+Modelo real, `shared/ui/states.tsx`: arquivo com `'use client'` quando usa CoreUI interativo ou hook, props numa `interface` nomeada com campos `readonly`, TSDoc em PT-BR só para o contrato que não é óbvio.
 
 ```tsx
 'use client';
 
 import type { ReactNode } from 'react';
 
+export interface EmptyStateProps {
+  readonly message: string;
+  readonly children?: ReactNode;
+}
+
 /** Lista ou página sem dados: o texto e, como filhos, a ação. */
-export function EmptyState({
-  message,
-  children,
-}: Readonly<{ message: string; children?: ReactNode }>) {
+export function EmptyState({ message, children }: Readonly<EmptyStateProps>) {
   return (
     <div className="text-center text-body-secondary py-5">
       <p className="mb-2">{message}</p>
@@ -88,7 +90,7 @@ export function EmptyState({
 }
 ```
 
-- Props usadas por outros arquivos viram `export interface XProps` com campos `readonly`, como `ConfirmModalProps`.
+- As props ficam sempre numa `interface XProps` com campos `readonly`, acima do componente, nunca escritas na assinatura (rule `typescript`). Exporte a interface quando o componente é exportado, como `ConfirmModalProps`.
 - `'use client'` fica no arquivo de **entrada** interativo. Arquivo de lógica pura (`nav.ts`, `routes.ts`, `breadcrumbs.ts`) e hook importado só por componente de cliente não levam a diretiva. A decisão em si está em `skill-react-best-practices`.
 - Contexto: `createContext<T | null>(null)`, provider com valor memoizado e hook que lança erro fora do provider (`useSession`, `useShell`, `useToast`). Provider do app inteiro entra em `app/providers.tsx`; o de uma área fica perto dela (`ShellProvider` dentro do `DefaultLayout`).
 

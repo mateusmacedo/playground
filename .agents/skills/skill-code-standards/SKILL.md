@@ -43,7 +43,7 @@ O gerador `service-ts` já traz o estilo de serviço. Não remova o `.js` de um 
 
 - **`type` ou `interface`**: não há regra. Em núcleo de serviço use `type`; no painel os contratos públicos usam `interface` (`Session`, `Crumb`). Não misture no mesmo arquivo sem motivo.
 - **`enum`**: não é proibido (o painel tem `enum AppStage`), mas código novo de serviço prefere **união de literais**, que não gera código em runtime e é o que o resto do repositório usa (`ServerlessStage`, `ServiceType`, `SessionStatus`).
-- **Props de componente**: tipadas inline com `Readonly<{ ... }>`, como em `shared/ui/states.tsx`.
+- **Props de componente**: numa `interface <Componente>Props` com campos `readonly`, declarada acima do componente e recebida como `Readonly<...Props>`, como `EmptyStateProps` em `shared/ui/states.tsx`. A rule `typescript` proíbe o tipo de objeto escrito na assinatura.
 - **Configuração e ambiente**: o painel lê a configuração pública só por `src/core/config/app-config.ts`; um serviço lê o ambiente em **um** ponto do entrypoint (veja `skill-architecture-patterns`). **Nenhum segredo em `NEXT_PUBLIC_*`.**
 - **Idioma**: identificadores e nomes de arquivo em inglês. Comentário, descrição de teste, JSDoc e texto de interface em PT-BR, acessível (`aria-*`, papéis corretos).
 - **Next.js 16**: leia o guia certo em `node_modules/next/dist/docs/` antes de código novo (`apps/backoffice/AGENTS.md`).

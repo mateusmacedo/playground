@@ -24,5 +24,15 @@ O `apps/backoffice` usa `bundler`, e as regras de import dele estão no `AGENTS.
 - Export **nomeado**; `default` só onde o framework exige (arquivos especiais do Next).
 - Sem `var`, sem `any` (use `unknown` e estreite).
 - Duas ou mais entradas na função: um objeto de parâmetros nomeados.
+- Tipo de parâmetro e de retorno sempre **com nome**: `interface` (ou `type`) declarada acima da função, com campos `readonly`. Nenhum tipo de objeto escrito dentro da assinatura, nem nas props de um componente.
 - Nomes de arquivo e identificadores em inglês, `kebab-case` nos arquivos (`confirm-modal.tsx`); texto de interface, descrição de teste e comentário em PT-BR.
 - Valores repetidos 3 vezes ou mais viram constante nomeada, perto de quem usa.
+
+## Legibilidade
+
+Aplicação em TypeScript do "código chato acima de código esperto" (skill `skill-clean-code`): quem lê entende o algoritmo na primeira leitura, sem decifrar a expressão.
+
+- Um passo por linha, com valor intermediário nomeado; laço explícito e retorno antecipado no lugar de expressão aninhada.
+- Sem ternário aninhado, sem `reduce` e sem cadeia longa de `map`, `filter` e `flatMap` para encurtar; callback de coleção não altera variável de fora.
+- Problema igual, solução igual: use o helper ou o padrão que o módulo já tem, em vez de uma variação nova.
+- A versão densa só fica quando traz ganho de desempenho **medido**, com um `WHY:` dizendo qual.

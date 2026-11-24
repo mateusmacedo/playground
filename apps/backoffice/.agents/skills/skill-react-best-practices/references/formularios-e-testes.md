@@ -16,15 +16,17 @@ Três pontos do `CFormInput` que não são óbvios (conferidos no código de `@c
 import { CFormInput } from '@coreui/react';
 import { useId } from 'react';
 
+interface EmailFieldProps {
+  readonly value: string;
+  readonly error?: string;
+  readonly onChange: (value: string) => void;
+}
+
 export function EmailField({
   value,
   error,
   onChange,
-}: Readonly<{
-  value: string;
-  error?: string;
-  onChange: (value: string) => void;
-}>) {
+}: Readonly<EmailFieldProps>) {
   const id = useId();
   return (
     <CFormInput
