@@ -103,3 +103,71 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
+
+// Página que ocupa a altura da janela em vez de crescer com o conteúdo: a raiz da página marca `page-fill` e o que há
+// dentro dela rola por dentro. WHY: só a partir de `lg`; em tela pequena a página rola inteira, como as outras.
+@media (min-width: 992px) {
+  .wrapper:has(.page-fill) {
+    height: 100dvh;
+  }
+
+  .wrapper:has(.page-fill) > .body {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .body > .container-fluid:has(.page-fill) {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    // WHY: em janela baixa a página mantém uma altura útil, e quem rola é a área de conteúdo.
+    min-height: 30rem;
+  }
+
+  .page-fill {
+    flex: 1 1 0;
+    min-height: 0;
+  }
+}
+
+.kanban-board__lanes {
+  align-items: flex-start;
+}
+
+// A partir de `lg` o quadro vai até o rodapé: as colunas dividem a largura e esticam até embaixo, e a coluna com muitos
+// cards rola por dentro, com o cabeçalho e o "Adicionar card" sempre à vista.
+@media (min-width: 992px) {
+  .kanban-page__body,
+  .kanban-board {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .kanban-board {
+    flex: 1 1 auto;
+  }
+
+  .kanban-board__lanes {
+    flex: 1 1 auto;
+    align-items: stretch;
+    min-height: 0;
+  }
+
+  // WHY: o teto evita uma coluna gigante quando o quadro tem poucas; com muitas, vale o mínimo e o quadro rola.
+  .kanban-lane {
+    flex: 1 1 18rem;
+    min-width: 18rem;
+    max-width: 32rem;
+  }
+
+  .kanban-lane__body {
+    overflow-y: auto;
+  }
+
+  .kanban-board__add-lane {
+    align-self: flex-start;
+  }
+}

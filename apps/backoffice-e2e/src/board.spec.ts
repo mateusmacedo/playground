@@ -8,6 +8,15 @@ function cardTitles(page: Page, laneName: string): Locator {
   return lane(page, laneName).getByRole('heading', { level: 3 });
 }
 
+/** Posição e tamanho do elemento na tela; falha se ele não estiver visível. */
+async function boxOf(locator: Locator) {
+  const box = await locator.boundingBox();
+  if (!box) {
+    throw new Error('O elemento não está visível.');
+  }
+  return box;
+}
+
 test.describe('quadro kanban', () => {
   test('abre pelo menu lateral com título e colunas', async ({ page }) => {
     await page.goto('/');
@@ -162,5 +171,68 @@ test.describe('quadro kanban', () => {
       'Item 4',
       'Card gravado',
     ]);
+  });
+});
+
+test.describe('quadro kanban em monitor grande', () => {
+  test.use({ viewport: { width: 1920, height: 1080 } });
+
+  test('ocupa a largura e a altura da janela, e a coluna cheia rola por dentro', async ({
+    page,
+  }) => {
+    const cards = Array.from({ length: 30 }, (_, index) => ({
+      id: `card-${index + 1}`,
+      title: `Card ${index + 1}`,
+    }));
+    await page.addInitScript(
+      (lanes) => {
+        localStorage.setItem(
+          'backoffice:quadro:v1',
+          JSON.stringify({ version: 1, lanes }),
+        );
+      },
+      [
+        { id: 'todo', title: 'A fazer', cards },
+        { id: 'done', title: 'Concluído', cards: [] },
+      ],
+    );
+    await page.goto('/quadro');
+    const full = lane(page, 'A fazer');
+    await expect(cardTitles(page, 'A fazer')).toHaveCount(30);
+
+    const main = await boxOf(page.getByRole('main'));
+    const footer = await boxOf(page.getByRole('contentinfo'));
+    const fullBox = await boxOf(full);
+    const emptyBox = await boxOf(lane(page, 'Concluído'));
+
+    // NOTE: sem o limite de largura do layout, a primeira coluna começa junto da borda do conteúdo e passa dos 288 px
+    // mínimos; a coluna vazia estica até perto do rodapé.
+    expect(fullBox.x - main.x).toBeLessThan(80);
+    expect(fullBox.width).toBeGreaterThan(400);
+    expect(footer.y - (emptyBox.y + emptyBox.height)).toBeLessThan(80);
+
+    // NOTE: com 30 cards, uma página que crescesse com o conteúdo empurraria o rodapé para fora da janela.
+    await expect(page.getByRole('contentinfo')).toBeInViewport();
+    await expect(
+      full.getByRole('button', { name: 'Adicionar card' }),
+    ).toBeInViewport();
+    await expect(
+      full.getByRole('heading', { name: 'Card 30' }),
+    ).not.toBeInViewport();
+  });
+});
+
+test.describe('quadro kanban em tela estreita', () => {
+  test.use({ viewport: { width: 800, height: 900 } });
+
+  test('mantém as colunas na largura mínima, com rolagem horizontal', async ({
+    page,
+  }) => {
+    await page.goto('/quadro');
+    const first = await boxOf(lane(page, 'A fazer'));
+    const last = await boxOf(lane(page, 'Concluído'));
+
+    expect(first.width).toBe(288);
+    expect(last.x + last.width).toBeGreaterThan(800);
   });
 });

@@ -270,14 +270,14 @@ export function KanbanBoard({
   const lastIndex = lanes.length - 1;
 
   return (
-    <div ref={rootRef}>
+    <div ref={rootRef} className="kanban-board">
       <BoardToolbar
         instructionsId={instructionsId}
         onReset={() => openDialog({ kind: 'reset' })}
       />
       {/* biome-ignore lint/a11y/noStaticElementInteractions: só recebe o arraste das colunas, que pode terminar entre duas delas; pelo teclado, a coluna se move pela alça */}
       <div
-        className="d-flex align-items-start gap-3 overflow-x-auto pb-2 px-2"
+        className="kanban-board__lanes d-flex gap-3 overflow-x-auto p-2"
         onDragOver={laneDrag.onDragOver}
         onDragLeave={laneDrag.onDragLeave}
         onDrop={laneDrag.onDrop}

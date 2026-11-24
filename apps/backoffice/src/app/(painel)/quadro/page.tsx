@@ -8,8 +8,8 @@ export const metadata: Metadata = { title: 'Quadro' };
 
 export default function BoardPage() {
   return (
-    <div className="card mb-4">
-      <div className="card-body">
+    <div className="card mb-4 page-fill">
+      <div className="card-body kanban-page__body">
         <h1 className="h4">Quadro</h1>
         <KanbanBoard
           initialLanes={sampleLanes}

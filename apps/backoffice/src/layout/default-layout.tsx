@@ -59,7 +59,7 @@ export function DefaultLayout({ children }: Readonly<{ children: ReactNode }>) {
       <div className="wrapper d-flex flex-column min-vh-100">
         <AppHeader />
         <main className="body flex-grow-1" id="conteudo">
-          <CContainer className="h-auto px-4" lg>
+          <CContainer className="h-auto px-4" fluid>
             <SessionGate>{children}</SessionGate>
           </CContainer>
         </main>
