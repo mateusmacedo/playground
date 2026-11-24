@@ -1,31 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
-
-import {
-  readStorage,
-  removeStorage,
-  subscribeStorage,
-  writeStorage,
-} from './browser-storage';
+import { removeStorage, writeStorage } from './browser-storage';
 import type { BoardLane } from './model/board';
 import { createBoard } from './model/board-state';
 import { nextId } from './model/ids';
 import { serializeBoard } from './model/storage';
 import {
-  ACTIVE_BOARD_STORAGE_KEY,
   addBoard,
-  BOARDS_STORAGE_KEY,
   type BoardSummary,
   boardStorageKey,
-  DEFAULT_BOARD_ID,
-  DEFAULT_BOARDS,
   neighborBoard,
-  parseStoredBoards,
   removeBoard,
   renameBoard,
-  serializeBoards,
 } from './model/workspace';
 import { boardViewKey } from './use-board-view';
 import { collapsedLanesKey } from './use-collapsed-lanes';
+import { useStoredBoards } from './use-stored-boards';
 
 /** Colunas de um quadro novo. */
 export const NEW_BOARD_LANES: readonly BoardLane[] = [
@@ -66,109 +54,83 @@ export interface UseWorkspaceParams {
   readonly readRequestedId: () => string | null;
 }
 
-/**
- * Lista de quadros e o quadro aberto. A lista fica gravada e acompanha o que as outras abas mudam; o quadro aberto é
- * desta aba, e o endereço (`?quadro=<id>`) tem prioridade sobre o último aberto.
- */
-export function useWorkspace(params: UseWorkspaceParams): WorkspaceState {
-  const [boards, setBoards] = useState(DEFAULT_BOARDS);
-  const [activeId, setActiveId] = useState(DEFAULT_BOARD_ID);
-  const [loaded, setLoaded] = useState(false);
-  const fromStorage = useRef<readonly BoardSummary[] | null>(null);
-  const current = useRef(boards);
-  const readRequested = useRef(params.readRequestedId);
+interface StoreNewBoardParams {
+  readonly boardId: string;
+  readonly keyPrefix: string;
+}
 
-  useEffect(() => {
-    current.current = boards;
+/** Grava o quadro novo já com o prefixo escolhido, para ele abrir com a configuração certa. */
+function storeNewBoard(params: StoreNewBoardParams): void {
+  const board = createBoard({
+    lanes: NEW_BOARD_LANES,
+    config: { keyPrefix: params.keyPrefix },
   });
+  writeStorage({
+    key: boardStorageKey(params.boardId),
+    value: serializeBoard(board),
+  });
+}
 
-  useEffect(() => {
-    const stored = parseStoredBoards(readStorage(BOARDS_STORAGE_KEY));
-    const list = stored ?? DEFAULT_BOARDS;
-    if (stored) {
-      fromStorage.current = stored;
-      setBoards(stored);
-    }
-    const wanted = [
-      readRequested.current(),
-      readStorage(ACTIVE_BOARD_STORAGE_KEY),
-    ].find((id) => list.some((board) => board.id === id));
-    setActiveId(wanted ?? list[0]?.id ?? DEFAULT_BOARD_ID);
-    setLoaded(true);
-    return subscribeStorage({
-      key: BOARDS_STORAGE_KEY,
-      onChange: (raw) => {
-        const received = parseStoredBoards(raw);
-        if (!received) {
-          return;
-        }
-        const before = current.current;
-        fromStorage.current = received;
-        setBoards(received);
-        setActiveId(
-          (active) =>
-            neighborBoard({ before, after: received, boardId: active }) ??
-            active,
-        );
-      },
+/** Apaga tudo o que o quadro gravou no navegador: o conteúdo e as preferências de tela. */
+function eraseStoredBoard(boardId: string): void {
+  const key = boardStorageKey(boardId);
+  removeStorage(key);
+  removeStorage(collapsedLanesKey(key));
+  removeStorage(boardViewKey(key));
+}
+
+/** Lista de quadros, o quadro aberto e os comandos de criar, renomear, excluir e escolher quadro. */
+export function useWorkspace(params: UseWorkspaceParams): WorkspaceState {
+  const { boards, activeId, loaded, setBoards, setActiveId } =
+    useStoredBoards(params);
+
+  function create(board: NewBoard): string | undefined {
+    const id = nextId({
+      prefix: 'board',
+      taken: boards.map((existing) => existing.id),
     });
-  }, []);
-
-  useEffect(() => {
-    if (loaded && boards !== fromStorage.current) {
-      writeStorage({ key: BOARDS_STORAGE_KEY, value: serializeBoards(boards) });
+    const next = addBoard({ boards, board: { id, name: board.name } });
+    if (next === boards) {
+      return undefined;
     }
-  }, [loaded, boards]);
+    storeNewBoard({ boardId: id, keyPrefix: board.keyPrefix });
+    setBoards(next);
+    setActiveId(id);
+    return id;
+  }
 
-  useEffect(() => {
-    if (loaded) {
-      writeStorage({ key: ACTIVE_BOARD_STORAGE_KEY, value: activeId });
+  function remove(boardId: string) {
+    const next = removeBoard({ boards, boardId });
+    if (next === boards) {
+      return;
     }
-  }, [loaded, activeId]);
+    eraseStoredBoard(boardId);
+    setBoards(next);
+    // NOTE: se o quadro excluído era o aberto, o vizinho dele passa a ser o aberto.
+    const stillOpen = neighborBoard({
+      before: boards,
+      after: next,
+      boardId: activeId,
+    });
+    setActiveId(stillOpen ?? activeId);
+  }
 
-  const commands: WorkspaceCommands = {
-    create: ({ name, keyPrefix }) => {
-      const id = nextId({
-        prefix: 'board',
-        taken: boards.map((board) => board.id),
-      });
-      const next = addBoard({ boards, board: { id, name } });
-      if (next === boards) {
-        return undefined;
-      }
-      // NOTE: o quadro nasce gravado, com o prefixo escolhido, antes de abrir.
-      writeStorage({
-        key: boardStorageKey(id),
-        value: serializeBoard(
-          createBoard({ lanes: NEW_BOARD_LANES, config: { keyPrefix } }),
-        ),
-      });
-      setBoards(next);
-      setActiveId(id);
-      return id;
-    },
-    rename: (change) => setBoards(renameBoard({ boards, ...change })),
-    remove: (boardId) => {
-      const next = removeBoard({ boards, boardId });
-      if (next === boards) {
-        return;
-      }
-      removeStorage(boardStorageKey(boardId));
-      removeStorage(collapsedLanesKey(boardStorageKey(boardId)));
-      removeStorage(boardViewKey(boardStorageKey(boardId)));
-      setBoards(next);
-      setActiveId(
-        (active) =>
-          neighborBoard({ before: boards, after: next, boardId: active }) ??
-          active,
-      );
-    },
-    select: (boardId) => {
-      if (boards.some((board) => board.id === boardId)) {
-        setActiveId(boardId);
-      }
+  function select(boardId: string) {
+    const exists = boards.some((board) => board.id === boardId);
+    if (exists) {
+      setActiveId(boardId);
+    }
+  }
+
+  return {
+    boards,
+    activeId,
+    loaded,
+    commands: {
+      create,
+      rename: (change) => setBoards(renameBoard({ boards, ...change })),
+      remove,
+      select,
     },
   };
-
-  return { boards, activeId, loaded, commands };
 }

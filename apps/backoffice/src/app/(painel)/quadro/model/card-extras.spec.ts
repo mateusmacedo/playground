@@ -1,4 +1,5 @@
-import { activityText, withActivity } from './activity';
+import { withActivity } from './activity';
+import { activityText } from './activity-text';
 import {
   addAttachment,
   formatBytes,

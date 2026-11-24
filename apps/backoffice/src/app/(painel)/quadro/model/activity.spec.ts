@@ -1,9 +1,5 @@
-import {
-  ACTIVITY_LIMIT,
-  activityText,
-  appendActivity,
-  withActivity,
-} from './activity';
+import { ACTIVITY_LIMIT, appendActivity, withActivity } from './activity';
+import { activityText } from './activity-text';
 import { archiveCard, restoreArchived } from './archive';
 import type { Board, BoardCard, CardActivity } from './board';
 import { createBoard } from './board-state';

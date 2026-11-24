@@ -1,18 +1,13 @@
-import { cilLockLocked, cilMove, cilOptions } from '@coreui/icons';
+import { cilLockLocked, cilMove } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
-import {
-  CDropdown,
-  CDropdownItem,
-  CDropdownMenu,
-  CDropdownToggle,
-  CFormInput,
-} from '@coreui/react';
-import { type DragEvent, type KeyboardEvent, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
+import { CFormInput } from '@coreui/react';
+import type { DragEvent, KeyboardEvent } from 'react';
 
+import { LaneMenu } from './lane-menu';
 import type { BoardLane } from './model/board';
 import { isOverLimit } from './model/lanes';
 import type { HandleRegistration } from './use-keyboard-move';
+import { useLaneRename } from './use-lane-rename';
 
 export interface LaneRename {
   readonly laneId: string;
@@ -87,35 +82,12 @@ export function KanbanLaneHeader({
   instructionsId,
   actions,
 }: Readonly<KanbanLaneHeaderProps>) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  // WHY: o campo sai da tela no Esc; se o navegador disparar o blur nessa saída, ele não pode salvar o rascunho.
-  const cancelled = useRef(false);
-
-  function startRename() {
-    cancelled.current = false;
-    flushSync(() => setDraft(lane.title));
-    inputRef.current?.focus();
-    inputRef.current?.select();
-  }
-
-  function finish(save: boolean) {
-    if (draft !== null && save) {
-      actions.onRename({ laneId: lane.id, title: draft });
-    }
-    setDraft(null);
-  }
-
-  function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== 'Enter' && event.key !== 'Escape') {
-      return;
-    }
-    event.preventDefault();
-    cancelled.current = event.key === 'Escape';
-    flushSync(() => finish(event.key === 'Enter'));
-    titleRef.current?.focus();
-  }
+  const laneId = lane.id;
+  const rename = useLaneRename({
+    title: lane.title,
+    onRename: (title) => actions.onRename({ laneId, title }),
+  });
+  const renaming = rename.draft !== null;
 
   return (
     <header className="card-header d-flex align-items-center gap-1 ps-1 pe-1">
@@ -126,38 +98,34 @@ export function KanbanLaneHeader({
         aria-label={`Mover a coluna ${lane.title}`}
         aria-describedby={instructionsId}
         aria-pressed={grabbed}
-        ref={(element) => actions.registerHandle({ id: lane.id, element })}
-        onClick={() => actions.onHandleClick(lane.id)}
-        onKeyDown={(event) => actions.onHandleKeyDown(event, lane.id)}
-        onBlur={() => actions.onHandleBlur(lane.id)}
-        onDragStart={(event) => actions.onHandleDragStart(event, lane.id)}
+        ref={(element) => actions.registerHandle({ id: laneId, element })}
+        onClick={() => actions.onHandleClick(laneId)}
+        onKeyDown={(event) => actions.onHandleKeyDown(event, laneId)}
+        onBlur={() => actions.onHandleBlur(laneId)}
+        onDragStart={(event) => actions.onHandleDragStart(event, laneId)}
         onDragEnd={actions.onHandleDragEnd}
       >
         <CIcon icon={cilMove} aria-hidden="true" />
       </button>
       <h2
         id={titleId}
-        ref={titleRef}
+        ref={rename.titleRef}
         tabIndex={-1}
-        data-lane-title={lane.id}
-        className={`h6 mb-0 flex-grow-1 text-truncate${draft === null ? '' : ' visually-hidden'}`}
+        data-lane-title={laneId}
+        className={`h6 mb-0 flex-grow-1 text-truncate${renaming ? ' visually-hidden' : ''}`}
       >
         {lane.title}
       </h2>
-      {draft === null ? null : (
+      {rename.draft === null ? null : (
         <CFormInput
-          ref={inputRef}
+          ref={rename.inputRef}
           size="sm"
           className="flex-grow-1"
           aria-label="Nome da coluna"
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={onKeyDown}
-          onBlur={() => {
-            if (!cancelled.current) {
-              finish(true);
-            }
-          }}
+          value={rename.draft}
+          onChange={(event) => rename.onChange(event.target.value)}
+          onKeyDown={rename.onKeyDown}
+          onBlur={rename.onBlur}
         />
       )}
       {lane.locked ? (
@@ -167,59 +135,17 @@ export function KanbanLaneHeader({
         </span>
       ) : null}
       <CardCount lane={lane} />
-      <CDropdown placement="bottom-end">
-        <CDropdownToggle
-          color="secondary"
-          variant="ghost"
-          size="sm"
-          caret={false}
-          aria-label={`Ações da coluna ${lane.title}`}
-        >
-          <CIcon icon={cilOptions} aria-hidden="true" />
-        </CDropdownToggle>
-        <CDropdownMenu>
-          <CDropdownItem as="button" type="button" onClick={startRename}>
-            Renomear
-          </CDropdownItem>
-          <CDropdownItem
-            as="button"
-            type="button"
-            onClick={() => actions.onRequestLimit(lane.id)}
-          >
-            Limite de cards
-          </CDropdownItem>
-          <CDropdownItem
-            as="button"
-            type="button"
-            onClick={() => actions.onToggleCollapse(lane.id)}
-          >
-            Recolher coluna
-          </CDropdownItem>
-          <CDropdownItem
-            as="button"
-            type="button"
-            disabled={!canHide}
-            onClick={() => actions.onHide(lane.id)}
-          >
-            Ocultar coluna
-          </CDropdownItem>
-          <CDropdownItem
-            as="button"
-            type="button"
-            onClick={() => actions.onToggleLock(lane.id)}
-          >
-            {lane.locked ? 'Liberar coluna' : 'Bloquear coluna'}
-          </CDropdownItem>
-          <CDropdownItem
-            as="button"
-            type="button"
-            disabled={!canRemove || lane.locked}
-            onClick={() => actions.onRequestRemove(lane.id)}
-          >
-            Excluir coluna
-          </CDropdownItem>
-        </CDropdownMenu>
-      </CDropdown>
+      <LaneMenu
+        lane={lane}
+        canRemove={canRemove}
+        canHide={canHide}
+        onRename={rename.start}
+        onRequestLimit={() => actions.onRequestLimit(laneId)}
+        onToggleCollapse={() => actions.onToggleCollapse(laneId)}
+        onHide={() => actions.onHide(laneId)}
+        onToggleLock={() => actions.onToggleLock(laneId)}
+        onRequestRemove={() => actions.onRequestRemove(laneId)}
+      />
     </header>
   );
 }

@@ -1,11 +1,6 @@
-import {
-  type Board,
-  type BoardCard,
-  type BoardLane,
-  findCard,
-  moveCard,
-} from './board';
+import { type Board, type BoardCard, type BoardLane, findCard } from './board';
 import { cardKey } from './card-key';
+import { moveCard } from './card-moves';
 
 export type CardPatch = Partial<Pick<BoardCard, 'title' | 'description'>>;
 

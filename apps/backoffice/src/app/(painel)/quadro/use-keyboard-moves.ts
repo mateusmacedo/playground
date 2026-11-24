@@ -1,7 +1,8 @@
 import type { BoardCommands } from './board-commands';
 import type { Announce } from './board-notices';
 import { announcementText, laneAnnouncementText } from './model/announcements';
-import { type BoardLane, type StepDirection, stepCard } from './model/board';
+import type { BoardLane } from './model/board';
+import { type StepDirection, stepCard } from './model/card-moves';
 import { mergeVisible, respectsLocks } from './model/lane-state';
 import { type LaneDirection, stepLane } from './model/lanes';
 import type { CollapsedLanes } from './use-collapsed-lanes';

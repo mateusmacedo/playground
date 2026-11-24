@@ -1,6 +1,6 @@
 import { useId } from 'react';
 
-import { activityText } from '../model/activity';
+import { activityText } from '../model/activity-text';
 import type { CardActivity } from '../model/board';
 
 const moment = new Intl.DateTimeFormat('pt-BR', {

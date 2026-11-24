@@ -1,5 +1,4 @@
-import { CFormInput, CFormSelect } from '@coreui/react';
-import { type FormEvent, type ReactNode, useId, useState } from 'react';
+import { type FormEvent, type ReactNode, useState } from 'react';
 
 import { ConfirmModal } from '@/shared/ui/confirm-modal';
 
@@ -9,6 +8,8 @@ import {
   normalizeKeyPrefix,
   suggestKeyPrefix,
 } from '../model/config';
+import { BoardIdentityFields } from './board-identity-fields';
+import { DoneLaneField } from './done-lane-field';
 import { PeopleEditor } from './people-editor';
 
 export interface BoardFormValues {
@@ -56,32 +57,44 @@ export function BoardFormDialog({
   onCancel,
   children,
 }: Readonly<BoardFormDialogProps>) {
-  const nameId = useId();
-  const prefixId = useId();
   const [name, setName] = useState(initial.name);
   const [prefix, setPrefix] = useState(initial.keyPrefix);
   const [prefixEdited, setPrefixEdited] = useState(!suggestPrefix);
-  const doneId = useId();
   const [doneLaneId, setDoneLaneId] = useState(initial.doneLaneId ?? '');
   const [people, setPeople] = useState(initial.people ?? []);
+
   const validName = validateName(name);
   const keyPrefix = normalizeKeyPrefix(prefix);
   const prefixValid = isValidKeyPrefix(keyPrefix);
-  const nameInvalid = name.trim() !== '' && validName === null;
+  const canSave = validName !== null && prefixValid;
+  const prefixExample = `Exemplo: ${keyPrefix}-12.`;
+
+  function changeName(nextName: string) {
+    setName(nextName);
+    if (!prefixEdited) {
+      setPrefix(suggestKeyPrefix(nextName));
+    }
+  }
+
+  function changePrefix(nextPrefix: string) {
+    setPrefix(nextPrefix);
+    setPrefixEdited(true);
+  }
 
   function save(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
-    if (validName && prefixValid) {
-      onSave(
-        lanes
-          ? {
-              name: validName,
-              keyPrefix,
-              doneLaneId: doneLaneId || undefined,
-              people,
-            }
-          : { name: validName, keyPrefix },
-      );
+    if (validName === null || !prefixValid) {
+      return;
+    }
+    if (lanes) {
+      onSave({
+        name: validName,
+        keyPrefix,
+        doneLaneId: doneLaneId || undefined,
+        people,
+      });
+    } else {
+      onSave({ name: validName, keyPrefix });
     }
   }
 
@@ -90,60 +103,29 @@ export function BoardFormDialog({
       visible={visible}
       title={title}
       confirmLabel={confirmLabel}
-      confirmDisabled={!validName || !prefixValid}
+      confirmDisabled={!canSave}
       onConfirm={() => save()}
       onCancel={onCancel}
     >
       <form onSubmit={save} className="d-grid gap-3">
-        <CFormInput
-          id={nameId}
-          label="Nome do quadro"
-          value={name}
-          invalid={nameInvalid}
-          feedbackInvalid="Já existe um quadro com este nome."
-          onChange={(event) => {
-            setName(event.target.value);
-            if (!prefixEdited) {
-              setPrefix(suggestKeyPrefix(event.target.value));
-            }
-          }}
-        />
-        <CFormInput
-          id={prefixId}
-          label="Prefixo do código dos cards"
-          value={prefix}
-          maxLength={6}
-          autoCapitalize="characters"
-          invalid={!prefixValid}
-          feedbackInvalid="Use de 1 a 6 letras ou números, começando por letra."
-          text={
-            prefixValid
-              ? `${prefixHelp ? `${prefixHelp} ` : ''}Exemplo: ${keyPrefix}-12.`
-              : undefined
+        <BoardIdentityFields
+          name={name}
+          nameTaken={name.trim() !== '' && validName === null}
+          prefix={prefix}
+          prefixValid={prefixValid}
+          prefixHelp={
+            prefixHelp ? `${prefixHelp} ${prefixExample}` : prefixExample
           }
-          onChange={(event) => {
-            setPrefix(event.target.value);
-            setPrefixEdited(true);
-          }}
+          onNameChange={changeName}
+          onPrefixChange={changePrefix}
         />
         {lanes ? (
           <>
-            <CFormSelect
-              id={doneId}
-              label="Coluna de conclusão"
-              text="O card pai mostra quantos filhos já estão nesta coluna."
-              value={
-                lanes.some((lane) => lane.id === doneLaneId) ? doneLaneId : ''
-              }
-              onChange={(event) => setDoneLaneId(event.target.value)}
-            >
-              <option value="">Nenhuma</option>
-              {lanes.map((lane) => (
-                <option key={lane.id} value={lane.id}>
-                  {lane.title}
-                </option>
-              ))}
-            </CFormSelect>
+            <DoneLaneField
+              lanes={lanes}
+              doneLaneId={doneLaneId}
+              onChange={setDoneLaneId}
+            />
             <PeopleEditor people={people} onChange={setPeople} />
           </>
         ) : null}

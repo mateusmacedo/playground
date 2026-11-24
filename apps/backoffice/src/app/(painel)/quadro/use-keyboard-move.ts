@@ -2,7 +2,8 @@ import { type KeyboardEvent, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 
 import type { MoveAnnouncement } from './model/announcements';
-import type { BoardLane, StepDirection } from './model/board';
+import type { BoardLane } from './model/board';
+import type { StepDirection } from './model/card-moves';
 import type { LaneDirection } from './model/lanes';
 
 export interface HandleRegistration {

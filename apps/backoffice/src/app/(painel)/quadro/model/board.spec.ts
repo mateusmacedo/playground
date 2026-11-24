@@ -1,10 +1,5 @@
-import {
-  type BoardLane,
-  findCard,
-  moveCard,
-  slotToIndex,
-  stepCard,
-} from './board';
+import { type BoardLane, findCard } from './board';
+import { moveCard, slotToIndex, stepCard } from './card-moves';
 
 function card(id: string) {
   return { id, title: `Item ${id}` };

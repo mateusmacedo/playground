@@ -1,6 +1,7 @@
 import { type DragEvent, useState } from 'react';
 
-import { type BoardLane, moveCard, slotToIndex } from './model/board';
+import type { BoardLane } from './model/board';
+import { moveCard, slotToIndex } from './model/card-moves';
 
 export interface DropTarget {
   readonly laneId: string;
