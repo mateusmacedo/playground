@@ -11,8 +11,8 @@ export const sampleLanes: readonly BoardLane[] = [
         title: 'Item 1',
         description: 'Card de exemplo, sem tipo definido.',
       },
-      { id: 'item-2', title: 'Item 2' },
-      { id: 'item-3', title: 'Item 3' },
+      { id: 'item-2', title: 'Item 2', parentId: 'item-1' },
+      { id: 'item-3', title: 'Item 3', parentId: 'item-1' },
     ],
   },
   {

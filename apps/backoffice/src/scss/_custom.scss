@@ -46,3 +46,60 @@
   border-radius: 2px;
   content: '';
 }
+
+.kanban-board__add-lane {
+  flex: 0 0 18rem;
+}
+
+.kanban-lane--dragging {
+  opacity: 0.5;
+}
+
+.kanban-lane--grabbed {
+  outline: 2px solid var(--cui-primary);
+  outline-offset: 2px;
+}
+
+// WHY: passar do limite não bloqueia o movimento; a borda avisa sem esconder nada.
+.kanban-lane--over-limit {
+  border-color: var(--cui-danger);
+}
+
+// Linha de inserção do arraste de colunas: no meio do espaço entre duas colunas, ou à direita da última.
+.kanban-lane--drop-before::before,
+.kanban-lane--drop-after::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--cui-primary);
+  content: '';
+}
+
+.kanban-lane--drop-before::before {
+  left: calc(-0.5rem - 2px);
+}
+
+.kanban-lane--drop-after::after {
+  right: calc(-0.5rem - 2px);
+}
+
+.kanban-card--open {
+  border-color: var(--cui-primary);
+}
+
+// WHY: o botão do título cobre o card inteiro com o `stretched-link`; a alça precisa ficar por cima para continuar
+// recebendo o clique.
+.kanban-card__handle {
+  position: relative;
+  z-index: 2;
+}
+
+.kanban-card__description {
+  display: -webkit-box;
+  overflow: hidden;
+  white-space: pre-line;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}

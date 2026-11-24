@@ -3,6 +3,8 @@ export interface BoardCard {
   readonly id: string;
   readonly title: string;
   readonly description?: string;
+  /** Card pai na hierarquia; pai e filho podem estar em colunas diferentes. */
+  readonly parentId?: string;
 }
 
 /** Coluna do quadro; a ordem de `cards` é a ordem na tela. */
@@ -10,6 +12,8 @@ export interface BoardLane {
   readonly id: string;
   readonly title: string;
   readonly cards: readonly BoardCard[];
+  /** Máximo de cards esperado na coluna (o limite de WIP); passar dele só gera destaque, não bloqueia. */
+  readonly wipLimit?: number;
 }
 
 export interface CardLocation {
@@ -34,6 +38,11 @@ export function findCard(params: {
     }
   }
   return undefined;
+}
+
+/** Todos os cards do quadro, coluna por coluna, na ordem da tela. */
+export function allCards(lanes: readonly BoardLane[]): readonly BoardCard[] {
+  return lanes.flatMap((lane) => lane.cards);
 }
 
 /**

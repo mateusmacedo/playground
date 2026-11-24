@@ -7,9 +7,8 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-
-import type { BoardLane } from './board';
 import { KanbanBoard } from './kanban-board';
+import type { BoardLane } from './model/board';
 
 const lanes: readonly BoardLane[] = [
   {

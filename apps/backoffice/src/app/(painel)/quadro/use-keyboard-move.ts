@@ -1,136 +1,151 @@
 import { type KeyboardEvent, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 
-import { announcementText } from './announcements';
-import { type BoardLane, type StepDirection, stepCard } from './board';
+import type { MoveAnnouncement } from './model/announcements';
+import type { BoardLane, StepDirection } from './model/board';
+import type { LaneDirection } from './model/lanes';
 
 export interface KeyboardMove {
   readonly grabbedId: string | null;
-  /** Solta o card pego, sem anúncio; usado quando outro meio assume o movimento. */
+  /** Solta o item pego, sem anúncio; usado quando outro meio assume o movimento. */
   readonly release: () => void;
-  readonly onHandleClick: (cardId: string) => void;
+  readonly onHandleClick: (id: string) => void;
   readonly onHandleKeyDown: (
     event: KeyboardEvent<HTMLButtonElement>,
-    cardId: string,
+    id: string,
   ) => void;
-  readonly onHandleBlur: (cardId: string) => void;
+  readonly onHandleBlur: (id: string) => void;
   readonly registerHandle: (handle: {
-    readonly cardId: string;
+    readonly id: string;
     readonly element: HTMLButtonElement | null;
   }) => void;
 }
 
 interface KeyboardGrab {
-  readonly cardId: string;
-  /** Quadro de antes de pegar o card, para o Esc desfazer o movimento. */
+  readonly id: string;
+  /** Quadro de antes de pegar o item, para o Esc desfazer o movimento. */
   readonly snapshot: readonly BoardLane[];
 }
 
-const STEP_KEYS: Readonly<Record<string, StepDirection>> = {
+/** Os cards andam nas quatro direções. */
+export const CARD_STEP_KEYS: Readonly<Record<string, StepDirection>> = {
   ArrowUp: 'up',
   ArrowDown: 'down',
   ArrowLeft: 'left',
   ArrowRight: 'right',
 };
 
+/** As colunas só andam para os lados. */
+export const LANE_STEP_KEYS: Readonly<Record<string, LaneDirection>> = {
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+};
+
 /**
- * Movimento pelo teclado na alça do card: o clique (Espaço, Enter ou toque) pega e solta, as setas movem e o Esc
- * desfaz. Cada passo vira um anúncio para o leitor de tela.
+ * Movimento pelo teclado na alça de um card ou de uma coluna: o clique (Espaço, Enter ou toque) pega e solta, as setas
+ * movem e o Esc desfaz. Cada passo vira um anúncio para o leitor de tela.
  */
-export function useKeyboardMove(params: {
+export function useKeyboardMove<Direction extends string>(params: {
   readonly lanes: readonly BoardLane[];
   readonly setLanes: (lanes: readonly BoardLane[]) => void;
   readonly announce: (text: string) => void;
+  readonly keys: Readonly<Record<string, Direction>>;
+  /** Um passo na direção pedida; devolve o próprio `lanes` quando não há para onde ir. */
+  readonly step: (move: {
+    readonly lanes: readonly BoardLane[];
+    readonly id: string;
+    readonly direction: Direction;
+  }) => readonly BoardLane[];
+  readonly announcementFor: (event: {
+    readonly kind: MoveAnnouncement;
+    readonly lanes: readonly BoardLane[];
+    readonly id: string;
+  }) => string;
 }): KeyboardMove {
-  const { lanes, setLanes, announce } = params;
+  const { lanes, setLanes, announce, keys, announcementFor } = params;
   const [grab, setGrab] = useState<KeyboardGrab | null>(null);
   const handles = useRef(new Map<string, HTMLButtonElement>());
 
-  function focusHandle(cardId: string) {
-    handles.current.get(cardId)?.focus();
+  function focusHandle(id: string) {
+    handles.current.get(id)?.focus();
   }
 
-  function onHandleClick(cardId: string) {
-    if (grab?.cardId === cardId) {
+  function onHandleClick(id: string) {
+    if (grab?.id === id) {
       setGrab(null);
-      announce(announcementText({ kind: 'dropped', lanes, cardId }));
+      announce(announcementFor({ kind: 'dropped', lanes, id }));
       return;
     }
-    setGrab({ cardId, snapshot: lanes });
-    announce(announcementText({ kind: 'grabbed', lanes, cardId }));
+    setGrab({ id, snapshot: lanes });
+    announce(announcementFor({ kind: 'grabbed', lanes, id }));
   }
 
-  function cancel(grabbed: {
-    readonly snapshot: readonly BoardLane[];
-    readonly cardId: string;
-  }) {
-    const { snapshot, cardId } = grabbed;
+  function cancel(grabbed: KeyboardGrab) {
+    const { snapshot, id } = grabbed;
     flushSync(() => {
       setLanes(snapshot);
       setGrab(null);
     });
-    focusHandle(cardId);
-    announce(announcementText({ kind: 'cancelled', lanes: snapshot, cardId }));
+    focusHandle(id);
+    announce(announcementFor({ kind: 'cancelled', lanes: snapshot, id }));
   }
 
-  function step(move: {
-    readonly cardId: string;
-    readonly direction: StepDirection;
-  }) {
-    const { cardId, direction } = move;
-    const next = stepCard({ lanes, cardId, direction });
+  function step(move: { readonly id: string; readonly direction: Direction }) {
+    const { id, direction } = move;
+    const next = params.step({ lanes, id, direction });
     if (next === lanes) {
       return;
     }
-    // WHY: na troca de coluna o card remonta em outra lista; o render síncrono deixa a alça nova pronta para o foco.
+    // WHY: na troca de lugar o item remonta ou muda de posição no DOM e perde o foco; o render síncrono deixa a alça
+    // pronta para recebê-lo de volta.
     flushSync(() => setLanes(next));
-    focusHandle(cardId);
-    announce(announcementText({ kind: 'moved', lanes: next, cardId }));
+    focusHandle(id);
+    announce(announcementFor({ kind: 'moved', lanes: next, id }));
   }
 
   function onHandleKeyDown(
     event: KeyboardEvent<HTMLButtonElement>,
-    cardId: string,
+    id: string,
   ) {
-    if (grab?.cardId !== cardId) {
+    if (grab?.id !== id) {
       return;
     }
     if (event.key === 'Escape') {
       event.preventDefault();
-      cancel({ snapshot: grab.snapshot, cardId });
+      cancel(grab);
       return;
     }
-    const direction = STEP_KEYS[event.key];
+    const direction = keys[event.key];
     if (direction) {
       event.preventDefault();
-      step({ cardId, direction });
+      step({ id, direction });
     }
   }
 
-  function onHandleBlur(cardId: string) {
-    if (grab?.cardId !== cardId) {
+  function onHandleBlur(id: string) {
+    if (grab?.id !== id) {
       return;
     }
-    // WHY: a remontagem na troca de coluna também tira o foco da alça antiga. Só solta o card se, depois do
-    // render, o foco não voltou para a alça dele.
+    // WHY: a remontagem na troca de lugar também tira o foco da alça antiga. Só solta o item se, depois do render, o
+    // foco não voltou para a alça dele.
     queueMicrotask(() => {
-      if (document.activeElement !== handles.current.get(cardId)) {
-        setGrab((current) => (current?.cardId === cardId ? null : current));
+      if (document.activeElement !== handles.current.get(id)) {
+        setGrab((current) => (current?.id === id ? null : current));
       }
     });
   }
 
   function registerHandle(handle: {
-    readonly cardId: string;
+    readonly id: string;
     readonly element: HTMLButtonElement | null;
   }) {
     if (handle.element) {
-      handles.current.set(handle.cardId, handle.element);
+      handles.current.set(handle.id, handle.element);
     }
   }
 
   return {
-    grabbedId: grab?.cardId ?? null,
+    grabbedId: grab?.id ?? null,
     release: () => setGrab(null),
     onHandleClick,
     onHandleKeyDown,
