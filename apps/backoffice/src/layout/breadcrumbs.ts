@@ -31,8 +31,14 @@ export function breadcrumbs(pathname: string, titles: RouteTitles): Crumb[] {
   return crumbs;
 }
 
+/** Rota com título, já separada nos segmentos do endereço. */
+interface TitledRoute {
+  readonly parts: readonly string[];
+  readonly label: string;
+}
+
 function bestMatch(
-  routes: readonly { parts: readonly string[]; label: string }[],
+  routes: readonly TitledRoute[],
   segments: readonly string[],
 ): string | undefined {
   const matches = routes.filter(

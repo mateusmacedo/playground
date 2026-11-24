@@ -17,11 +17,13 @@ export function getErrorDigest(error: unknown): string | undefined {
   return undefined;
 }
 
+export interface ErrorScreenProps {
+  readonly error: unknown;
+  readonly retry: () => void;
+}
+
 /** Tela de erro inesperado, usada pelo `error.tsx` e pelo `global-error.tsx`. */
-export function ErrorScreen({
-  error,
-  retry,
-}: Readonly<{ error: unknown; retry: () => void }>) {
+export function ErrorScreen({ error, retry }: Readonly<ErrorScreenProps>) {
   const digest = getErrorDigest(error);
 
   return (

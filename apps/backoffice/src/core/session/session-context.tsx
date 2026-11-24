@@ -17,13 +17,15 @@ const PLACEHOLDER_SESSION: Session = {
   reload: () => undefined,
 };
 
+export interface SessionProviderProps {
+  readonly value?: Session;
+  readonly children: ReactNode;
+}
+
 export function SessionProvider({
   value = PLACEHOLDER_SESSION,
   children,
-}: Readonly<{
-  value?: Session;
-  children: ReactNode;
-}>) {
+}: Readonly<SessionProviderProps>) {
   return <SessionContext value={value}>{children}</SessionContext>;
 }
 

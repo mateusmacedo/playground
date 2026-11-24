@@ -3,17 +3,27 @@
 import { CButton, CPlaceholder, CSpinner } from '@coreui/react';
 import type { ReactNode } from 'react';
 
+export interface EmptyStateProps {
+  readonly message: string;
+  readonly children?: ReactNode;
+}
+
 /** Lista ou página sem dados: o texto e, como filhos, a ação ("Nenhuma cotação ainda." com "Nova cotação"). */
-export function EmptyState({
-  message,
-  children,
-}: Readonly<{ message: string; children?: ReactNode }>) {
+export function EmptyState({ message, children }: Readonly<EmptyStateProps>) {
   return (
     <div className="text-center text-body-secondary py-5">
       <p className="mb-2">{message}</p>
       {children}
     </div>
   );
+}
+
+export interface ErrorStateProps {
+  readonly message?: string;
+  readonly detail?: string;
+  readonly actionLabel?: string;
+  readonly busy?: boolean;
+  readonly onRetry: () => void;
 }
 
 /**
@@ -26,13 +36,7 @@ export function ErrorState({
   actionLabel = 'Tentar de novo',
   busy = false,
   onRetry,
-}: Readonly<{
-  message?: string;
-  detail?: string;
-  actionLabel?: string;
-  busy?: boolean;
-  onRetry: () => void;
-}>) {
+}: Readonly<ErrorStateProps>) {
   return (
     <div className="text-center py-5" role="alert">
       <p className="mb-1">{message}</p>
@@ -54,11 +58,16 @@ export function ErrorState({
 
 const PLACEHOLDER_WIDTHS = [12, 10, 11, 8, 9, 7] as const;
 
+export interface LoadingStateProps {
+  readonly rows?: number;
+  readonly label?: string;
+}
+
 /** Carregamento com o placeholder do CoreUI: linhas que piscam no lugar do conteúdo. */
 export function LoadingState({
   rows = 5,
   label = 'Carregando…',
-}: Readonly<{ rows?: number; label?: string }>) {
+}: Readonly<LoadingStateProps>) {
   return (
     // WHY: o <output> já tem o papel `status` implícito; é inline por padrão, então o `d-block` mantém o bloco da div
     // que ele substitui, e as linhas são <span> em bloco porque o <output> só aceita conteúdo de fraseado.

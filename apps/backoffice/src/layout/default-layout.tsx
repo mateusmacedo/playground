@@ -11,8 +11,12 @@ import { AppHeader } from './app-header';
 import { AppSidebar } from './app-sidebar';
 import { ShellProvider } from './shell-context';
 
+export interface SessionGateProps {
+  readonly children: ReactNode;
+}
+
 /** Enquanto a sessão não fica pronta, o estado dela ocupa o lugar da página. */
-export function SessionGate({ children }: Readonly<{ children: ReactNode }>) {
+export function SessionGate({ children }: Readonly<SessionGateProps>) {
   const { status, error, reload, signIn } = useSession();
   switch (status) {
     case 'loading':
@@ -44,8 +48,12 @@ export function SessionGate({ children }: Readonly<{ children: ReactNode }>) {
   }
 }
 
+export interface DefaultLayoutProps {
+  readonly children: ReactNode;
+}
+
 /** Layout do template do CoreUI: menu lateral, cabeçalho, conteúdo e rodapé. */
-export function DefaultLayout({ children }: Readonly<{ children: ReactNode }>) {
+export function DefaultLayout({ children }: Readonly<DefaultLayoutProps>) {
   return (
     <ShellProvider>
       <a

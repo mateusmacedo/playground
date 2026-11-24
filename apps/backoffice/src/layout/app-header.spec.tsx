@@ -22,10 +22,12 @@ function SidebarState() {
   return <p>menu {sidebarVisible ? 'visível' : 'escondido'}</p>;
 }
 
-function Providers({
-  session,
-  children,
-}: Readonly<{ session?: Session; children: ReactNode }>) {
+interface ProvidersProps {
+  readonly session?: Session;
+  readonly children: ReactNode;
+}
+
+function Providers({ session, children }: Readonly<ProvidersProps>) {
   return (
     <SessionProvider value={session}>
       <ShellProvider>{children}</ShellProvider>

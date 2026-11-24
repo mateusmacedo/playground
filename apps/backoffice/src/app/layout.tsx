@@ -14,9 +14,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: ReactNode }>) {
+interface RootLayoutProps {
+  readonly children: ReactNode;
+}
+
+export default function RootLayout({ children }: Readonly<RootLayoutProps>) {
   return (
     // WHY: o script do tema muda `data-coreui-theme` antes da hidratação; o aviso de divergência é esperado aqui.
     <html lang="pt-BR" suppressHydrationWarning>

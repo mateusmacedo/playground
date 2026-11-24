@@ -8,6 +8,10 @@ import {
   useSession,
 } from './session-context';
 
+interface WrapperProps {
+  readonly children: ReactNode;
+}
+
 function Probe() {
   useSession();
   return <p>dentro</p>;
@@ -16,7 +20,7 @@ function Probe() {
 describe('SessionProvider', () => {
   it('sem sessão informada, entrega a provisória: pronta, sem permissões', () => {
     const { result } = renderHook(() => useSession(), {
-      wrapper: ({ children }: { children: ReactNode }) => (
+      wrapper: ({ children }: WrapperProps) => (
         <SessionProvider>{children}</SessionProvider>
       ),
     });
@@ -30,7 +34,7 @@ describe('SessionProvider', () => {
 
   it('o reload da sessão provisória não faz nada e não falha', () => {
     const { result } = renderHook(() => useSession(), {
-      wrapper: ({ children }: { children: ReactNode }) => (
+      wrapper: ({ children }: WrapperProps) => (
         <SessionProvider>{children}</SessionProvider>
       ),
     });
@@ -47,7 +51,7 @@ describe('SessionProvider', () => {
     };
 
     const { result } = renderHook(() => useSession(), {
-      wrapper: ({ children }: { children: ReactNode }) => (
+      wrapper: ({ children }: WrapperProps) => (
         <SessionProvider value={session}>{children}</SessionProvider>
       ),
     });
@@ -70,7 +74,7 @@ describe('useSession', () => {
 
   it('a sessão opcional devolve a sessão dentro do provedor e nada fora dele', () => {
     const inside = renderHook(() => useOptionalSession(), {
-      wrapper: ({ children }: { children: ReactNode }) => (
+      wrapper: ({ children }: WrapperProps) => (
         <SessionProvider>{children}</SessionProvider>
       ),
     });

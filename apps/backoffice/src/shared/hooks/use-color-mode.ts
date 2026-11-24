@@ -43,15 +43,17 @@ function applyColorMode(mode: ColorMode): void {
   document.documentElement.dispatchEvent(new Event('ColorSchemeChange'));
 }
 
+export interface UseColorModeResult {
+  readonly colorMode: ColorMode;
+  readonly setColorMode: (mode: ColorMode) => void;
+}
+
 /**
  * Tema do painel (claro, escuro ou automático), guardado no `localStorage` sob `storageKey`. Sem escolha salva o modo
  * é `auto` e acompanha o sistema, como o script de bootstrap de `layout/color-mode.ts`. A escolha só é salva quando
  * a pessoa troca o tema.
  */
-export function useColorMode(storageKey: string): {
-  colorMode: ColorMode;
-  setColorMode: (mode: ColorMode) => void;
-} {
+export function useColorMode(storageKey: string): UseColorModeResult {
   const [colorMode, setColorMode] = useState<ColorMode>(() =>
     readStoredMode(storageKey),
   );

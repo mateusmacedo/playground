@@ -21,17 +21,19 @@ import {
   type NavLink,
 } from './nav';
 
+interface NavLabelProps {
+  readonly name: string;
+  readonly icon?: NavIcon;
+  readonly badge?: NavBadge;
+  readonly indent?: boolean;
+}
+
 function NavLabel({
   name,
   icon,
   badge,
   indent = false,
-}: Readonly<{
-  name: string;
-  icon?: NavIcon;
-  badge?: NavBadge;
-  indent?: boolean;
-}>) {
+}: Readonly<NavLabelProps>) {
   return (
     <>
       {icon ? (
@@ -53,10 +55,12 @@ function NavLabel({
   );
 }
 
+export interface AppSidebarNavProps {
+  readonly items: readonly NavItem[];
+}
+
 /** Itens do menu lateral, com rolagem própria e o item da rota atual marcado. */
-export function AppSidebarNav({
-  items,
-}: Readonly<{ items: readonly NavItem[] }>) {
+export function AppSidebarNav({ items }: Readonly<AppSidebarNavProps>) {
   const pathname = usePathname();
 
   const renderLink = (link: NavLink, indent = false) => (

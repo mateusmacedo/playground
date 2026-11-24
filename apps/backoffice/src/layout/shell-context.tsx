@@ -18,8 +18,12 @@ interface ShellState {
 
 const ShellContext = createContext<ShellState | null>(null);
 
+export interface ShellProviderProps {
+  readonly children: ReactNode;
+}
+
 /** Estado do menu lateral, compartilhado entre o próprio menu e o botão do cabeçalho que o mostra e esconde. */
-export function ShellProvider({ children }: Readonly<{ children: ReactNode }>) {
+export function ShellProvider({ children }: Readonly<ShellProviderProps>) {
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [sidebarUnfoldable, setSidebarUnfoldable] = useState(false);
   const value = useMemo<ShellState>(

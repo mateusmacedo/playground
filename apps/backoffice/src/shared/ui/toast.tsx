@@ -49,11 +49,15 @@ interface ToastItem {
 
 const ToastContext = createContext<ToastApi | null>(null);
 
+export interface ToastProviderProps {
+  readonly children: ReactNode;
+}
+
 /**
  * Toaster no canto superior direito, com marcador de cor, título, hora e fechamento automático. Vai uma vez na raiz;
  * os avisos são anunciados com `aria-live="polite"`, sem interromper a leitura.
  */
-export function ToastProvider({ children }: Readonly<{ children: ReactNode }>) {
+export function ToastProvider({ children }: Readonly<ToastProviderProps>) {
   // WHY: uma lista no estado, e não o `push` do CToaster, que guarda só o último aviso: dois `show()` no mesmo
   // instante são agrupados numa renderização e o primeiro se perderia.
   const [toasts, setToasts] = useState<readonly ToastItem[]>([]);
