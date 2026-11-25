@@ -30,3 +30,11 @@ Além do que o `AGENTS.md` da raiz exige ao fim de toda tarefa:
 2. `bash tools/lint-actions.sh` se mexeu em `.github/`;
 3. `pnpm nx validate infra-local` se mexeu em `infra/local`;
 4. `node tools/ai/check-instructions.mjs` se mexeu em `AGENTS.md`, `CLAUDE.md`, `.agents/` ou `.claude/`.
+
+## Nada em paralelo
+
+**OBRIGATÓRIO** para o agente: testes, lint, typecheck, build e e2e **nunca rodam ao mesmo tempo**. Um termina, o próximo começa.
+
+- Um target por chamada do Nx: `pnpm nx affected -t test`, depois `-t lint`, depois `-t build`. Nada de `-t lint typecheck test build` numa chamada só, porque o Nx roda os targets juntos.
+
+Motivo: com o build rodando junto, os testes de interface do painel estouram o limite de 5 s por disputa de CPU. A falha não é do teste nem do código.
