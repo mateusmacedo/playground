@@ -1,5 +1,6 @@
 import type {
   BlockData,
+  Branch,
   Graph,
   GraphEdge,
   GraphNode,
@@ -15,17 +16,50 @@ import {
 /** Deslocamento da cópia em relação ao original, para as duas não ficarem sobrepostas. */
 export const DUPLICATE_OFFSET: Point = { x: 40, y: 40 };
 
+export interface Selectable {
+  readonly selected?: boolean;
+}
+
+/** Os mesmos itens com a seleção desfeita; quem já não estava selecionado mantém a referência. */
+export function unselected<T extends Selectable>(items: readonly T[]): T[] {
+  const result: T[] = [];
+  for (const item of items) {
+    if (item.selected) {
+      result.push({ ...item, selected: false });
+    } else {
+      result.push(item);
+    }
+  }
+  return result;
+}
+
+/** Conexão que pode levar um rótulo digitado. */
+export interface LabeledEdge extends GraphEdge {
+  readonly data?: LinkData;
+}
+
+function selectedNodeIds(nodes: readonly GraphNode[]): Set<string> {
+  const ids = new Set<string>();
+  for (const node of nodes) {
+    if (node.selected) {
+      ids.add(node.id);
+    }
+  }
+  return ids;
+}
+
 /** Tira os blocos e as conexões selecionados; as conexões dos blocos removidos saem junto. */
 export function deleteSelection<N extends GraphNode, E extends GraphEdge>(
   graph: Graph<N, E>,
 ): Graph<N, E> {
-  const removed = new Set(
-    graph.nodes.filter((node) => node.selected).map((node) => node.id),
-  );
-  const edges = graph.edges.filter(
-    (edge) =>
-      !edge.selected && !removed.has(edge.source) && !removed.has(edge.target),
-  );
+  const removed = selectedNodeIds(graph.nodes);
+  const edges: E[] = [];
+  for (const edge of graph.edges) {
+    const touchesRemoved = removed.has(edge.source) || removed.has(edge.target);
+    if (!edge.selected && !touchesRemoved) {
+      edges.push(edge);
+    }
+  }
   if (removed.size === 0 && edges.length === graph.edges.length) {
     return graph;
   }
@@ -80,13 +114,9 @@ export function duplicateSelection<N extends GraphNode, E extends GraphEdge>(
     }
   }
 
-  const nodes = graph.nodes.map((node) =>
-    node.selected ? { ...node, selected: false } : node,
-  );
-  const edges = graph.edges.map((edge) =>
-    edge.selected ? { ...edge, selected: false } : edge,
-  );
-  return { nodes: [...nodes, ...nodeCopies], edges: [...edges, ...edgeCopies] };
+  const nodes = [...unselected(graph.nodes), ...nodeCopies];
+  const edges = [...unselected(graph.edges), ...edgeCopies];
+  return { nodes, edges };
 }
 
 export interface ReconnectEdgeParams<N extends GraphNode, E extends GraphEdge> {
@@ -109,20 +139,21 @@ export function reconnectEdge<N extends GraphNode, E extends GraphEdge>(
   if (!exists || problem !== null) {
     return graph;
   }
-  return {
-    nodes: graph.nodes,
-    edges: graph.edges.map((edge) =>
-      edge.id === edgeId
-        ? {
-            ...edge,
-            source: connection.source,
-            target: connection.target,
-            sourceHandle: connection.sourceHandle ?? null,
-            targetHandle: connection.targetHandle ?? null,
-          }
-        : edge,
-    ),
-  };
+  const edges: E[] = [];
+  for (const edge of graph.edges) {
+    if (edge.id !== edgeId) {
+      edges.push(edge);
+      continue;
+    }
+    edges.push({
+      ...edge,
+      source: connection.source,
+      target: connection.target,
+      sourceHandle: connection.sourceHandle ?? null,
+      targetHandle: connection.targetHandle ?? null,
+    });
+  }
+  return { nodes: graph.nodes, edges };
 }
 
 interface WithBlockDataParams<N extends GraphNode, E extends GraphEdge> {
@@ -204,12 +235,17 @@ export function renameBranch<N extends GraphNode, E extends GraphEdge>(
   const { branchId, label } = params;
   return withBlockData({
     ...params,
-    change: (data) => ({
-      ...data,
-      branches: (data.branches ?? []).map((branch) =>
-        branch.id === branchId ? { ...branch, label } : branch,
-      ),
-    }),
+    change: (data) => {
+      const branches: Branch[] = [];
+      for (const branch of data.branches ?? []) {
+        if (branch.id === branchId) {
+          branches.push({ ...branch, label });
+        } else {
+          branches.push(branch);
+        }
+      }
+      return { ...data, branches };
+    },
   });
 }
 
@@ -226,45 +262,49 @@ export function removeBranch<N extends GraphNode, E extends GraphEdge>(
   const { nodeId, branchId } = params;
   const withoutBranch = withBlockData({
     ...params,
-    change: (data) => ({
-      ...data,
-      branches: (data.branches ?? []).filter(
-        (branch) => branch.id !== branchId,
-      ),
-    }),
+    change: (data) => {
+      const branches = data.branches ?? [];
+      const kept = branches.filter((branch) => branch.id !== branchId);
+      return { ...data, branches: kept };
+    },
   });
   if (withoutBranch === params.graph) {
     return withoutBranch;
   }
-  return {
-    nodes: withoutBranch.nodes,
-    edges: withoutBranch.edges.filter(
-      (edge) => !(edge.source === nodeId && sourceHandleOf(edge) === branchId),
-    ),
-  };
+  const edges: E[] = [];
+  for (const edge of withoutBranch.edges) {
+    const leavesRemovedBranch =
+      edge.source === nodeId && sourceHandleOf(edge) === branchId;
+    if (!leavesRemovedBranch) {
+      edges.push(edge);
+    }
+  }
+  return { nodes: withoutBranch.nodes, edges };
 }
 
 export interface UpdateEdgeLabelParams<
   N extends GraphNode,
-  E extends GraphEdge & { readonly data?: LinkData },
+  E extends LabeledEdge,
 > {
   readonly graph: Graph<N, E>;
   readonly edgeId: string;
   readonly label: string;
 }
 
-export function updateEdgeLabel<
-  N extends GraphNode,
-  E extends GraphEdge & { readonly data?: LinkData },
->(params: UpdateEdgeLabelParams<N, E>): Graph<N, E> {
+export function updateEdgeLabel<N extends GraphNode, E extends LabeledEdge>(
+  params: UpdateEdgeLabelParams<N, E>,
+): Graph<N, E> {
   const { graph, edgeId, label } = params;
   if (!graph.edges.some((edge) => edge.id === edgeId)) {
     return graph;
   }
-  return {
-    nodes: graph.nodes,
-    edges: graph.edges.map((edge) =>
-      edge.id === edgeId ? { ...edge, data: { ...edge.data, label } } : edge,
-    ),
-  };
+  const edges: E[] = [];
+  for (const edge of graph.edges) {
+    if (edge.id === edgeId) {
+      edges.push({ ...edge, data: { ...edge.data, label } });
+    } else {
+      edges.push(edge);
+    }
+  }
+  return { nodes: graph.nodes, edges };
 }

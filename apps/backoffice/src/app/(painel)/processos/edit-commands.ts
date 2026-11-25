@@ -5,6 +5,7 @@ import {
   duplicateSelection,
   removeBranch,
   renameBranch,
+  unselected,
   updateBlockData,
   updateEdgeLabel,
 } from './model/editing';
@@ -18,22 +19,6 @@ import type {
 import type { GraphChange } from './use-graph-history';
 
 const EMPTY_GRAPH: ProcessGraph = { nodes: [], edges: [] };
-
-interface Selectable {
-  readonly selected?: boolean;
-}
-
-function unselected<T extends Selectable>(items: readonly T[]): T[] {
-  const result: T[] = [];
-  for (const item of items) {
-    if (item.selected) {
-      result.push({ ...item, selected: false });
-    } else {
-      result.push(item);
-    }
-  }
-  return result;
-}
 
 function clearedGraph(current: ProcessGraph): ProcessGraph {
   const isEmpty = current.nodes.length === 0 && current.edges.length === 0;
