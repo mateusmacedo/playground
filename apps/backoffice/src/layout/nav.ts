@@ -50,7 +50,13 @@ export const navItems: readonly NavItem[] = [
     icon: cilColumns,
     badge: { text: 'Beta', color: 'info' },
   },
-  { kind: 'link', name: 'Processos', href: '/processos', icon: cilSitemap },
+  {
+    kind: 'link',
+    name: 'Processos',
+    href: '/processos',
+    icon: cilSitemap,
+    badge: { text: 'Beta', color: 'info' },
+  },
 ];
 
 /** Tira do menu o que a sessão não libera, os grupos que ficaram sem filhos e os títulos que ficaram sem itens. */

@@ -43,6 +43,9 @@ test.describe('editor de processos', () => {
       page.getByRole('heading', { level: 1, name: 'Editor de processos' }),
     ).toBeVisible();
     await expect(page.getByLabel('breadcrumb')).toContainText('Processos');
+    await expect(
+      page.getByRole('main').getByText('Beta', { exact: true }),
+    ).toBeVisible();
     await expect(page.getByRole('region', { name: 'Blocos' })).toBeVisible();
     await expect(
       page.getByRole('region', { name: 'Propriedades' }),

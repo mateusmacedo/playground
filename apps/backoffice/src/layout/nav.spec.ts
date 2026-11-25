@@ -39,6 +39,15 @@ describe('navItems', () => {
     );
     expect(board).toMatchObject({ badge: { text: 'Beta', color: 'info' } });
   });
+
+  it('marca o editor de processos como beta', () => {
+    const processes = navItems.find(
+      (item) => item.kind === 'link' && item.href === '/processos',
+    );
+    expect(processes).toMatchObject({
+      badge: { text: 'Beta', color: 'info' },
+    });
+  });
 });
 
 describe('buildNav', () => {

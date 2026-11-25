@@ -309,6 +309,37 @@
   border-radius: var(--cui-border-radius);
 }
 
+// A partir de `lg` o editor vai até o rodapé, como o quadro: o canvas ocupa a altura que sobra, e a biblioteca e as
+// propriedades rolam por dentro, com a barra de ações sempre à vista.
+@media (min-width: 992px) {
+  .process-page__body,
+  .process-editor {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .process-editor {
+    flex: 1 1 auto;
+  }
+
+  .process-editor__body {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .process-editor__palette,
+  .process-editor__properties {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .process-editor__canvas {
+    height: auto;
+    min-height: 0;
+  }
+}
+
 .process-palette-item,
 .process-block {
   border: 1px solid var(--cui-border-color);

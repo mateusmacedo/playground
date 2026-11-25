@@ -13,6 +13,10 @@ describe('ProcessesPage', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: 'Editor de processos' }),
     ).toBeTruthy();
+    expect(screen.getByText('Beta')).toBeTruthy();
+    expect(
+      screen.getByText('Em teste: pode mudar, e o processo não é gravado.'),
+    ).toBeTruthy();
     expect(await screen.findByText('Primeira etapa')).toBeTruthy();
   });
 
