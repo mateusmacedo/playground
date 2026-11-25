@@ -34,7 +34,7 @@ async function dropBlock(page: Page, label: string) {
   const item = page
     .getByRole('region', { name: 'Blocos' })
     .getByRole('listitem')
-    .filter({ hasText: label });
+    .filter({ hasText: new RegExp(`^${label}`) });
   await item.dragTo(canvas(page), { targetPosition: { x: 640, y: 140 } });
 }
 
