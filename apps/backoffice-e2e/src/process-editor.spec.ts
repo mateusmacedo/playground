@@ -90,6 +90,11 @@ test.describe('editor de processos', () => {
     });
     await expect(issueStatus(page)).toHaveText('1 problema');
     await expect(canvas(page).locator('.react-flow__edge')).toHaveCount(3);
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'Conexão recusada' }),
+    ).toHaveText(
+      'Conexão recusada: o ponto de saída já está ligado a outro bloco.',
+    );
 
     await page.getByRole('button', { name: 'Desfazer' }).click();
     await expect(issueStatus(page)).toHaveText('2 problemas');
