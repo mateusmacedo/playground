@@ -1,6 +1,12 @@
 import { createBlock } from './model/block-factory';
 import type { BlockKind, Point } from './model/blocks';
-import { duplicateSelection } from './model/clipboard';
+import {
+  type Clip,
+  copySelection,
+  duplicateSelection,
+  pasteClip,
+} from './model/clipboard';
+import { suggestedPairId } from './model/composite';
 import {
   addBranch,
   deleteSelection,
@@ -10,14 +16,14 @@ import {
   updateBlockData,
   updateEdgeLabel,
 } from './model/editing';
-import type { ProcessGraph, ProcessNode } from './process-graph';
+import type { ProcessEdge, ProcessGraph, ProcessNode } from './process-graph';
 import type {
   RemoveBranchChange,
   RenameBranchChange,
   UpdateBlockChange,
   UpdateEdgeLabelChange,
 } from './properties/panel-commands';
-import type { GraphChange } from './use-graph-history';
+import type { GraphChange } from './use-document-history';
 
 const EMPTY_GRAPH: ProcessGraph = { nodes: [], edges: [] };
 
@@ -34,9 +40,16 @@ export interface AddBlockParams {
   readonly position: Point;
 }
 
+/** Trecho copiado, guardado entre renders; colar funciona em qualquer nível do processo. */
+export interface ClipboardRef {
+  current: Clip<ProcessNode, ProcessEdge> | null;
+}
+
 export interface EditCommandsParams {
   readonly change: (change: GraphChange) => void;
   readonly createId: () => string;
+  readonly graph: ProcessGraph;
+  readonly clipboard: ClipboardRef;
 }
 
 /**
@@ -46,17 +59,23 @@ export interface EditCommandsParams {
 export function createEditCommands({
   change,
   createId,
+  graph,
+  clipboard,
 }: Readonly<EditCommandsParams>) {
   function addBlock({ kind, position }: Readonly<AddBlockParams>) {
-    const block: ProcessNode = {
-      ...createBlock({ kind, position, createId }),
-      selected: true,
-    };
+    const created: ProcessNode = createBlock({ kind, position, createId });
     change({
-      update: (current) => ({
-        nodes: [...unselected(current.nodes), block],
-        edges: unselected(current.edges),
-      }),
+      update: (current) => {
+        // NOTE: a sincronização nova já aponta para a abertura quando só existe uma sem par.
+        const pairId = suggestedPairId({ graph: current, kind });
+        const data =
+          pairId === undefined ? created.data : { ...created.data, pairId };
+        const block: ProcessNode = { ...created, data, selected: true };
+        return {
+          nodes: [...unselected(current.nodes), block],
+          edges: unselected(current.edges),
+        };
+      },
     });
   }
 
@@ -92,6 +111,23 @@ export function createEditCommands({
     change({ update: clearedGraph });
   }
 
+  function copySelected() {
+    const clip = copySelection(graph);
+    if (clip !== null) {
+      clipboard.current = clip;
+    }
+  }
+
+  function paste() {
+    const clip = clipboard.current;
+    if (clip === null) {
+      return;
+    }
+    change({
+      update: (current) => pasteClip({ graph: current, clip, createId }),
+    });
+  }
+
   return {
     addBlock,
     updateBlock,
@@ -99,14 +135,21 @@ export function createEditCommands({
     deleteSelected,
     duplicateSelected,
     clear,
+    copySelected,
+    paste,
   };
 }
 
-/** Ramos da Decisão: criar, renomear e remover, cada um como um passo do histórico. */
+export interface BranchCommandsParams {
+  readonly change: (change: GraphChange) => void;
+  readonly createId: () => string;
+}
+
+/** Ramos de decisões e aberturas: criar, renomear e remover, cada um como um passo do histórico. */
 export function createBranchCommands({
   change,
   createId,
-}: Readonly<EditCommandsParams>) {
+}: Readonly<BranchCommandsParams>) {
   function addDecisionBranch(nodeId: string) {
     change({
       update: (current) => addBranch({ graph: current, nodeId, createId }),

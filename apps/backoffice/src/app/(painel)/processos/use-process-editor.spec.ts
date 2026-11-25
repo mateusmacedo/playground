@@ -299,3 +299,152 @@ describe('useProcessEditor', () => {
     expect(result.current.graph.edges[1]?.data).toEqual({ label: 'pronto' });
   });
 });
+
+describe('useProcessEditor nas operações compostas', () => {
+  function undoOnce(result: Editor) {
+    act(() => result.current.undo());
+  }
+
+  it('insere um bloco numa conexão e desfaz em um passo', () => {
+    const { result } = setup();
+
+    act(() =>
+      result.current.insertOnEdge({ edgeId: 'task-1-end', kind: 'timer' }),
+    );
+
+    expect(result.current.graph.nodes).toHaveLength(4);
+    expect(result.current.graph.edges).toHaveLength(3);
+    undoOnce(result);
+    expect(result.current.graph.nodes).toHaveLength(3);
+    expect(result.current.graph.edges.map((edge) => edge.target)).toEqual([
+      'task-1',
+      'end',
+    ]);
+  });
+
+  it('cria um bloco já ligado à saída e desfaz em um passo', () => {
+    const initial: Graph = {
+      nodes: sampleProcess.nodes,
+      edges: sampleProcess.edges.filter((edge) => edge.id !== 'task-1-end'),
+    };
+    const { result } = setup(initial);
+
+    act(() =>
+      result.current.addConnectedBlock({
+        source: 'task-1',
+        sourceHandle: 'out',
+        kind: 'end',
+        position: { x: 0, y: 400 },
+      }),
+    );
+
+    expect(result.current.graph.edges.at(-1)).toMatchObject({
+      source: 'task-1',
+    });
+    undoOnce(result);
+    expect(result.current.graph.edges).toHaveLength(1);
+    expect(result.current.graph.nodes).toHaveLength(3);
+  });
+
+  it('converte a Etapa e desfaz em um passo', () => {
+    const { result } = setup();
+
+    act(() => result.current.convert({ nodeId: 'task-1', to: 'human-task' }));
+    expect(result.current.graph.nodes[1]?.type).toBe('human-task');
+    undoOnce(result);
+    expect(result.current.graph.nodes[1]?.type).toBe('task');
+  });
+
+  it('cria raia, move a tarefa para ela e desfaz cada passo', () => {
+    const { result } = setup();
+
+    act(() => result.current.addLane());
+    const laneId = result.current.lanes[0]?.id ?? '';
+    act(() => result.current.moveToLane({ nodeId: 'task-1', laneId }));
+
+    expect(result.current.graph.nodes[1]?.data.laneId).toBe(laneId);
+    undoOnce(result);
+    expect(result.current.graph.nodes[1]?.data.laneId).toBeUndefined();
+    expect(result.current.lanes).toHaveLength(1);
+  });
+
+  it('copia e cola a seleção com ids novos e desfaz a colagem', () => {
+    const { result } = setup();
+    selectNode({ result, id: 'task-1' });
+
+    act(() => result.current.copySelected());
+    act(() => result.current.paste());
+
+    expect(nodeIds(result)).toEqual(['start', 'task-1', 'end', 'new-1']);
+    undoOnce(result);
+    expect(nodeIds(result)).toEqual(['start', 'task-1', 'end']);
+  });
+
+  it('organiza automaticamente e desfaz em um passo', () => {
+    const { result } = setup();
+    const before = result.current.graph.nodes.map((node) => node.position);
+
+    act(() => result.current.autoLayout());
+    expect(result.current.graph.nodes.map((node) => node.position)).not.toEqual(
+      before,
+    );
+    undoOnce(result);
+    expect(result.current.graph.nodes.map((node) => node.position)).toEqual(
+      before,
+    );
+  });
+
+  it('limpa o canvas e recupera tudo com desfazer', () => {
+    const { result } = setup();
+
+    act(() => result.current.clear());
+    expect(result.current.graph.nodes).toEqual([]);
+    undoOnce(result);
+    expect(nodeIds(result)).toEqual(['start', 'task-1', 'end']);
+  });
+});
+
+describe('useProcessEditor nos subprocessos', () => {
+  it('abre o subprocesso, edita o canvas interno e volta pela trilha', () => {
+    const { result } = setup();
+    act(() =>
+      result.current.addBlock({ kind: 'subprocess', position: { x: 0, y: 0 } }),
+    );
+    const subprocessId = result.current.graph.nodes.at(-1)?.id ?? '';
+
+    act(() => result.current.openSubprocess(subprocessId));
+    expect(result.current.crumbs).toEqual([
+      { nodeId: subprocessId, name: 'Subprocesso' },
+    ]);
+    expect(result.current.graph.nodes.map((node) => node.type)).toEqual([
+      'start',
+      'end',
+    ]);
+
+    act(() =>
+      result.current.addBlock({ kind: 'task', position: { x: 0, y: 80 } }),
+    );
+    expect(result.current.graph.nodes).toHaveLength(3);
+
+    act(() => result.current.openLevel(0));
+    expect(result.current.path).toEqual([]);
+    const subprocess = result.current.graph.nodes.find(
+      (node) => node.id === subprocessId,
+    );
+    expect(subprocess?.data.process?.nodes).toHaveLength(3);
+  });
+
+  it('volta ao processo principal quando o subprocesso aberto é desfeito', () => {
+    const { result } = setup();
+    act(() =>
+      result.current.addBlock({ kind: 'subprocess', position: { x: 0, y: 0 } }),
+    );
+    const subprocessId = result.current.graph.nodes.at(-1)?.id ?? '';
+    act(() => result.current.openSubprocess(subprocessId));
+
+    act(() => result.current.undo());
+
+    expect(result.current.path).toEqual([]);
+    expect(nodeIds(result)).toEqual(['start', 'task-1', 'end']);
+  });
+});

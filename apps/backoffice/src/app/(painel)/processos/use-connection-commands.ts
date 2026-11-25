@@ -4,7 +4,7 @@ import { useRef } from 'react';
 import { connectionProblem } from './model/connections';
 import { reconnectEdge } from './model/editing';
 import type { ProcessEdge, ProcessGraph } from './process-graph';
-import type { GraphChange } from './use-graph-history';
+import type { GraphChange } from './use-document-history';
 
 export interface UseConnectionCommandsParams {
   readonly graph: ProcessGraph;

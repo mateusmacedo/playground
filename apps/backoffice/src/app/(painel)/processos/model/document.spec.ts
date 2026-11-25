@@ -2,7 +2,7 @@ import type { GraphNode } from './blocks';
 import {
   addLane,
   assignLane,
-  LANE_HEIGHT,
+  LANE_WIDTH,
   type Lane,
   laneAtBlock,
   laneBands,
@@ -14,12 +14,12 @@ import {
 import { block } from './test-graph';
 
 const lanes: Lane[] = [
-  { id: 'sales', name: 'Vendas', height: LANE_HEIGHT },
-  { id: 'finance', name: 'Financeiro', height: LANE_HEIGHT },
+  { id: 'sales', name: 'Vendas', width: LANE_WIDTH },
+  { id: 'finance', name: 'Financeiro', width: LANE_WIDTH },
 ];
 
-function at(node: GraphNode, y: number): GraphNode {
-  return { ...node, position: { x: 100, y } };
+function at(node: GraphNode, x: number): GraphNode {
+  return { ...node, position: { x, y: 100 } };
 }
 
 const document: ProcessDocument = {
@@ -41,9 +41,9 @@ const document: ProcessDocument = {
           type: 'automated-task',
           data: { laneId: 'finance' },
         }),
-        256,
+        320,
       ),
-      at(block({ id: 'free', type: 'task' }), 600),
+      at(block({ id: 'free', type: 'task' }), 800),
     ],
     edges: [],
   },
@@ -54,14 +54,14 @@ function nodeOf(source: ProcessDocument, id: string): GraphNode | undefined {
 }
 
 describe('geometria das raias', () => {
-  it('empilha as raias na ordem da lista', () => {
-    expect(laneBands(lanes).map((band) => band.top)).toEqual([0, LANE_HEIGHT]);
+  it('põe as raias lado a lado na ordem da lista', () => {
+    expect(laneBands(lanes).map((band) => band.left)).toEqual([0, LANE_WIDTH]);
   });
 
   it('acha a raia pelo centro do bloco', () => {
-    expect(laneAtBlock({ lanes, y: 64 })?.id).toBe('sales');
-    expect(laneAtBlock({ lanes, y: 256 })?.id).toBe('finance');
-    expect(laneAtBlock({ lanes, y: 600 })).toBeUndefined();
+    expect(laneAtBlock({ lanes, x: 64 })?.id).toBe('sales');
+    expect(laneAtBlock({ lanes, x: 320 })?.id).toBe('finance');
+    expect(laneAtBlock({ lanes, x: 800 })).toBeUndefined();
   });
 });
 
@@ -72,7 +72,7 @@ describe('addLane', () => {
     expect(result.lanes.at(-1)).toEqual({
       id: 'ops',
       name: 'Raia 3',
-      height: LANE_HEIGHT,
+      width: LANE_WIDTH,
     });
   });
 });
@@ -95,9 +95,9 @@ describe('moveLane', () => {
     const result = moveLane({ document, laneId: 'finance', direction: 'up' });
 
     expect(result.lanes.map((lane) => lane.id)).toEqual(['finance', 'sales']);
-    expect(nodeOf(result, 'charge')?.position.y).toBe(256 - LANE_HEIGHT);
-    expect(nodeOf(result, 'review')?.position.y).toBe(64 + LANE_HEIGHT);
-    expect(nodeOf(result, 'free')?.position.y).toBe(600);
+    expect(nodeOf(result, 'charge')?.position.x).toBe(320 - LANE_WIDTH);
+    expect(nodeOf(result, 'review')?.position.x).toBe(64 + LANE_WIDTH);
+    expect(nodeOf(result, 'free')?.position.x).toBe(800);
   });
 
   it('não move além das pontas', () => {
@@ -120,7 +120,7 @@ describe('assignLane', () => {
       laneId: 'finance',
       role: 'Financeiro',
     });
-    expect(laneAtBlock({ lanes, y: review?.position.y ?? 0 })?.id).toBe(
+    expect(laneAtBlock({ lanes, x: review?.position.x ?? 0 })?.id).toBe(
       'finance',
     );
   });
@@ -133,7 +133,7 @@ describe('syncLanesFromPosition', () => {
       graph: {
         ...document.graph,
         nodes: document.graph.nodes.map((node) =>
-          node.id === 'review' ? at(node, 256) : node,
+          node.id === 'review' ? at(node, 320) : node,
         ),
       },
     };
@@ -149,7 +149,7 @@ describe('syncLanesFromPosition', () => {
     });
   });
 
-  it('tira a raia do bloco que saiu de todas as faixas', () => {
+  it('tira a raia do bloco que saiu de todas as colunas', () => {
     const result = syncLanesFromPosition({
       document: {
         ...document,
