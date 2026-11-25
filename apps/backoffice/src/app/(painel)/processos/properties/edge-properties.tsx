@@ -3,7 +3,7 @@ import { useId } from 'react';
 
 import { blockName } from '../model/blocks';
 import { sourceHandleOf } from '../model/connections';
-import type { ProcessIssue } from '../model/validation';
+import type { ProcessIssue } from '../model/issues';
 import type { ProcessEdge, ProcessGraph } from '../process-graph';
 import { IssueList } from './issue-list';
 import type { PanelCommands } from './panel-commands';

@@ -2,7 +2,7 @@ import { cilWarning } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
 
 import type { BlockKind } from '../model/blocks';
-import type { ProcessIssue } from '../model/validation';
+import type { ProcessIssue } from '../model/issues';
 
 export interface BlockClassNameParams {
   readonly kind: BlockKind;

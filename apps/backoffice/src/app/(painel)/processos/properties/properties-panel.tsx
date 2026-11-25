@@ -1,6 +1,6 @@
 import { useId } from 'react';
 
-import type { ProcessIssue } from '../model/validation';
+import type { ProcessIssue } from '../model/issues';
 import type { ProcessGraph } from '../process-graph';
 import { BlockProperties } from './block-properties';
 import { EdgeProperties } from './edge-properties';

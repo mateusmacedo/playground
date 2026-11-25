@@ -1,7 +1,7 @@
 import { cilWarning } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
 
-import type { ProcessIssue } from '../model/validation';
+import type { ProcessIssue } from '../model/issues';
 
 export interface IssueListProps {
   readonly issues: readonly ProcessIssue[];

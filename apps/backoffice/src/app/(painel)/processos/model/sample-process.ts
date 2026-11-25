@@ -7,7 +7,7 @@ export const sampleProcess: Graph = {
       id: 'start',
       type: 'start',
       position: { x: 40, y: 0 },
-      data: { label: 'Início' },
+      data: { label: 'Início', trigger: 'manual' },
     },
     {
       id: 'task-1',
@@ -19,7 +19,7 @@ export const sampleProcess: Graph = {
       id: 'end',
       type: 'end',
       position: { x: 40, y: 280 },
-      data: { label: 'Fim' },
+      data: { label: 'Fim', outcome: 'Concluído' },
     },
   ],
   edges: [

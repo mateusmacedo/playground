@@ -10,8 +10,8 @@ import {
 } from './model/blocks';
 import { sourceHandleOf } from './model/connections';
 import { BLOCK_SIZE } from './model/geometry';
+import type { ProcessIssue } from './model/issues';
 import { findOutputPort } from './model/ports';
-import type { ProcessIssue } from './model/validation';
 
 export type ProcessNode = Node<BlockData, BlockKind>;
 export type ProcessEdge = Edge<LinkData>;

@@ -1,7 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-
+import type { ProcessIssue } from '../model/issues';
 import { block, decisionBranches, link } from '../model/test-graph';
-import type { ProcessIssue } from '../model/validation';
 import { type ProcessGraph, toProcessGraph } from '../process-graph';
 import type { PanelCommands } from './panel-commands';
 import { PropertiesPanel } from './properties-panel';
@@ -88,7 +87,13 @@ describe('PropertiesPanel', () => {
   it('lista os problemas do processo', () => {
     renderPanel({
       graph: { nodes: base.nodes.slice(0, 1), edges: [] },
-      issues: [{ key: 'x', message: 'Início não tem conexão de saída.' }],
+      issues: [
+        {
+          key: 'x',
+          severity: 'error',
+          message: 'Início não tem conexão de saída.',
+        },
+      ],
     });
 
     expect(screen.getByText(/1 bloco e 0 conexões/)).toBeTruthy();
@@ -120,8 +125,18 @@ describe('PropertiesPanel', () => {
     const commands = renderPanel({
       graph: selecting({ ids: ['task'] }),
       issues: [
-        { key: 'a', message: 'Revisar não tem saída.', nodeId: 'task' },
-        { key: 'b', message: 'Outro problema.', nodeId: 'decision' },
+        {
+          key: 'a',
+          severity: 'error',
+          message: 'Revisar não tem saída.',
+          nodeId: 'task',
+        },
+        {
+          key: 'b',
+          severity: 'error',
+          message: 'Outro problema.',
+          nodeId: 'decision',
+        },
       ],
     });
 

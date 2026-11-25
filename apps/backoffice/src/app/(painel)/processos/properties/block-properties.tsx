@@ -2,7 +2,7 @@ import { CFormInput, CFormTextarea } from '@coreui/react';
 import { useId } from 'react';
 
 import { kindOf, specOf } from '../model/blocks';
-import type { ProcessIssue } from '../model/validation';
+import type { ProcessIssue } from '../model/issues';
 import type { ProcessNode } from '../process-graph';
 import { BranchEditor } from './branch-editor';
 import { IssueList } from './issue-list';

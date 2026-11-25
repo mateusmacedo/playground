@@ -1,54 +1,23 @@
+import { blockName, type Graph, type GraphNode, kindOf } from './blocks';
+import { CONNECTION_PROBLEM_TEXT, connectionProblem } from './connections';
+import { countIssues, type ProcessIssue } from './issues';
 import {
-  blockName,
-  type Graph,
-  type GraphEdge,
-  type GraphNode,
-  kindOf,
-  specOf,
-} from './blocks';
-import {
-  CONNECTION_PROBLEM_TEXT,
-  connectionProblem,
-  sourceHandleOf,
-} from './connections';
-
-/** Problema do processo, preso a um bloco, a uma conexão ou ao processo inteiro. */
-export interface ProcessIssue {
-  readonly key: string;
-  readonly message: string;
-  readonly nodeId?: string;
-  readonly edgeId?: string;
-}
-
-interface ReachableFromParams {
-  readonly starts: readonly GraphNode[];
-  readonly edges: readonly GraphEdge[];
-}
-
-/** Blocos alcançados a partir de algum Início, seguindo as conexões no sentido delas. */
-function reachableFrom(params: ReachableFromParams): ReadonlySet<string> {
-  const { starts, edges } = params;
-  const visited = new Set<string>();
-  const pending = starts.map((node) => node.id);
-  let current = pending.pop();
-  while (current !== undefined) {
-    if (!visited.has(current)) {
-      visited.add(current);
-      for (const edge of edges) {
-        if (edge.source === current) {
-          pending.push(edge.target);
-        }
-      }
-    }
-    current = pending.pop();
-  }
-  return visited;
-}
+  blocksReachingEnd,
+  isOnCycle,
+  nextBlocks,
+  walk,
+} from './validation-graph';
+import { nodeIssues } from './validation-nodes';
+import { pairIssues } from './validation-pairs';
 
 function startIssues(starts: readonly GraphNode[]): ProcessIssue[] {
   if (starts.length === 0) {
     return [
-      { key: 'missing-start', message: 'O processo não tem um bloco Início.' },
+      {
+        key: 'missing-start',
+        severity: 'error',
+        message: 'O processo não tem um bloco Início.',
+      },
     ];
   }
   if (starts.length === 1) {
@@ -57,77 +26,53 @@ function startIssues(starts: readonly GraphNode[]): ProcessIssue[] {
   return starts.map((node) => ({
     key: `multiple-starts:${node.id}`,
     nodeId: node.id,
+    severity: 'error',
     message: `${blockName(node)}: o processo deve ter um só Início.`,
   }));
 }
 
-interface NodeIssuesParams {
-  readonly node: GraphNode;
-  readonly edges: readonly GraphEdge[];
-  readonly reachable: ReadonlySet<string> | undefined;
+interface FlowIssuesParams {
+  readonly graph: Graph;
+  readonly flowNodes: readonly GraphNode[];
+  readonly starts: readonly GraphNode[];
 }
 
-interface AddIssue {
-  readonly code: string;
-  readonly message: string;
-}
-
-function nodeIssues(params: NodeIssuesParams): ProcessIssue[] {
-  const { node, edges, reachable } = params;
-  const kind = kindOf(node);
-  const spec = specOf(kind);
-  const name = blockName(node);
-  const incoming = edges.filter((edge) => edge.target === node.id);
-  const outgoing = edges.filter((edge) => edge.source === node.id);
+/** Blocos fora do alcance do Início e blocos presos num ciclo que nunca chega a um Fim. */
+function flowIssues(params: FlowIssuesParams): ProcessIssue[] {
+  const { graph, flowNodes, starts } = params;
+  // NOTE: sem Início, "inalcançável" valeria para todo bloco e só repetiria o problema principal.
+  if (starts.length === 0) {
+    return [];
+  }
+  const next = nextBlocks(graph);
+  const reachable = walk({ from: starts.map((node) => node.id), links: next });
+  const reachingEnd = blocksReachingEnd(graph);
   const issues: ProcessIssue[] = [];
-  const add = (issue: AddIssue) => {
-    issues.push({
-      key: `${issue.code}:${node.id}`,
-      nodeId: node.id,
-      message: issue.message,
-    });
-  };
-
-  if (spec.input !== 'none' && incoming.length === 0) {
-    add({ code: 'no-input', message: `${name} não tem conexão de entrada.` });
-  }
-  if (kind === 'merge' && incoming.length === 1) {
-    add({
-      code: 'few-inputs',
-      message: `${name} precisa reunir pelo menos dois caminhos.`,
-    });
-  }
-  if (spec.output === 'single' && outgoing.length === 0) {
-    add({ code: 'no-output', message: `${name} não tem conexão de saída.` });
-  }
-  if (kind === 'decision') {
-    const branches = node.data.branches ?? [];
-    if (branches.length < 2) {
-      add({
-        code: 'few-branches',
-        message: `${name} precisa de pelo menos dois ramos.`,
+  for (const node of flowNodes) {
+    const name = blockName(node);
+    const hasIncoming = graph.edges.some((edge) => edge.target === node.id);
+    const attached = node.parentId !== undefined;
+    if (!reachable.has(node.id) && (hasIncoming || attached)) {
+      issues.push({
+        key: `unreachable:${node.id}`,
+        nodeId: node.id,
+        severity: 'error',
+        message: `${name} não é alcançado a partir do Início.`,
+      });
+      continue;
+    }
+    const trapped =
+      reachable.has(node.id) &&
+      !reachingEnd.has(node.id) &&
+      isOnCycle({ nodeId: node.id, next });
+    if (trapped) {
+      issues.push({
+        key: `no-exit:${node.id}`,
+        nodeId: node.id,
+        severity: 'error',
+        message: `${name} está num ciclo sem saída para um Fim.`,
       });
     }
-    for (const branch of branches) {
-      const linked = outgoing.some(
-        (edge) => sourceHandleOf(edge) === branch.id,
-      );
-      if (!linked) {
-        issues.push({
-          key: `branch-unlinked:${node.id}:${branch.id}`,
-          nodeId: node.id,
-          message: `${name}: o ramo "${branch.label}" não está conectado.`,
-        });
-      }
-    }
-  }
-  const unreachable =
-    reachable !== undefined && kind !== 'start' && !reachable.has(node.id);
-  if (unreachable && incoming.length > 0) {
-    add({
-      code: 'unreachable',
-      message: `${name} não é alcançado a partir do Início.`,
-    });
   }
   return issues;
 }
@@ -144,6 +89,7 @@ function edgeIssues(graph: Graph): ProcessIssue[] {
       issues.push({
         key: `invalid-edge:${edge.id}`,
         edgeId: edge.id,
+        severity: 'error',
         message: `Conexão inválida: ${CONNECTION_PROBLEM_TEXT[problem]}`,
       });
     }
@@ -151,20 +97,43 @@ function edgeIssues(graph: Graph): ProcessIssue[] {
   return issues;
 }
 
-/** Tudo o que impede o processo de fazer sentido, na ordem: Início, blocos e conexões. */
+/** O canvas interno de cada subprocesso é validado à parte e resumido num problema do próprio bloco. */
+function subprocessIssues(flowNodes: readonly GraphNode[]): ProcessIssue[] {
+  const issues: ProcessIssue[] = [];
+  for (const node of flowNodes) {
+    if (kindOf(node) !== 'subprocess' || node.data.process === undefined) {
+      continue;
+    }
+    const inner = findIssues(node.data.process);
+    if (inner.length === 0) {
+      continue;
+    }
+    const { errors } = countIssues(inner);
+    const noun = inner.length === 1 ? 'problema' : 'problemas';
+    issues.push({
+      key: `inner-issues:${node.id}`,
+      nodeId: node.id,
+      severity: errors > 0 ? 'error' : 'warning',
+      message: `${blockName(node)}: o canvas interno tem ${inner.length} ${noun}.`,
+    });
+  }
+  return issues;
+}
+
+/** Tudo o que impede o processo de fazer sentido ou de ser operado, na ordem: Início, blocos, pares e conexões. */
 export function findIssues(graph: Graph): readonly ProcessIssue[] {
   const flowNodes = graph.nodes.filter((node) => kindOf(node) !== 'annotation');
   const starts = flowNodes.filter((node) => kindOf(node) === 'start');
-  // NOTE: sem Início, "inalcançável" valeria para todo bloco e só repetiria o problema principal.
-  const reachable =
-    starts.length > 0
-      ? reachableFrom({ starts, edges: graph.edges })
-      : undefined;
 
   const issues = startIssues(starts);
   for (const node of flowNodes) {
-    issues.push(...nodeIssues({ node, edges: graph.edges, reachable }));
+    const incoming = graph.edges.filter((edge) => edge.target === node.id);
+    const outgoing = graph.edges.filter((edge) => edge.source === node.id);
+    issues.push(...nodeIssues({ graph, node, incoming, outgoing }));
   }
+  issues.push(...flowIssues({ graph, flowNodes, starts }));
+  issues.push(...subprocessIssues(flowNodes));
+  issues.push(...pairIssues(graph));
   issues.push(...edgeIssues(graph));
   return issues;
 }

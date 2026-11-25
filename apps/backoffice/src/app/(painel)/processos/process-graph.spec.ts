@@ -50,10 +50,10 @@ describe('toProcessGraph', () => {
 describe('issuesByElement', () => {
   it('agrupa por bloco ou conexão e deixa de fora o problema do processo', () => {
     const grouped = issuesByElement([
-      { key: 'a', message: 'A', nodeId: 'task' },
-      { key: 'b', message: 'B', nodeId: 'task' },
-      { key: 'c', message: 'C', edgeId: 'edge' },
-      { key: 'd', message: 'D' },
+      { key: 'a', severity: 'error', message: 'A', nodeId: 'task' },
+      { key: 'b', severity: 'error', message: 'B', nodeId: 'task' },
+      { key: 'c', severity: 'error', message: 'C', edgeId: 'edge' },
+      { key: 'd', severity: 'error', message: 'D' },
     ]);
 
     expect(grouped.get('task')?.map((issue) => issue.key)).toEqual(['a', 'b']);
@@ -79,7 +79,7 @@ describe('displayEdges', () => {
     const [branchEdge, plainEdge] = displayEdges({
       graph,
       issuesById: issuesByElement([
-        { key: 'x', message: 'X', edgeId: 'task-out-end' },
+        { key: 'x', severity: 'error', message: 'X', edgeId: 'task-out-end' },
       ]),
     });
 

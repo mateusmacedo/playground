@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useContext } from 'react';
 
-import type { ProcessIssue } from './model/validation';
+import type { ProcessIssue } from './model/issues';
 
 type IssuesByElement = ReadonlyMap<string, readonly ProcessIssue[]>;
 
