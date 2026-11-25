@@ -4,5 +4,6 @@ import type { RouteTitles } from './breadcrumbs';
 export const routeTitles: RouteTitles = {
   '/': 'Início',
   '/quadro': 'Quadro',
+  '/processos': 'Processos',
   '/sem-acesso': 'Sem acesso',
 };

@@ -1,4 +1,4 @@
-import { cilColumns, cilHome } from '@coreui/icons';
+import { cilColumns, cilHome, cilSitemap } from '@coreui/icons';
 
 /** Ícone no formato do `@coreui/icons` (`[viewBox, svg]`), passado direto ao `CIcon`. */
 export type NavIcon = string[];
@@ -50,6 +50,7 @@ export const navItems: readonly NavItem[] = [
     icon: cilColumns,
     badge: { text: 'Beta', color: 'info' },
   },
+  { kind: 'link', name: 'Processos', href: '/processos', icon: cilSitemap },
 ];
 
 /** Tira do menu o que a sessão não libera, os grupos que ficaram sem filhos e os títulos que ficaram sem itens. */

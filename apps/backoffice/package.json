@@ -16,6 +16,7 @@
     "@coreui/icons-react": "2.3.0",
     "@coreui/react": "5.13.1",
     "@popperjs/core": "2.11.8",
+    "@xyflow/react": "catalog:",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

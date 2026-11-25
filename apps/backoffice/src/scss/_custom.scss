@@ -259,3 +259,176 @@
 .kanban-swimlane__cell--locked {
   border-style: dashed;
 }
+
+// WHY: o Next compila o `light-dark()` do CSS do React Flow de modo que ele segue a preferência do sistema, e não o tema
+// escolhido no painel. Presas às variáveis do CoreUI, as cores do canvas trocam junto com `data-coreui-theme`.
+.react-flow {
+  --xy-background-color: var(--cui-body-bg);
+  --xy-background-pattern-color: var(--cui-border-color);
+  --xy-edge-stroke: var(--cui-secondary-color);
+  --xy-edge-stroke-selected: var(--cui-primary);
+  --xy-edge-label-color: var(--cui-body-color);
+  --xy-edge-label-background-color: var(--cui-body-bg);
+  --xy-connectionline-stroke: var(--cui-secondary-color);
+  --xy-handle-background-color: var(--cui-secondary-color);
+  --xy-handle-border-color: var(--cui-body-bg);
+  --xy-selection-background-color: rgba(var(--cui-primary-rgb), 0.08);
+  --xy-selection-border: 1px dotted var(--cui-primary);
+  --xy-minimap-background-color: var(--cui-body-bg);
+  --xy-minimap-mask-background-color: rgba(var(--cui-body-color-rgb), 0.08);
+  --xy-minimap-mask-stroke-color: var(--cui-border-color);
+  --xy-minimap-node-background-color: var(--cui-tertiary-bg);
+  --xy-minimap-node-stroke-color: var(--cui-border-color);
+  --xy-controls-button-background-color: var(--cui-body-bg);
+  --xy-controls-button-background-color-hover: var(--cui-tertiary-bg);
+  --xy-controls-button-color: var(--cui-body-color);
+  --xy-controls-button-color-hover: var(--cui-emphasis-color);
+  --xy-controls-button-border-color: var(--cui-border-color);
+  --xy-attribution-background-color: var(--cui-body-bg);
+}
+
+.process-editor__body {
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 1fr) 18rem;
+  gap: 1rem;
+}
+
+// WHY: abaixo do breakpoint `lg` as três colunas não cabem; biblioteca e propriedades vão para cima e para baixo.
+@media (max-width: 991.98px) {
+  .process-editor__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// WHY: o React Flow ocupa a altura do elemento pai; sem altura definida, o canvas não aparece.
+.process-editor__canvas {
+  height: 70vh;
+  min-height: 28rem;
+  overflow: hidden;
+  border: 1px solid var(--cui-border-color);
+  border-radius: var(--cui-border-radius);
+}
+
+.process-palette-item,
+.process-block {
+  border: 1px solid var(--cui-border-color);
+  border-left-width: 4px;
+  border-radius: var(--cui-border-radius);
+  background: var(--cui-body-bg);
+  color: var(--cui-body-color);
+}
+
+.process-palette-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem;
+  cursor: grab;
+}
+
+$process-kind-colors: (
+  start: success,
+  task: primary,
+  decision: warning,
+  merge: info,
+  end: secondary,
+  annotation: warning-border-subtle,
+);
+
+@each $kind, $color in $process-kind-colors {
+  .process-block--#{$kind},
+  .process-palette-item--#{$kind} {
+    border-left-color: var(--cui-#{$color});
+  }
+}
+
+.process-block {
+  position: relative;
+  min-width: 11.25rem;
+  max-width: 15rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.process-block--invalid {
+  outline: 2px dashed var(--cui-danger);
+  outline-offset: 2px;
+}
+
+.process-block__kind,
+.process-block__description,
+.process-branch {
+  color: var(--cui-secondary-color);
+  font-size: 0.75rem;
+}
+
+.process-block__kind {
+  display: block;
+  text-transform: uppercase;
+}
+
+.process-block__label,
+.process-block__description {
+  display: block;
+}
+
+.process-block__issue {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  color: var(--cui-danger);
+}
+
+.process-branches {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.process-branch {
+  flex: 1 1 0;
+  text-align: center;
+}
+
+.process-annotation {
+  max-width: 15rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed var(--cui-warning-border-subtle);
+  border-radius: var(--cui-border-radius);
+  background: var(--cui-warning-bg-subtle);
+  color: var(--cui-body-color);
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+}
+
+// WHY: o React Flow só desenha seleção e foco nos blocos padrão; os blocos do processo precisam dos próprios.
+.react-flow__node.selected > .process-block,
+.react-flow__node.selected > .process-annotation {
+  box-shadow: 0 0 0 2px var(--cui-primary);
+}
+
+.react-flow__node:focus-visible {
+  outline: 2px solid var(--cui-focus-ring-color);
+  outline-offset: 4px;
+}
+
+.process-connection-line {
+  stroke: var(--cui-secondary-color);
+  stroke-width: 2;
+}
+
+.process-connection-line--valid {
+  stroke: var(--cui-success);
+}
+
+.react-flow__edge.process-edge--invalid .react-flow__edge-path,
+.process-connection-line--invalid {
+  stroke: var(--cui-danger);
+  stroke-dasharray: 6 4;
+}
+
+.process-issue-list {
+  padding-left: 0;
+  color: var(--cui-danger-text-emphasis);
+  list-style: none;
+}

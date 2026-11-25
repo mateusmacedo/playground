@@ -50,6 +50,7 @@ apps/backoffice/
     │       ├── layout.tsx    # envolve as páginas no DefaultLayout
     │       ├── page.tsx      # início
     │       ├── quadro/       # quadro kanban (beta, com o selo no menu e na página): vários quadros com prefixo próprio, cards com hierarquia, responsável, comentários e anexos, colunas ocultas e bloqueadas, coluna de arquivados, visão em lista e linhas por card pai, busca, desfazer e gravação no navegador sincronizada entre abas
+    │       ├── processos/    # editor visual de processos (React Flow, ADR 0016)
     │       └── sem-acesso/   # destino de quem não tem nenhuma permissão
     ├── core/
     │   ├── config/           # configuração pública (NEXT_PUBLIC_*)

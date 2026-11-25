@@ -44,3 +44,4 @@ Cada ADR registra **uma** decisão que o time precisa entender daqui a seis mese
 | [0013](./0013-analise-sonarqube-cloud.md)                          | Análise do SonarQube Cloud com a cobertura dos testes          | Aceito   |
 | [0014](./0014-meta-de-seguranca-a-antecipa-https-e-logs-do-alb.md) | A meta de segurança A antecipa o HTTPS e os access logs do ALB | Aceito   |
 | [0015](./0015-metas-de-qualidade-e-gate-obrigatorio.md)            | Metas de qualidade e gate obrigatório do SonarQube             | Aceito   |
+| [0016](./0016-react-flow-no-editor-de-processos.md)                | React Flow no editor de processos                              | Aceito   |
