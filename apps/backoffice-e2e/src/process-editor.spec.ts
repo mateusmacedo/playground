@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
+import { dragBetween } from './flow-drag';
 import { openThemeMenu } from './theme-menu';
 
 // WHY: com a largura padrão o canvas fica estreito, e o bloco solto cairia em cima dos blocos do exemplo.
@@ -74,15 +75,19 @@ test.describe('editor de processos', () => {
     ).toHaveCount(1);
     await expect(issueStatus(page)).toHaveText('2 problemas');
 
-    await page
-      .getByLabel('Saída de Etapa', { exact: true })
-      .dragTo(page.getByLabel('Entrada de Fim', { exact: true }));
+    await dragBetween({
+      page,
+      from: page.getByLabel('Saída de Etapa', { exact: true }),
+      to: page.getByLabel('Entrada de Fim', { exact: true }),
+    });
     await expect(issueStatus(page)).toHaveText('1 problema');
 
     // NOTE: a Etapa já tem a saída ligada e a Primeira etapa já tem entrada, então o editor recusa a conexão.
-    await page
-      .getByLabel('Saída de Etapa', { exact: true })
-      .dragTo(page.getByLabel('Entrada de Primeira etapa', { exact: true }));
+    await dragBetween({
+      page,
+      from: page.getByLabel('Saída de Etapa', { exact: true }),
+      to: page.getByLabel('Entrada de Primeira etapa', { exact: true }),
+    });
     await expect(issueStatus(page)).toHaveText('1 problema');
     await expect(canvas(page).locator('.react-flow__edge')).toHaveCount(3);
 

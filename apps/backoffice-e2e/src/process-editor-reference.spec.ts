@@ -1,5 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
+import { dragBetween, dragToArea } from './flow-drag';
+
 // WHY: com dezesseis blocos, uma janela baixa leva o enquadramento ao zoom mínimo, e o minimapa cobre as saídas de baixo.
 test.use({ viewport: { width: 1600, height: 1400 } });
 
@@ -47,26 +49,46 @@ interface Fields {
   readonly [label: string]: string;
 }
 
+interface BlockInput {
+  readonly title: string;
+  /** Campos de texto e número, pelo rótulo. */
+  readonly fields?: Fields;
+  /** Listas, pelo rótulo, com o texto da opção. */
+  readonly choices?: Fields;
+  /** Chaves a ligar, pelo rótulo, antes dos campos que elas abrem. */
+  readonly toggles?: readonly string[];
+}
+
 /** Preenche o título e os campos do bloco selecionado no painel. */
-async function fill(page: Page, title: string, fields: Fields = {}) {
-  await properties(page).getByLabel('Título', { exact: true }).fill(title);
-  for (const [label, value] of Object.entries(fields)) {
-    await properties(page).getByLabel(label, { exact: true }).fill(value);
+async function fill(page: Page, input: BlockInput) {
+  const panel = properties(page);
+  await panel.getByLabel('Título', { exact: true }).fill(input.title);
+  for (const label of input.toggles ?? []) {
+    await panel.getByLabel(label, { exact: true }).check();
+  }
+  for (const [label, value] of Object.entries(input.fields ?? {})) {
+    await panel.getByLabel(label, { exact: true }).fill(value);
+  }
+  for (const [label, option] of Object.entries(input.choices ?? {})) {
+    await panel
+      .getByLabel(label, { exact: true })
+      .selectOption({ label: option });
   }
 }
 
-interface CreateFromParams {
+interface CreateFromParams extends BlockInput {
   readonly from: string;
   readonly kind: string;
-  readonly title: string;
-  readonly fields?: Fields;
 }
 
 /** Solta uma ligação numa área vazia, escolhe o tipo na biblioteca filtrada e preenche o bloco criado. */
 async function createFrom(page: Page, params: CreateFromParams) {
   await makeRoom(page);
-  await port(page, params.from).dragTo(canvas(page), {
-    targetPosition: { x: 40, y: 40 },
+  await dragToArea({
+    page,
+    from: port(page, params.from),
+    area: canvas(page),
+    offset: { x: 40, y: 40 },
   });
   const picker = page.getByRole('dialog', {
     name: 'Criar bloco ligado à saída',
@@ -75,12 +97,12 @@ async function createFrom(page: Page, params: CreateFromParams) {
     .getByRole('button', { name: new RegExp(`^${params.kind}`) })
     .click();
   await expect(picker).toBeHidden();
-  await fill(page, params.title, params.fields);
+  await fill(page, params);
 }
 
 async function connect(page: Page, from: string, to: string) {
   await makeRoom(page);
-  await port(page, from).dragTo(port(page, to));
+  await dragBetween({ page, from: port(page, from), to: port(page, to) });
 }
 
 test.describe('editor de processos: fluxo de referência', () => {
@@ -114,12 +136,15 @@ test.describe('editor de processos: fluxo de referência', () => {
       kind: 'Enviar mensagem',
       title: 'Pedir dados',
       fields: { Destinatário: 'Cliente' },
+      choices: { Canal: 'E-mail' },
     });
     await createFrom(page, {
       from: 'Saída de Pedir dados',
       kind: 'Aguardar evento',
       title: 'Resposta',
-      fields: { 'Evento aguardado': 'Resposta do cliente', Prazo: '48 horas' },
+      toggles: ['Tem prazo (abre a saída Prazo expirado)'],
+      fields: { 'Evento aguardado': 'Resposta do cliente', Prazo: '48' },
+      choices: { 'Unidade de prazo': 'horas' },
     });
     await connect(
       page,
@@ -130,7 +155,7 @@ test.describe('editor de processos: fluxo de referência', () => {
       from: 'Saída Prazo expirado de Resposta',
       kind: 'Fim',
       title: 'Expirou',
-      fields: { Desfecho: 'Expirado' },
+      choices: { Desfecho: 'Expirado' },
     });
 
     await createFrom(page, {
@@ -147,7 +172,7 @@ test.describe('editor de processos: fluxo de referência', () => {
     await properties(page)
       .getByRole('button', { name: 'Adicionar evento de exceção' })
       .click();
-    await fill(page, 'Falha no registro');
+    await fill(page, { title: 'Falha no registro' });
     await createFrom(page, {
       from: 'Saída Erro técnico de Falha no registro',
       kind: 'Tarefa humana',

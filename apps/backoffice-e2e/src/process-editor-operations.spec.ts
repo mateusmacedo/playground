@@ -245,6 +245,30 @@ test.describe('editor de processos: blocos e operações', () => {
   });
 });
 
+test.describe('editor de processos: campos de relógio', () => {
+  test('abre a saída de prazo só com o prazo ligado e recusa duração inválida', async ({
+    page,
+  }) => {
+    await openEditor(page);
+    await page.getByRole('button', { name: 'Inserir Aguardar evento' }).click();
+    const expired = port(page, 'Saída Prazo expirado de Aguardar evento');
+    await expect(expired).toHaveCount(0);
+
+    await properties(page)
+      .getByLabel('Tem prazo (abre a saída Prazo expirado)')
+      .check();
+    await expect(expired).toHaveCount(1);
+
+    const amount = properties(page).getByLabel('Prazo', { exact: true });
+    await amount.fill('0');
+    await expect(
+      properties(page).getByText('Use um número inteiro de 1 a 999.'),
+    ).toBeVisible();
+    await amount.fill('48');
+    await expect(canvas(page).getByText('Prazo: 48 horas')).toBeVisible();
+  });
+});
+
 test.describe('editor de processos: acessibilidade', () => {
   test('declara atalhos, nomeia as portas e anuncia os problemas', async ({
     page,
