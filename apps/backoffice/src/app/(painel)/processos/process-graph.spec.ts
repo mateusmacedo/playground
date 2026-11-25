@@ -4,6 +4,7 @@ import { block, decisionBranches, link } from './model/test-graph';
 import {
   blockOrigin,
   displayEdges,
+  displayNodes,
   edgeDisplays,
   edgeLabel,
   issuesByElement,
@@ -138,6 +139,22 @@ describe('blockOrigin', () => {
     expect(blockOrigin({ x: 100, y: 100 })).toEqual({
       x: 100 - BLOCK_SIZE.width / 2,
       y: 100 - BLOCK_SIZE.height / 2,
+    });
+  });
+});
+
+describe('nomes para o leitor de tela', () => {
+  it('nomeia blocos e conexões em PT-BR', () => {
+    const [decisionNode] = displayNodes(graph.nodes);
+    const [branchEdge] = displayEdges({ graph, issuesById: new Map() });
+
+    expect(decisionNode).toMatchObject({
+      ariaLabel: 'Decisão exclusiva: decision',
+      domAttributes: { 'aria-roledescription': 'bloco' },
+    });
+    expect(branchEdge).toMatchObject({
+      ariaLabel: 'Conexão de decision para task, Sim',
+      domAttributes: { 'aria-roledescription': 'conexão' },
     });
   });
 });

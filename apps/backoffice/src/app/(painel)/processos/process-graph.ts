@@ -9,6 +9,7 @@ import {
   kindOf,
   type LinkData,
   type Point,
+  specOf,
 } from './model/blocks';
 import { sourceHandleOf } from './model/connections';
 import { BLOCK_SIZE } from './model/geometry';
@@ -115,15 +116,39 @@ export interface DisplayEdgesParams {
   readonly issuesById: ReadonlyMap<string, readonly ProcessIssue[]>;
 }
 
-/** Conexões como aparecem no canvas: em degraus, com seta e o traço vermelho das que quebram as regras. */
+/** Conexões como aparecem no canvas: em degraus, com seta, nome em PT-BR e o traço vermelho das que quebram as regras. */
 export function displayEdges(params: DisplayEdgesParams): ProcessEdge[] {
   const { graph, issuesById } = params;
-  return graph.edges.map((edge) => ({
-    ...edge,
-    type: 'process',
-    markerEnd: { type: MarkerType.ArrowClosed },
-    className: issuesById.has(edge.id) ? 'process-edge--invalid' : undefined,
-  }));
+  const displays = edgeDisplays(graph);
+  return graph.edges.map((edge) => {
+    const display = displays.get(edge.id);
+    const description = display?.description ?? 'conexão';
+    const label = display?.text
+      ? `${description}, ${display.text}`
+      : description;
+    return {
+      ...edge,
+      type: 'process',
+      markerEnd: { type: MarkerType.ArrowClosed },
+      className: issuesById.has(edge.id) ? 'process-edge--invalid' : undefined,
+      ariaLabel: label.charAt(0).toUpperCase() + label.slice(1),
+      domAttributes: { 'aria-roledescription': 'conexão' },
+    };
+  });
+}
+
+/** Blocos como aparecem no canvas: com o tipo e o nome em PT-BR para o leitor de tela. */
+export function displayNodes(nodes: readonly ProcessNode[]): ProcessNode[] {
+  return nodes.map((node) => {
+    const kindLabel = specOf(kindOf(node)).label;
+    const name = blockName(node);
+    const ariaLabel = name === kindLabel ? name : `${kindLabel}: ${name}`;
+    return {
+      ...node,
+      ariaLabel,
+      domAttributes: { 'aria-roledescription': 'bloco' },
+    };
+  });
 }
 
 /** O que a conexão mostra: o texto do rótulo, o significado da transição e a descrição para o leitor de tela. */

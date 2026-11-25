@@ -23,6 +23,7 @@ import { nodeTypes } from './nodes/node-types';
 import {
   blockOrigin,
   displayEdges,
+  displayNodes,
   edgeDisplays,
   issuesByElement,
   taskAtPoint,
@@ -56,7 +57,7 @@ export function ProcessCanvas({
   const { graph, issues } = editor;
   const issuesById = useMemo(() => issuesByElement(issues), [issues]);
   const displays = useMemo(() => edgeDisplays(graph), [graph]);
-  const nodes = useMemo(() => [...graph.nodes], [graph.nodes]);
+  const nodes = useMemo(() => displayNodes(graph.nodes), [graph.nodes]);
   const edges = useMemo(
     () => displayEdges({ graph, issuesById }),
     [graph, issuesById],

@@ -6,7 +6,7 @@ import {
   duplicateSelection,
   pasteClip,
 } from './model/clipboard';
-import { suggestedPairId } from './model/composite';
+import { withSuggestedPair } from './model/composite';
 import {
   addBranch,
   deleteSelection,
@@ -69,10 +69,8 @@ export function createEditCommands({
     change({
       update: (current) => {
         // NOTE: a sincronização nova já aponta para a abertura quando só existe uma sem par.
-        const pairId = suggestedPairId({ graph: current, kind });
-        const data =
-          pairId === undefined ? created.data : { ...created.data, pairId };
-        const block: ProcessNode = { ...created, data, selected: true };
+        const paired = withSuggestedPair({ graph: current, block: created });
+        const block: ProcessNode = { ...paired, selected: true };
         return {
           nodes: [...unselected(current.nodes), block],
           edges: unselected(current.edges),

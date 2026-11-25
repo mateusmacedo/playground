@@ -22,7 +22,7 @@ export function ProcessSearch({
   const hasQuery = query.trim() !== '';
 
   return (
-    <search className="mb-3">
+    <search aria-label="Busca no processo" className="mb-3">
       <CInputGroup size="sm">
         <CInputGroupText>
           <CIcon icon={cilSearch} aria-hidden="true" />

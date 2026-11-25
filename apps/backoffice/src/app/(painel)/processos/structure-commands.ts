@@ -12,6 +12,7 @@ import {
   attachException,
   connectNewBlock,
   insertOnEdge,
+  withSuggestedPair,
 } from './model/composite';
 import { convertBlock } from './model/conversion';
 import {
@@ -103,7 +104,10 @@ export function createStructureCommands(params: StructureCommandsParams) {
         connectNewBlock({
           graph: current,
           connection: { source, sourceHandle },
-          block: newBlock({ kind, position }),
+          block: withSuggestedPair({
+            graph: current,
+            block: newBlock({ kind, position }),
+          }),
           createId,
         }),
     });

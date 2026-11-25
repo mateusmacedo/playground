@@ -196,3 +196,20 @@ export function suggestedPairId(
   const [only] = free;
   return free.length === 1 ? only?.id : undefined;
 }
+
+export interface WithSuggestedPairParams<N extends GraphNode> {
+  readonly graph: Graph;
+  readonly block: N;
+}
+
+/** O bloco novo, já apontando para a abertura sugerida quando ele é uma sincronização ou junção. */
+export function withSuggestedPair<N extends GraphNode>(
+  params: WithSuggestedPairParams<N>,
+): N {
+  const { graph, block } = params;
+  const pairId = suggestedPairId({ graph, kind: kindOf(block) });
+  if (pairId === undefined) {
+    return block;
+  }
+  return { ...block, data: { ...block.data, pairId } };
+}

@@ -4,6 +4,7 @@ import {
   connectNewBlock,
   insertOnEdge,
   suggestedPairId,
+  withSuggestedPair,
 } from './composite';
 import type { LabeledEdge } from './editing';
 import { block, decisionBranches, link, sequentialIds } from './test-graph';
@@ -150,5 +151,23 @@ describe('suggestedPairId', () => {
       'i1',
     );
     expect(suggestedPairId({ graph: splits, kind: 'task' })).toBeUndefined();
+  });
+});
+
+describe('withSuggestedPair', () => {
+  it('liga a sincronização nova à única abertura sem par', () => {
+    const graph: Graph = {
+      nodes: [block({ id: 'p1', type: 'parallel-split' })],
+      edges: [],
+    };
+
+    expect(
+      withSuggestedPair({
+        graph,
+        block: block({ id: 'j', type: 'parallel-join' }),
+      }).data.pairId,
+    ).toBe('p1');
+    const task = block({ id: 't', type: 'task' });
+    expect(withSuggestedPair({ graph, block: task })).toBe(task);
   });
 });
