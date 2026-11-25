@@ -214,6 +214,32 @@ export function renameBranch<N extends GraphNode, E extends GraphEdge>(
   });
 }
 
+export interface UpdateBranchParams<N extends GraphNode, E extends GraphEdge> {
+  readonly graph: Graph<N, E>;
+  readonly nodeId: string;
+  readonly branchId: string;
+  readonly patch: Partial<Omit<Branch, 'id'>>;
+}
+
+/** Muda nome, condição ou descrição do ramo; o id, que também é o da saída, não muda. */
+export function updateBranch<N extends GraphNode, E extends GraphEdge>(
+  params: UpdateBranchParams<N, E>,
+): Graph<N, E> {
+  const { branchId, patch } = params;
+  return withBlockData({
+    ...params,
+    change: (data) => {
+      const branches: Branch[] = [];
+      for (const branch of data.branches ?? []) {
+        branches.push(
+          branch.id === branchId ? { ...branch, ...patch } : branch,
+        );
+      }
+      return { ...data, branches };
+    },
+  });
+}
+
 export interface RemoveBranchParams<N extends GraphNode, E extends GraphEdge> {
   readonly graph: Graph<N, E>;
   readonly nodeId: string;

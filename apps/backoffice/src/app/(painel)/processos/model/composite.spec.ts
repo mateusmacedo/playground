@@ -51,6 +51,7 @@ describe('insertOnEdge', () => {
         sourceHandle: 'yes',
         targetHandle: 'in',
         data: { label: 'aprovado' },
+        selected: false,
       },
       {
         id: 'copy-1',
@@ -60,7 +61,7 @@ describe('insertOnEdge', () => {
         targetHandle: 'in',
       },
     ]);
-    expect(step?.position).toEqual({ x: 0, y: 160 });
+    expect(step?.position).toEqual({ x: 224, y: 160 });
     expect(step?.selected).toBe(true);
   });
 

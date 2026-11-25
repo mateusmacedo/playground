@@ -10,6 +10,8 @@ export interface ShortcutCommands {
   readonly undo: () => void;
   readonly redo: () => void;
   readonly duplicateSelected: () => void;
+  readonly copySelected: () => void;
+  readonly paste: () => void;
   readonly deleteSelected: () => void;
 }
 
@@ -49,6 +51,10 @@ function commandFor({
       return commands.redo;
     case 'duplicate':
       return commands.duplicateSelected;
+    case 'copy':
+      return commands.copySelected;
+    case 'paste':
+      return commands.paste;
     case 'delete':
       return commands.deleteSelected;
   }

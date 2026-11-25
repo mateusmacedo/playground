@@ -26,6 +26,11 @@ export interface GraphChange {
   readonly key?: string;
 }
 
+export interface SelectOnlyParams {
+  readonly nodeIds?: readonly string[];
+  readonly edgeIds?: readonly string[];
+}
+
 export type DocumentUpdate = (document: EditorDocument) => EditorDocument;
 
 export interface DocumentChange {
@@ -167,6 +172,20 @@ export function useDocumentHistory(createInitial: () => EditorDocument) {
     setHistory((current) => finishDrag({ history: current, before, path }));
   }
 
+  /** Seleciona só os elementos indicados, sem passo no histórico: seleção não se desfaz. */
+  function selectOnly({ nodeIds = [], edgeIds = [] }: SelectOnlyParams) {
+    changeQuietly((current) => ({
+      nodes: current.nodes.map((node) => ({
+        ...node,
+        selected: nodeIds.includes(node.id),
+      })),
+      edges: current.edges.map((edge) => ({
+        ...edge,
+        selected: edgeIds.includes(edge.id),
+      })),
+    }));
+  }
+
   function openSubprocess(nodeId: string) {
     setOpenPath([...path, nodeId]);
   }
@@ -190,6 +209,7 @@ export function useDocumentHistory(createInitial: () => EditorDocument) {
     onEdgesChange,
     onDragStart,
     onDragStop,
+    selectOnly,
     openSubprocess,
     openLevel,
     undo: () => setHistory(undo),

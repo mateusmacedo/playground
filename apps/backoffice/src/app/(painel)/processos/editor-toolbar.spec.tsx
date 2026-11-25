@@ -10,6 +10,9 @@ function renderToolbar(props: Partial<EditorToolbarProps> = {}) {
     onDelete: vi.fn(),
     onFitView: vi.fn(),
     onClear: vi.fn(),
+    onAlign: vi.fn(),
+    onDistribute: vi.fn(),
+    onAutoLayout: vi.fn(),
   };
   render(
     <EditorToolbar
@@ -17,7 +20,8 @@ function renderToolbar(props: Partial<EditorToolbarProps> = {}) {
       canRedo
       hasSelection
       isEmpty={false}
-      issueCount={0}
+      selectedNodes={0}
+      issueCount={{ errors: 0, warnings: 0 }}
       {...handlers}
       {...props}
     />,
@@ -76,17 +80,41 @@ describe('EditorToolbar', () => {
   });
 
   it('resume a validação do processo', () => {
-    renderToolbar({ issueCount: 0 });
+    renderToolbar({ issueCount: { errors: 0, warnings: 0 } });
     expect(screen.getByRole('status').textContent).toBe('Sem problemas');
   });
 
   it('conta os problemas no singular e no plural', () => {
-    renderToolbar({ issueCount: 1 });
+    renderToolbar({ issueCount: { errors: 0, warnings: 1 } });
     expect(screen.getByRole('status').textContent).toBe('1 problema');
   });
 
   it('conta vários problemas', () => {
-    renderToolbar({ issueCount: 3 });
-    expect(screen.getByRole('status').textContent).toBe('3 problemas');
+    renderToolbar({ issueCount: { errors: 2, warnings: 1 } });
+    const badge = screen.getByRole('status');
+    expect(badge.textContent).toBe('3 problemas');
+    expect(badge.getAttribute('title')).toBe('2 erros e 1 aviso');
+  });
+
+  it('organiza a seleção e aplica o layout automático', () => {
+    const handlers = renderToolbar({ selectedNodes: 3 });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Layout automático' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Alinhar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Alinhar à esquerda' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Alinhar' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Distribuir na vertical' }),
+    );
+
+    expect(handlers.onAutoLayout).toHaveBeenCalledTimes(1);
+    expect(handlers.onAlign).toHaveBeenCalledWith('left');
+    expect(handlers.onDistribute).toHaveBeenCalledWith('vertical');
+  });
+
+  it('só deixa alinhar com dois blocos selecionados', () => {
+    renderToolbar({ selectedNodes: 1 });
+
+    expect(button('Alinhar').disabled).toBe(true);
   });
 });

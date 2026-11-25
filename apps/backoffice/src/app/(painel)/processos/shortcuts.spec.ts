@@ -35,8 +35,14 @@ describe('shortcutFor', () => {
     expect(press({ key: 'Backspace', modifiers: {} })).toBe('delete');
   });
 
+  it('reconhece copiar e colar com Ctrl ou Cmd', () => {
+    expect(press({ key: 'c', modifiers: { ctrlKey: true } })).toBe('copy');
+    expect(press({ key: 'v', modifiers: { metaKey: true } })).toBe('paste');
+  });
+
   it('ignora letra sem modificador e combinação sem atalho', () => {
     expect(press({ key: 'z', modifiers: {} })).toBeNull();
+    expect(press({ key: 'c', modifiers: {} })).toBeNull();
     expect(press({ key: 'k', modifiers: { ctrlKey: true } })).toBeNull();
   });
 });

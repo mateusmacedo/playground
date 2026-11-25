@@ -1,8 +1,10 @@
 import { type Edge, MarkerType, type Node } from '@xyflow/react';
 
 import {
+  acceptsExceptions,
   type BlockData,
   type BlockKind,
+  blockName,
   type Graph,
   kindOf,
   type LinkData,
@@ -11,7 +13,11 @@ import {
 import { sourceHandleOf } from './model/connections';
 import { BLOCK_SIZE } from './model/geometry';
 import type { ProcessIssue } from './model/issues';
-import { findOutputPort } from './model/ports';
+import {
+  findOutputPort,
+  TRANSITION_TEXT,
+  type TransitionMeaning,
+} from './model/ports';
 
 export type ProcessNode = Node<BlockData, BlockKind>;
 export type ProcessEdge = Edge<LinkData>;
@@ -43,6 +49,30 @@ export function blockOrigin(point: Point): Point {
     x: point.x - BLOCK_SIZE.width / 2,
     y: point.y - BLOCK_SIZE.height / 2,
   };
+}
+
+export interface TaskAtPointParams {
+  readonly graph: ProcessGraph;
+  readonly point: Point;
+}
+
+/** A tarefa (ou subprocesso) sob o ponto, que pode receber um Evento de exceção solto ali. */
+export function taskAtPoint(
+  params: TaskAtPointParams,
+): ProcessNode | undefined {
+  const { graph, point } = params;
+  return graph.nodes.find((node) => {
+    if (node.parentId !== undefined || !acceptsExceptions(kindOf(node))) {
+      return false;
+    }
+    const width = node.measured?.width ?? BLOCK_SIZE.width;
+    const height = node.measured?.height ?? BLOCK_SIZE.height;
+    const insideX =
+      point.x >= node.position.x && point.x <= node.position.x + width;
+    const insideY =
+      point.y >= node.position.y && point.y <= node.position.y + height;
+    return insideX && insideY;
+  });
 }
 
 /** Problemas agrupados pelo id do bloco ou da conexão. */
@@ -85,14 +115,43 @@ export interface DisplayEdgesParams {
   readonly issuesById: ReadonlyMap<string, readonly ProcessIssue[]>;
 }
 
-/** Conexões como aparecem no canvas: com seta, rótulo e o destaque das que quebram as regras. */
+/** Conexões como aparecem no canvas: em degraus, com seta e o traço vermelho das que quebram as regras. */
 export function displayEdges(params: DisplayEdgesParams): ProcessEdge[] {
   const { graph, issuesById } = params;
   return graph.edges.map((edge) => ({
     ...edge,
-    type: 'smoothstep',
+    type: 'process',
     markerEnd: { type: MarkerType.ArrowClosed },
-    label: edgeLabel({ graph, edge }) || undefined,
     className: issuesById.has(edge.id) ? 'process-edge--invalid' : undefined,
   }));
+}
+
+/** O que a conexão mostra: o texto do rótulo, o significado da transição e a descrição para o leitor de tela. */
+export interface EdgeDisplay {
+  readonly text: string;
+  readonly meaning: TransitionMeaning;
+  readonly meaningText: string;
+  readonly description: string;
+}
+
+/** Rótulo e significado de cada conexão, pelo id. */
+export function edgeDisplays(graph: ProcessGraph): Map<string, EdgeDisplay> {
+  const displays = new Map<string, EdgeDisplay>();
+  for (const edge of graph.edges) {
+    const source = graph.nodes.find((node) => node.id === edge.source);
+    const target = graph.nodes.find((node) => node.id === edge.target);
+    const port = source
+      ? findOutputPort({ node: source, handle: sourceHandleOf(edge) })
+      : undefined;
+    const meaning = port?.meaning ?? 'next';
+    const from = source ? blockName(source) : 'bloco removido';
+    const to = target ? blockName(target) : 'bloco removido';
+    displays.set(edge.id, {
+      text: edgeLabel({ graph, edge }),
+      meaning,
+      meaningText: TRANSITION_TEXT[meaning],
+      description: `conexão de ${from} para ${to}`,
+    });
+  }
+  return displays;
 }

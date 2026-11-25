@@ -15,10 +15,19 @@ import { outputHandles } from './ports';
 /** Distância entre exceções presas à mesma tarefa, ao longo da borda inferior dela. */
 const EXCEPTION_SPACING = 40;
 
-function midpoint(a: Point, b: Point): Point {
+/** Afastamento lateral do bloco inserido, para ele não cair em cima das pontas da conexão. */
+const INSERT_SIDE_GAP = BLOCK_SIZE.width + 48;
+
+interface BesideParams {
+  readonly source: Point;
+  readonly target: Point;
+}
+
+/** Ao lado do meio da conexão, na grade. */
+function besideMidpoint({ source, target }: BesideParams): Point {
   return {
-    x: snapToGrid((a.x + b.x) / 2),
-    y: snapToGrid((a.y + b.y) / 2),
+    x: snapToGrid((source.x + target.x) / 2 + INSERT_SIDE_GAP),
+    y: snapToGrid((source.y + target.y) / 2),
   };
 }
 
@@ -47,7 +56,7 @@ function connectionIsValid<N extends GraphNode>(
 export interface InsertOnEdgeParams<N extends GraphNode> {
   readonly graph: Graph<N, LabeledEdge>;
   readonly edgeId: string;
-  /** Bloco novo; a posição dele vira o meio da conexão. */
+  /** Bloco novo; ele vai para o lado do meio da conexão. */
   readonly block: N;
   readonly createId: () => string;
 }
@@ -69,13 +78,17 @@ export function insertOnEdge<N extends GraphNode>(
   }
   const placed: N = {
     ...block,
-    position: midpoint(source.position, target.position),
+    position: besideMidpoint({
+      source: source.position,
+      target: target.position,
+    }),
     selected: true,
   };
   const incoming: LabeledEdge = {
     ...edge,
     target: placed.id,
     targetHandle: INPUT_HANDLE,
+    selected: false,
   };
   const outgoing: LabeledEdge = {
     id: createId(),

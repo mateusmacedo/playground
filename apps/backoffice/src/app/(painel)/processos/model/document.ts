@@ -120,7 +120,7 @@ export function renameLane<N extends GraphNode, E extends GraphEdge>(
   return { ...document, lanes, graph: { ...document.graph, nodes } };
 }
 
-export type LaneDirection = 'up' | 'down';
+export type LaneDirection = 'before' | 'after';
 
 export interface MoveLaneParams<N extends GraphNode, E extends GraphEdge>
   extends DocumentParams<N, E> {
@@ -137,7 +137,7 @@ interface ReorderedLanesParams {
 function reorderedLanes(params: ReorderedLanesParams): Lane[] | null {
   const { lanes, laneId, direction } = params;
   const index = lanes.findIndex((lane) => lane.id === laneId);
-  const swapWith = direction === 'up' ? index - 1 : index + 1;
+  const swapWith = direction === 'before' ? index - 1 : index + 1;
   const lane = lanes[index];
   const neighbor = lanes[swapWith];
   if (index < 0 || lane === undefined || neighbor === undefined) {

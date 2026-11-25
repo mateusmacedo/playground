@@ -60,6 +60,13 @@ function commandsMock() {
     updateEdgeLabel: vi.fn(),
     duplicateSelected: vi.fn(),
     deleteSelected: vi.fn(),
+    updateBranch: vi.fn(),
+    convert: vi.fn(),
+    addException: vi.fn(),
+    moveToLane: vi.fn(),
+    openSubprocess: vi.fn(),
+    requestInsertOnEdge: vi.fn(),
+    focusIssue: vi.fn(),
   } satisfies PanelCommands;
 }
 
@@ -70,8 +77,21 @@ interface RenderPanelParams {
 
 function renderPanel({ graph, issues = [] }: Readonly<RenderPanelParams>) {
   const commands = commandsMock();
-  render(<PropertiesPanel graph={graph} issues={issues} commands={commands} />);
+  render(
+    <PropertiesPanel
+      graph={graph}
+      lanes={[]}
+      issues={issues}
+      commands={commands}
+    />,
+  );
   return commands;
+}
+
+/** Valor ao lado do termo na lista de fatos da conexão. */
+function fact(term: string): string | null | undefined {
+  return screen.getByText(term, { selector: 'dt' }).nextElementSibling
+    ?.textContent;
 }
 
 describe('PropertiesPanel', () => {
@@ -199,7 +219,9 @@ describe('PropertiesPanel', () => {
       graph: selecting({ ids: ['start-out-task'] }),
     });
 
-    expect(screen.getByText('Conexão de Início para Revisar.')).toBeTruthy();
+    expect(fact('Origem')).toBe('Início');
+    expect(fact('Destino')).toBe('Revisar');
+    expect(fact('Transição')).toBe('Sequência');
     fireEvent.change(screen.getByLabelText('Rótulo'), {
       target: { value: 'pedido novo' },
     });
@@ -216,7 +238,8 @@ describe('PropertiesPanel', () => {
   it('mostra que o rótulo da conexão de ramo vem do ramo', () => {
     renderPanel({ graph: selecting({ ids: ['decision-yes-start'] }) });
 
-    expect(screen.getByText(/O rótulo vem do ramo "Sim"/)).toBeTruthy();
+    expect(screen.getByText(/O rótulo "Sim" é herdado do ramo/)).toBeTruthy();
+    expect(fact('Transição')).toBe('Condição');
     expect(screen.queryByLabelText('Rótulo')).toBeNull();
   });
 
@@ -227,8 +250,7 @@ describe('PropertiesPanel', () => {
     };
     renderPanel({ graph: orphan });
 
-    expect(
-      screen.getByText('Conexão de bloco removido para bloco removido.'),
-    ).toBeTruthy();
+    expect(fact('Origem')).toBe('bloco removido');
+    expect(fact('Destino')).toBe('bloco removido');
   });
 });

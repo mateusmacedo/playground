@@ -1,5 +1,6 @@
 import { useId } from 'react';
 
+import type { Lane } from '../model/document';
 import type { ProcessIssue } from '../model/issues';
 import type { ProcessGraph } from '../process-graph';
 import { BlockProperties } from './block-properties';
@@ -21,12 +22,14 @@ function count(params: CountParams): string {
 
 interface PanelContentProps {
   readonly graph: ProcessGraph;
+  readonly lanes: readonly Lane[];
   readonly issues: readonly ProcessIssue[];
   readonly commands: PanelCommands;
 }
 
 function PanelContent({
   graph,
+  lanes,
   issues,
   commands,
 }: Readonly<PanelContentProps>) {
@@ -54,7 +57,11 @@ function PanelContent({
         <p className="small text-body-secondary">
           {blocks} e {connections}. Selecione um elemento para editar.
         </p>
-        <IssueList issues={issues} emptyText="Nenhum problema encontrado." />
+        <IssueList
+          issues={issues}
+          emptyText="Nenhum problema encontrado."
+          onSelect={commands.focusIssue}
+        />
       </>
     );
   }
@@ -77,6 +84,8 @@ function PanelContent({
       <BlockProperties
         key={node.id}
         node={node}
+        graph={graph}
+        lanes={lanes}
         issues={issuesOf(node.id)}
         commands={commands}
       />
@@ -96,6 +105,7 @@ function PanelContent({
 
 export interface PropertiesPanelProps {
   readonly graph: ProcessGraph;
+  readonly lanes: readonly Lane[];
   readonly issues: readonly ProcessIssue[];
   readonly commands: PanelCommands;
 }

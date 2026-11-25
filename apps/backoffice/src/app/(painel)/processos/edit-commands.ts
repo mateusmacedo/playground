@@ -14,6 +14,7 @@ import {
   renameBranch,
   unselected,
   updateBlockData,
+  updateBranch,
   updateEdgeLabel,
 } from './model/editing';
 import type { ProcessEdge, ProcessGraph, ProcessNode } from './process-graph';
@@ -21,6 +22,7 @@ import type {
   RemoveBranchChange,
   RenameBranchChange,
   UpdateBlockChange,
+  UpdateBranchChange,
   UpdateEdgeLabelChange,
 } from './properties/panel-commands';
 import type { GraphChange } from './use-document-history';
@@ -177,8 +179,22 @@ export function createBranchCommands({
     });
   }
 
+  function updateDecisionBranch({
+    nodeId,
+    branchId,
+    patch,
+  }: Readonly<UpdateBranchChange>) {
+    const fields = Object.keys(patch).join(',');
+    change({
+      update: (current) =>
+        updateBranch({ graph: current, nodeId, branchId, patch }),
+      key: `branch:${nodeId}:${branchId}:${fields}`,
+    });
+  }
+
   return {
     addBranch: addDecisionBranch,
+    updateBranch: updateDecisionBranch,
     renameBranch: renameDecisionBranch,
     removeBranch: removeDecisionBranch,
   };

@@ -4,9 +4,11 @@ import { block, decisionBranches, link } from './model/test-graph';
 import {
   blockOrigin,
   displayEdges,
+  edgeDisplays,
   edgeLabel,
   issuesByElement,
   type ProcessGraph,
+  taskAtPoint,
   toProcessGraph,
 } from './process-graph';
 
@@ -75,7 +77,7 @@ describe('edgeLabel', () => {
 });
 
 describe('displayEdges', () => {
-  it('desenha seta, rótulo e destaque da conexão com problema', () => {
+  it('desenha a conexão do processo com seta e o destaque da que tem problema', () => {
     const [branchEdge, plainEdge] = displayEdges({
       graph,
       issuesById: issuesByElement([
@@ -84,13 +86,50 @@ describe('displayEdges', () => {
     });
 
     expect(branchEdge).toMatchObject({
-      type: 'smoothstep',
+      type: 'process',
       markerEnd: { type: MarkerType.ArrowClosed },
-      label: 'Sim',
       className: undefined,
     });
-    expect(plainEdge?.label).toBeUndefined();
     expect(plainEdge?.className).toBe('process-edge--invalid');
+  });
+});
+
+describe('edgeDisplays', () => {
+  it('dá o texto, o significado e a descrição de cada conexão', () => {
+    const displays = edgeDisplays(graph);
+
+    expect(displays.get('decision-yes-task')).toEqual({
+      text: 'Sim',
+      meaning: 'condition',
+      meaningText: 'Condição',
+      description: 'conexão de decision para task',
+    });
+    expect(displays.get('task-out-end')).toMatchObject({
+      text: '',
+      meaning: 'next',
+    });
+  });
+});
+
+describe('taskAtPoint', () => {
+  it('acha a tarefa que aceita exceção sob o ponto', () => {
+    const withTasks: ProcessGraph = toProcessGraph({
+      nodes: [
+        block({ id: 'step', type: 'task' }),
+        {
+          ...block({ id: 'work', type: 'automated-task' }),
+          position: { x: 400, y: 0 },
+        },
+      ],
+      edges: [],
+    });
+
+    expect(
+      taskAtPoint({ graph: withTasks, point: { x: 410, y: 10 } })?.id,
+    ).toBe('work');
+    expect(
+      taskAtPoint({ graph: withTasks, point: { x: 10, y: 10 } }),
+    ).toBeUndefined();
   });
 });
 

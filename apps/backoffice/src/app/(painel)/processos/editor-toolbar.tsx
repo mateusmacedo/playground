@@ -9,12 +9,14 @@ import {
 import CIcon from '@coreui/icons-react';
 import { CButton, CButtonGroup } from '@coreui/react';
 
-export interface EditorToolbarProps {
+import type { IssueCount } from './model/issues';
+import { ArrangeGroup, type ArrangeGroupProps } from './toolbar-arrange';
+
+export interface EditorToolbarProps extends ArrangeGroupProps {
   readonly canUndo: boolean;
   readonly canRedo: boolean;
   readonly hasSelection: boolean;
-  readonly isEmpty: boolean;
-  readonly issueCount: number;
+  readonly issueCount: IssueCount;
   readonly onUndo: () => void;
   readonly onRedo: () => void;
   readonly onDuplicate: () => void;
@@ -37,6 +39,12 @@ function issueSummary(count: number): string {
     return 'Sem problemas';
   }
   return count === 1 ? '1 problema' : `${count} problemas`;
+}
+
+function issueDetail({ errors, warnings }: IssueCount): string {
+  const errorText = errors === 1 ? '1 erro' : `${errors} erros`;
+  const warningText = warnings === 1 ? '1 aviso' : `${warnings} avisos`;
+  return `${errorText} e ${warningText}`;
 }
 
 interface ActionGroupProps {
@@ -133,17 +141,25 @@ function canvasActions({
 }
 
 interface IssueBadgeProps {
-  readonly count: number;
+  readonly count: IssueCount;
 }
 
+/** Selo com o total de problemas; a cor separa erro de aviso, e o texto completo vai no `title`. */
 function IssueBadge({ count }: Readonly<IssueBadgeProps>) {
-  let color = 'text-bg-warning';
-  if (count === 0) {
-    color = 'text-bg-success';
+  const total = count.errors + count.warnings;
+  let color = 'text-bg-success';
+  if (count.errors > 0) {
+    color = 'text-bg-danger';
+  } else if (count.warnings > 0) {
+    color = 'text-bg-warning';
   }
   return (
-    <span role="status" className={`badge ms-auto ${color}`}>
-      {issueSummary(count)}
+    <span
+      role="status"
+      className={`badge ms-auto ${color}`}
+      title={total === 0 ? undefined : issueDetail(count)}
+    >
+      {issueSummary(total)}
     </span>
   );
 }
@@ -158,6 +174,7 @@ export function EditorToolbar(props: Readonly<EditorToolbarProps>) {
     >
       <ActionGroup label="Histórico" actions={historyActions(props)} />
       <ActionGroup label="Seleção" actions={selectionActions(props)} />
+      <ArrangeGroup {...props} />
       <ActionGroup label="Canvas" actions={canvasActions(props)} />
       <IssueBadge count={props.issueCount} />
     </div>

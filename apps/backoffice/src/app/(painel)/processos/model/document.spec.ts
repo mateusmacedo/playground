@@ -92,7 +92,11 @@ describe('renameLane', () => {
 
 describe('moveLane', () => {
   it('troca a raia com a vizinha e leva os blocos junto', () => {
-    const result = moveLane({ document, laneId: 'finance', direction: 'up' });
+    const result = moveLane({
+      document,
+      laneId: 'finance',
+      direction: 'before',
+    });
 
     expect(result.lanes.map((lane) => lane.id)).toEqual(['finance', 'sales']);
     expect(nodeOf(result, 'charge')?.position.x).toBe(320 - LANE_WIDTH);
@@ -101,7 +105,7 @@ describe('moveLane', () => {
   });
 
   it('não move além das pontas', () => {
-    expect(moveLane({ document, laneId: 'sales', direction: 'up' })).toBe(
+    expect(moveLane({ document, laneId: 'sales', direction: 'before' })).toBe(
       document,
     );
   });

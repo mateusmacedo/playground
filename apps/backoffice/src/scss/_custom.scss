@@ -334,7 +334,14 @@
     overflow-y: auto;
   }
 
+  .process-editor__stage {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
   .process-editor__canvas {
+    flex: 1 1 auto;
     height: auto;
     min-height: 0;
   }
@@ -397,6 +404,179 @@ $process-kind-colors: (
   outline-offset: 2px;
 }
 
+.process-block--warning {
+  outline: 2px dashed var(--cui-warning);
+  outline-offset: 2px;
+}
+
+.process-block__issue--warning {
+  color: var(--cui-warning-text-emphasis);
+}
+
+.process-block__open {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.process-palette__group {
+  margin-bottom: 0.5rem;
+  color: var(--cui-secondary-color);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+// Desvios: o símbolo num losango à esquerda; as reuniões (convergência, junção, sincronização) têm traço duplo.
+.process-gateway {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.process-gateway__symbol {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: var(--cui-secondary-bg);
+  font-weight: 700;
+  line-height: 1;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+.process-gateway--join {
+  border-style: double;
+  border-width: 3px 3px 3px 4px;
+}
+
+.process-gateway--join .process-gateway__symbol {
+  background: var(--cui-tertiary-bg);
+  outline: 2px solid var(--cui-border-color);
+}
+
+// Eventos: início e fim em pílula com ícone; o fim tem borda grossa, como no BPMN.
+.process-event {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  border-radius: 2rem;
+}
+
+.process-block--end {
+  border-width: 3px 3px 3px 4px;
+}
+
+.process-event__icon {
+  flex: 0 0 auto;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+// Exceção: círculo pequeno preso à borda da tarefa; tracejado quando não interrompe a atividade.
+.process-exception {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 2px solid var(--cui-danger);
+  border-radius: 50%;
+  color: var(--cui-danger);
+}
+
+.process-exception--non-interrupting {
+  border-style: dashed;
+}
+
+// Raias: colunas no fundo do canvas, abaixo dos blocos e das conexões.
+.process-lanes {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.process-lane {
+  position: absolute;
+  top: 0;
+  border-right: 1px solid var(--cui-border-color);
+  border-left: 1px solid var(--cui-border-color);
+  background: rgba(var(--cui-body-color-rgb), 0.02);
+}
+
+.process-lane__name {
+  display: block;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--cui-border-color);
+  background: var(--cui-tertiary-bg);
+  color: var(--cui-secondary-color);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+// Rótulo da conexão: significado, texto e o botão de inserir, que fica discreto até o foco ou o passar do mouse.
+.process-edge-label {
+  position: absolute;
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  padding: 0.125rem 0.25rem;
+  border-radius: var(--cui-border-radius-sm);
+  background: var(--cui-body-bg);
+  font-size: 0.7rem;
+  pointer-events: all;
+}
+
+.process-edge-label__meaning {
+  color: var(--cui-secondary-color);
+  text-transform: uppercase;
+}
+
+.process-edge-label__insert {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: 1px solid var(--cui-border-color);
+  border-radius: 50%;
+  background: var(--cui-body-bg);
+  color: var(--cui-primary);
+  opacity: 0.5;
+
+  &:hover,
+  &:focus-visible {
+    opacity: 1;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cui-focus-ring-color);
+  }
+}
+
+.process-edge-label--selected {
+  box-shadow: 0 0 0 1px var(--cui-primary);
+}
+
+.process-edge-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 0.75rem;
+
+  dd {
+    margin: 0;
+  }
+}
+
 .process-block__kind,
 .process-block__description,
 .process-branch {
@@ -421,6 +601,11 @@ $process-kind-colors: (
   color: var(--cui-danger);
 }
 
+.process-exception .process-block__issue {
+  top: -0.75rem;
+  right: -0.75rem;
+}
+
 .process-branches {
   display: flex;
   gap: 0.25rem;
@@ -430,6 +615,11 @@ $process-kind-colors: (
 .process-branch {
   flex: 1 1 0;
   text-align: center;
+}
+
+.process-gateway .process-branches {
+  flex: 1 0 100%;
+  margin-top: 0;
 }
 
 .process-annotation {
@@ -471,6 +661,15 @@ $process-kind-colors: (
 
 .process-issue-list {
   padding-left: 0;
-  color: var(--cui-danger-text-emphasis);
   list-style: none;
+}
+
+.process-issue--error,
+.process-issue--error .process-issue__button {
+  color: var(--cui-danger-text-emphasis);
+}
+
+.process-issue--warning,
+.process-issue--warning .process-issue__button {
+  color: var(--cui-warning-text-emphasis);
 }

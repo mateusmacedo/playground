@@ -1,4 +1,10 @@
-export type EditorShortcut = 'undo' | 'redo' | 'duplicate' | 'delete';
+export type EditorShortcut =
+  | 'undo'
+  | 'redo'
+  | 'duplicate'
+  | 'copy'
+  | 'paste'
+  | 'delete';
 
 interface KeyPress {
   readonly key: string;
@@ -24,6 +30,12 @@ export function shortcutFor(press: KeyPress): EditorShortcut | null {
   }
   if (key === 'd') {
     return 'duplicate';
+  }
+  if (key === 'c') {
+    return 'copy';
+  }
+  if (key === 'v') {
+    return 'paste';
   }
   return null;
 }

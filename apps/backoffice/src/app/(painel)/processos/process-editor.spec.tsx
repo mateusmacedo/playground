@@ -172,6 +172,10 @@ describe('ProcessEditor', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Ajustar à tela' }));
     fireEvent.click(screen.getByRole('button', { name: 'Limpar' }));
+    const confirm = await screen.findByRole('dialog', {
+      name: 'Limpar o canvas',
+    });
+    fireEvent.click(within(confirm).getByRole('button', { name: 'Limpar' }));
 
     expect(within(canvas()).queryByText('Primeira etapa')).toBeNull();
     expect(issueStatus()).toBe('1 problema');
