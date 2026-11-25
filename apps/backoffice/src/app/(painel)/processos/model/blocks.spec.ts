@@ -1,27 +1,47 @@
 import {
+  acceptsExceptions,
+  BLOCK_CATEGORIES,
   BLOCK_SPECS,
-  createBlock,
+  blockName,
+  hasBranches,
   isBlockKind,
   kindOf,
-  outputHandles,
   specOf,
 } from './blocks';
-import { block, decisionBranches } from './test-graph';
 
 describe('catálogo de blocos', () => {
-  it('lista os seis blocos na ordem da biblioteca', () => {
+  it('lista os dezessete blocos na ordem da biblioteca', () => {
     expect(BLOCK_SPECS.map((spec) => spec.label)).toEqual([
       'Início',
-      'Etapa',
-      'Decisão',
-      'Convergência',
+      'Aguardar evento',
+      'Temporizador',
+      'Evento de exceção',
       'Fim',
+      'Etapa',
+      'Tarefa humana',
+      'Tarefa automatizada',
+      'Enviar mensagem',
+      'Subprocesso',
+      'Decisão exclusiva',
+      'Convergência de alternativas',
+      'Decisão inclusiva',
+      'Junção inclusiva',
+      'Abertura paralela',
+      'Sincronização paralela',
       'Anotação',
     ]);
   });
 
+  it('põe todo bloco num grupo da biblioteca', () => {
+    const categories = BLOCK_CATEGORIES.map((entry) => entry.category);
+
+    for (const spec of BLOCK_SPECS) {
+      expect(categories).toContain(spec.category);
+    }
+  });
+
   it('reconhece só os tipos do catálogo', () => {
-    expect(isBlockKind('decision')).toBe(true);
+    expect(isBlockKind('parallel-join')).toBe(true);
     expect(isBlockKind('toString')).toBe(false);
     expect(isBlockKind(42)).toBe(false);
   });
@@ -32,68 +52,44 @@ describe('catálogo de blocos', () => {
     expect(kindOf({})).toBe('task');
   });
 
-  it('descreve entradas e saídas de cada tipo', () => {
+  it('descreve a cardinalidade de entrada e saída de cada tipo', () => {
     expect(specOf('start')).toMatchObject({ input: 'none', output: 'single' });
-    expect(specOf('merge')).toMatchObject({ input: 'many', output: 'single' });
+    expect(specOf('human-task')).toMatchObject({
+      input: 'one',
+      output: 'single',
+    });
+    expect(specOf('wait-event')).toMatchObject({
+      input: 'one',
+      output: 'events',
+    });
+    expect(specOf('parallel-join')).toMatchObject({
+      input: 'many',
+      output: 'single',
+    });
+    expect(specOf('exception')).toMatchObject({
+      input: 'none',
+      output: 'single',
+    });
+    expect(specOf('end')).toMatchObject({ input: 'many', output: 'none' });
     expect(specOf('annotation')).toMatchObject({
       input: 'none',
       output: 'none',
     });
   });
-});
 
-describe('outputHandles', () => {
-  it('dá a saída única, um ponto por ramo ou nenhum', () => {
-    expect(outputHandles(block({ id: 't', type: 'task' }))).toEqual(['out']);
-    expect(
-      outputHandles(
-        block({
-          id: 'd',
-          type: 'decision',
-          data: { branches: decisionBranches },
-        }),
-      ),
-    ).toEqual(['yes', 'no']);
-    expect(outputHandles(block({ id: 'd', type: 'decision' }))).toEqual([]);
-    expect(outputHandles(block({ id: 'e', type: 'end' }))).toEqual([]);
-  });
-});
-
-describe('createBlock', () => {
-  function sequentialIds() {
-    let next = 0;
-    return () => {
-      next += 1;
-      return `id-${next}`;
-    };
-  }
-
-  it('cria o bloco com o nome do tipo na posição pedida', () => {
-    const node = createBlock({
-      kind: 'task',
-      position: { x: 10, y: 20 },
-      createId: sequentialIds(),
-    });
-
-    expect(node).toEqual({
-      id: 'id-1',
-      type: 'task',
-      position: { x: 10, y: 20 },
-      data: { label: 'Etapa' },
-    });
+  it('separa os tipos com ramos e os que aceitam exceção', () => {
+    expect(hasBranches('inclusive-split')).toBe(true);
+    expect(hasBranches('merge')).toBe(false);
+    expect(acceptsExceptions('automated-task')).toBe(true);
+    expect(acceptsExceptions('task')).toBe(false);
   });
 
-  it('cria a Decisão com os ramos Sim e Não', () => {
-    const node = createBlock({
-      kind: 'decision',
-      position: { x: 0, y: 0 },
-      createId: sequentialIds(),
-    });
-
-    expect(node.data.branches).toEqual([
-      { id: 'id-1', label: 'Sim' },
-      { id: 'id-2', label: 'Não' },
-    ]);
-    expect(node.id).toBe('id-3');
+  it('usa o nome do tipo quando o título está vazio', () => {
+    expect(blockName({ type: 'timer', data: { label: '  ' } })).toBe(
+      'Temporizador',
+    );
+    expect(blockName({ type: 'timer', data: { label: 'Esperar' } })).toBe(
+      'Esperar',
+    );
   });
 });

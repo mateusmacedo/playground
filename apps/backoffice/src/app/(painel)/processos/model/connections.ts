@@ -1,11 +1,12 @@
 import {
   type Graph,
   type GraphEdge,
+  INPUT_HANDLE,
   kindOf,
   OUTPUT_HANDLE,
-  outputHandles,
   specOf,
 } from './blocks';
+import { inputLimit, outputHandles } from './ports';
 
 export interface ConnectionRequest {
   readonly source: string;
@@ -20,6 +21,7 @@ export type ConnectionProblem =
   | 'no-output'
   | 'unknown-output'
   | 'no-input'
+  | 'unknown-input'
   | 'duplicate'
   | 'output-taken'
   | 'input-taken';
@@ -32,6 +34,7 @@ export const CONNECTION_PROBLEM_TEXT: Readonly<
   'no-output': 'o bloco de origem não tem saída.',
   'unknown-output': 'o ponto de saída não existe mais.',
   'no-input': 'o bloco de destino não aceita entrada.',
+  'unknown-input': 'o ponto de chegada não é uma entrada do bloco de destino.',
   duplicate: 'já existe a mesma conexão.',
   'output-taken': 'o ponto de saída já está ligado a outro bloco.',
   'input-taken':
@@ -72,9 +75,13 @@ export function connectionProblem(
   if (!outputHandles(source).includes(handle)) {
     return 'unknown-output';
   }
-  const targetSpec = specOf(kindOf(target));
-  if (targetSpec.input === 'none') {
+  const targetLimit = inputLimit(target);
+  if (targetLimit === 'none') {
     return 'no-input';
+  }
+  const targetHandle = connection.targetHandle ?? INPUT_HANDLE;
+  if (targetHandle !== INPUT_HANDLE) {
+    return 'unknown-input';
   }
 
   const others = graph.edges.filter((edge) => edge.id !== ignoreEdgeId);
@@ -88,7 +95,7 @@ export function connectionProblem(
     return 'output-taken';
   }
   const targetTaken = others.some((edge) => edge.target === target.id);
-  if (targetSpec.input === 'one' && targetTaken) {
+  if (targetLimit === 'one' && targetTaken) {
     return 'input-taken';
   }
   return null;

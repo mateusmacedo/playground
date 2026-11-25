@@ -1,23 +1,72 @@
 export type BlockKind =
   | 'start'
   | 'task'
+  | 'human-task'
+  | 'automated-task'
+  | 'send-message'
+  | 'wait-event'
+  | 'timer'
   | 'decision'
   | 'merge'
+  | 'inclusive-split'
+  | 'inclusive-join'
+  | 'parallel-split'
+  | 'parallel-join'
+  | 'exception'
+  | 'subprocess'
   | 'end'
   | 'annotation';
 
-/** Um caminho de saída da Decisão; o `id` também é o id do ponto de saída dele. */
+/** Um caminho de saída de uma decisão ou abertura; o `id` também é o id do ponto de saída dele. */
 export interface Branch {
   readonly id: string;
   readonly label: string;
+  readonly condition?: string;
+  readonly description?: string;
 }
 
+export type StartTrigger = 'manual' | 'message' | 'schedule';
+export type TimerMode = 'duration' | 'until';
+export type ExceptionTrigger = 'error' | 'timeout';
+
+/** Grafo interno de um subprocesso, salvo dentro do próprio bloco. */
+export type InnerProcess = {
+  readonly nodes: readonly GraphNode[];
+  readonly edges: readonly GraphEdge[];
+};
+
 // WHY: `type`, e não `interface`, porque o React Flow exige `data` atribuível a `Record<string, unknown>`, e só alias
-// de tipo ganha a assinatura de índice implícita.
+// de tipo ganha a assinatura de índice implícita. Os campos são opcionais e planos: cada tipo de bloco usa os seus
+// (lista em `conversion.ts`), e a conversão entre tipos só precisa saber quais deles somem.
 export type BlockData = {
   readonly label: string;
   readonly description?: string;
+  readonly laneId?: string;
   readonly branches?: readonly Branch[];
+  readonly defaultBranchId?: string;
+  readonly trigger?: StartTrigger;
+  readonly role?: string;
+  readonly instructions?: string;
+  readonly expectedResult?: string;
+  readonly dueIn?: string;
+  readonly system?: string;
+  readonly operation?: string;
+  readonly inputs?: string;
+  readonly outputs?: string;
+  readonly recipient?: string;
+  readonly channel?: string;
+  readonly content?: string;
+  readonly eventName?: string;
+  readonly deadline?: string;
+  readonly timerMode?: TimerMode;
+  readonly duration?: string;
+  readonly until?: string;
+  readonly pairId?: string;
+  readonly exceptionTrigger?: ExceptionTrigger;
+  readonly interrupting?: boolean;
+  readonly goal?: string;
+  readonly process?: InnerProcess;
+  readonly outcome?: string;
 };
 
 /** Dados próprios da conexão; o rótulo de um ramo vem do ramo, não daqui. */
@@ -37,6 +86,8 @@ export interface GraphNode {
   readonly position: Point;
   readonly data: BlockData;
   readonly selected?: boolean;
+  /** Tarefa à qual um Evento de exceção está preso; a posição dele é relativa a ela. */
+  readonly parentId?: string;
 }
 
 /** O mínimo de uma conexão que as regras leem. */
@@ -60,13 +111,19 @@ export interface Graph<
 /** Quantas conexões o bloco aceita chegando: nenhuma, uma ou várias. */
 export type InputLimit = 'none' | 'one' | 'many';
 
-/** Como o bloco sai: sem saída, por uma saída única ou por um ponto por ramo. */
-export type OutputMode = 'none' | 'single' | 'branches';
+/**
+ * Como o bloco sai: sem saída, por uma saída única, por um ponto por ramo ou pelos desfechos de uma espera (evento
+ * recebido e, com prazo, prazo expirado).
+ */
+export type OutputMode = 'none' | 'single' | 'branches' | 'events';
+
+export type BlockCategory = 'events' | 'activities' | 'gateways' | 'notes';
 
 export interface BlockSpec {
   readonly kind: BlockKind;
   readonly label: string;
   readonly hint: string;
+  readonly category: BlockCategory;
   readonly input: InputLimit;
   readonly output: OutputMode;
 }
@@ -81,34 +138,127 @@ const SPEC_BY_KIND: Readonly<Record<BlockKind, BlockSpec>> = {
     kind: 'start',
     label: 'Início',
     hint: 'Ponto de partida do processo.',
+    category: 'events',
     input: 'none',
     output: 'single',
   },
   task: {
     kind: 'task',
     label: 'Etapa',
-    hint: 'Uma atividade do processo.',
+    hint: 'Uma atividade do processo, ainda sem responsável definido.',
+    category: 'activities',
+    input: 'one',
+    output: 'single',
+  },
+  'human-task': {
+    kind: 'human-task',
+    label: 'Tarefa humana',
+    hint: 'Atividade feita por uma pessoa com um papel definido.',
+    category: 'activities',
+    input: 'one',
+    output: 'single',
+  },
+  'automated-task': {
+    kind: 'automated-task',
+    label: 'Tarefa automatizada',
+    hint: 'Operação executada por um sistema.',
+    category: 'activities',
+    input: 'one',
+    output: 'single',
+  },
+  'send-message': {
+    kind: 'send-message',
+    label: 'Enviar mensagem',
+    hint: 'Envia uma mensagem e segue o fluxo.',
+    category: 'activities',
+    input: 'one',
+    output: 'single',
+  },
+  'wait-event': {
+    kind: 'wait-event',
+    label: 'Aguardar evento',
+    hint: 'Espera um evento, com prazo opcional.',
+    category: 'events',
+    input: 'one',
+    output: 'events',
+  },
+  timer: {
+    kind: 'timer',
+    label: 'Temporizador',
+    hint: 'Espera uma duração ou até uma data e horário.',
+    category: 'events',
     input: 'one',
     output: 'single',
   },
   decision: {
     kind: 'decision',
-    label: 'Decisão',
-    hint: 'Divide o fluxo em dois ou mais caminhos.',
+    label: 'Decisão exclusiva',
+    hint: 'Segue por um único caminho a cada passagem.',
+    category: 'gateways',
     input: 'one',
     output: 'branches',
   },
   merge: {
     kind: 'merge',
-    label: 'Convergência',
-    hint: 'Reúne vários caminhos em um só.',
+    label: 'Convergência de alternativas',
+    hint: 'Reúne caminhos alternativos; cada chegada segue sozinha.',
+    category: 'gateways',
     input: 'many',
+    output: 'single',
+  },
+  'inclusive-split': {
+    kind: 'inclusive-split',
+    label: 'Decisão inclusiva',
+    hint: 'Segue por todos os caminhos cuja condição for atendida.',
+    category: 'gateways',
+    input: 'one',
+    output: 'branches',
+  },
+  'inclusive-join': {
+    kind: 'inclusive-join',
+    label: 'Junção inclusiva',
+    hint: 'Espera os caminhos ativados pela decisão inclusiva.',
+    category: 'gateways',
+    input: 'many',
+    output: 'single',
+  },
+  'parallel-split': {
+    kind: 'parallel-split',
+    label: 'Abertura paralela',
+    hint: 'Ativa todos os caminhos ao mesmo tempo.',
+    category: 'gateways',
+    input: 'one',
+    output: 'branches',
+  },
+  'parallel-join': {
+    kind: 'parallel-join',
+    label: 'Sincronização paralela',
+    hint: 'Espera todos os caminhos da abertura paralela.',
+    category: 'gateways',
+    input: 'many',
+    output: 'single',
+  },
+  exception: {
+    kind: 'exception',
+    label: 'Evento de exceção',
+    hint: 'Desvio por erro técnico ou tempo esgotado de uma tarefa.',
+    category: 'events',
+    input: 'none',
+    output: 'single',
+  },
+  subprocess: {
+    kind: 'subprocess',
+    label: 'Subprocesso',
+    hint: 'Agrupa um trecho do processo num canvas próprio.',
+    category: 'activities',
+    input: 'one',
     output: 'single',
   },
   end: {
     kind: 'end',
     label: 'Fim',
-    hint: 'Encerra o processo.',
+    hint: 'Encerra o processo com um desfecho.',
+    category: 'events',
     input: 'many',
     output: 'none',
   },
@@ -116,18 +266,43 @@ const SPEC_BY_KIND: Readonly<Record<BlockKind, BlockSpec>> = {
     kind: 'annotation',
     label: 'Anotação',
     hint: 'Nota livre, sem conexões.',
+    category: 'notes',
     input: 'none',
     output: 'none',
   },
 };
 
+export interface CategorySpec {
+  readonly category: BlockCategory;
+  readonly label: string;
+}
+
+/** Grupos da biblioteca, na ordem da tela. */
+export const BLOCK_CATEGORIES: readonly CategorySpec[] = [
+  { category: 'events', label: 'Eventos' },
+  { category: 'activities', label: 'Atividades' },
+  { category: 'gateways', label: 'Desvios' },
+  { category: 'notes', label: 'Notas' },
+];
+
 /** Os blocos na ordem da biblioteca. */
 export const BLOCK_SPECS: readonly BlockSpec[] = [
   SPEC_BY_KIND.start,
+  SPEC_BY_KIND['wait-event'],
+  SPEC_BY_KIND.timer,
+  SPEC_BY_KIND.exception,
+  SPEC_BY_KIND.end,
   SPEC_BY_KIND.task,
+  SPEC_BY_KIND['human-task'],
+  SPEC_BY_KIND['automated-task'],
+  SPEC_BY_KIND['send-message'],
+  SPEC_BY_KIND.subprocess,
   SPEC_BY_KIND.decision,
   SPEC_BY_KIND.merge,
-  SPEC_BY_KIND.end,
+  SPEC_BY_KIND['inclusive-split'],
+  SPEC_BY_KIND['inclusive-join'],
+  SPEC_BY_KIND['parallel-split'],
+  SPEC_BY_KIND['parallel-join'],
   SPEC_BY_KIND.annotation,
 ];
 
@@ -149,37 +324,20 @@ export function blockName(node: Pick<GraphNode, 'type' | 'data'>): string {
   return node.data.label.trim() || specOf(kindOf(node)).label;
 }
 
-/** Ids dos pontos de saída do bloco: o único, um por ramo ou nenhum. */
-export function outputHandles(node: GraphNode): readonly string[] {
-  const { output } = specOf(kindOf(node));
-  if (output === 'single') {
-    return [OUTPUT_HANDLE];
-  }
-  if (output === 'branches') {
-    return (node.data.branches ?? []).map((branch) => branch.id);
-  }
-  return [];
+/** Tipos que se dividem em ramos com nome. */
+export function hasBranches(kind: BlockKind): boolean {
+  return specOf(kind).output === 'branches';
 }
 
-export interface CreateBlockParams {
-  readonly kind: BlockKind;
-  readonly position: Point;
-  readonly createId: () => string;
+/** Tipos de atividade que aceitam um Evento de exceção preso à borda. */
+export function acceptsExceptions(kind: BlockKind): boolean {
+  return (
+    kind === 'human-task' || kind === 'automated-task' || kind === 'subprocess'
+  );
 }
 
-/** Bloco novo com os dados padrão do tipo; a Decisão já nasce com os ramos "Sim" e "Não". */
-export function createBlock(params: CreateBlockParams) {
-  const { kind, position, createId } = params;
-  const label = specOf(kind).label;
-  const data: BlockData =
-    kind === 'decision'
-      ? {
-          label,
-          branches: [
-            { id: createId(), label: 'Sim' },
-            { id: createId(), label: 'Não' },
-          ],
-        }
-      : { label };
-  return { id: createId(), type: kind, position, data };
-}
+/** Par de cada tipo que referencia uma abertura: a sincronização aponta a abertura paralela; a junção, a inclusiva. */
+export const PAIRED_SPLIT: Readonly<Partial<Record<BlockKind, BlockKind>>> = {
+  'parallel-join': 'parallel-split',
+  'inclusive-join': 'inclusive-split',
+};

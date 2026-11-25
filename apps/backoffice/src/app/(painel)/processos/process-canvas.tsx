@@ -12,11 +12,12 @@ import { BLOCK_DRAG_TYPE } from './block-palette';
 import { ProcessConnectionLine } from './connection-line';
 import { IssuesProvider } from './issues-context';
 import { isBlockKind } from './model/blocks';
+import { GRID_STEP } from './model/geometry';
 import { nodeTypes } from './nodes/node-types';
 import { blockOrigin, displayEdges, issuesByElement } from './process-graph';
 import type { ProcessEditorState } from './use-process-editor';
 
-const SNAP_GRID: [number, number] = [16, 16];
+const SNAP_GRID: [number, number] = [GRID_STEP, GRID_STEP];
 
 export interface ProcessCanvasProps {
   readonly editor: ProcessEditorState;

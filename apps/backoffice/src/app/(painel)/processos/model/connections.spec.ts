@@ -122,6 +122,82 @@ describe('connectionProblem', () => {
   });
 });
 
+describe('connectionProblem nos tipos novos', () => {
+  const extended: Graph = {
+    nodes: [
+      block({ id: 'wait', type: 'wait-event' }),
+      block({
+        id: 'timed',
+        type: 'wait-event',
+        data: { deadline: '48 horas' },
+      }),
+      block({ id: 'work', type: 'automated-task' }),
+      { ...block({ id: 'failure', type: 'exception' }), parentId: 'work' },
+      block({ id: 'sync', type: 'parallel-join' }),
+      block({ id: 'human', type: 'human-task' }),
+      block({ id: 'outcome', type: 'end' }),
+    ],
+    edges: [link({ source: 'work', target: 'sync' })],
+  };
+
+  function extendedProblem(
+    connection: ProblemParams['connection'],
+  ): ReturnType<typeof connectionProblem> {
+    return connectionProblem({ graph: extended, connection });
+  }
+
+  it('só aceita a saída de prazo expirado quando a espera tem prazo', () => {
+    expect(
+      extendedProblem({
+        source: 'wait',
+        target: 'outcome',
+        sourceHandle: 'expired',
+      }),
+    ).toBe('unknown-output');
+    expect(
+      extendedProblem({
+        source: 'timed',
+        target: 'outcome',
+        sourceHandle: 'expired',
+      }),
+    ).toBeNull();
+  });
+
+  it('deixa a exceção sair, mas não receber conexão', () => {
+    expect(
+      extendedProblem({
+        source: 'failure',
+        target: 'human',
+        sourceHandle: 'out',
+      }),
+    ).toBeNull();
+    expect(
+      extendedProblem({
+        source: 'human',
+        target: 'failure',
+        sourceHandle: 'out',
+      }),
+    ).toBe('no-input');
+  });
+
+  it('aceita várias entradas na sincronização paralela', () => {
+    expect(
+      extendedProblem({ source: 'human', target: 'sync', sourceHandle: 'out' }),
+    ).toBeNull();
+  });
+
+  it('recusa ponto de chegada que não é a entrada do bloco', () => {
+    expect(
+      extendedProblem({
+        source: 'human',
+        target: 'outcome',
+        sourceHandle: 'out',
+        targetHandle: 'out',
+      }),
+    ).toBe('unknown-input');
+  });
+});
+
 describe('sourceHandleOf', () => {
   it('usa a saída única quando a conexão não diz o ponto', () => {
     expect(sourceHandleOf({ sourceHandle: null })).toBe('out');

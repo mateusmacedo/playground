@@ -1,3 +1,4 @@
+import { suggestedBranchLabel } from './block-factory';
 import type {
   BlockData,
   Branch,
@@ -12,6 +13,7 @@ import {
   connectionProblem,
   sourceHandleOf,
 } from './connections';
+import { outputHandles } from './ports';
 
 /** Deslocamento da cópia em relação ao original, para as duas não ficarem sobrepostas. */
 export const DUPLICATE_OFFSET: Point = { x: 40, y: 40 };
@@ -38,21 +40,27 @@ export interface LabeledEdge extends GraphEdge {
   readonly data?: LinkData;
 }
 
-function selectedNodeIds(nodes: readonly GraphNode[]): Set<string> {
+/** Ids dos blocos selecionados e das exceções presas a eles, que não existem sem a tarefa. */
+function removedNodeIds(nodes: readonly GraphNode[]): Set<string> {
   const ids = new Set<string>();
   for (const node of nodes) {
     if (node.selected) {
       ids.add(node.id);
     }
   }
+  for (const node of nodes) {
+    if (node.parentId !== undefined && ids.has(node.parentId)) {
+      ids.add(node.id);
+    }
+  }
   return ids;
 }
 
-/** Tira os blocos e as conexões selecionados; as conexões dos blocos removidos saem junto. */
+/** Tira os blocos e as conexões selecionados; as conexões e as exceções dos blocos removidos saem junto. */
 export function deleteSelection<N extends GraphNode, E extends GraphEdge>(
   graph: Graph<N, E>,
 ): Graph<N, E> {
-  const removed = selectedNodeIds(graph.nodes);
+  const removed = removedNodeIds(graph.nodes);
   const edges: E[] = [];
   for (const edge of graph.edges) {
     const touchesRemoved = removed.has(edge.source) || removed.has(edge.target);
@@ -67,56 +75,6 @@ export function deleteSelection<N extends GraphNode, E extends GraphEdge>(
     nodes: graph.nodes.filter((node) => !removed.has(node.id)),
     edges,
   };
-}
-
-export interface DuplicateSelectionParams<
-  N extends GraphNode,
-  E extends GraphEdge,
-> {
-  readonly graph: Graph<N, E>;
-  readonly createId: () => string;
-}
-
-/**
- * Copia os blocos selecionados com ids novos, deslocados, e as conexões entre eles. A seleção passa para as cópias.
- * Os ids dos ramos se repetem na cópia de propósito: o id do ponto de saída só precisa ser único dentro do bloco.
- */
-export function duplicateSelection<N extends GraphNode, E extends GraphEdge>(
-  params: DuplicateSelectionParams<N, E>,
-): Graph<N, E> {
-  const { graph, createId } = params;
-  const selected = graph.nodes.filter((node) => node.selected);
-  if (selected.length === 0) {
-    return graph;
-  }
-
-  const copyIds = new Map<string, string>();
-  const nodeCopies: N[] = [];
-  for (const node of selected) {
-    const id = createId();
-    copyIds.set(node.id, id);
-    nodeCopies.push({
-      ...node,
-      id,
-      selected: true,
-      position: {
-        x: node.position.x + DUPLICATE_OFFSET.x,
-        y: node.position.y + DUPLICATE_OFFSET.y,
-      },
-    });
-  }
-  const edgeCopies: E[] = [];
-  for (const edge of graph.edges) {
-    const source = copyIds.get(edge.source);
-    const target = copyIds.get(edge.target);
-    if (source && target) {
-      edgeCopies.push({ ...edge, id: createId(), source, target });
-    }
-  }
-
-  const nodes = [...unselected(graph.nodes), ...nodeCopies];
-  const edges = [...unselected(graph.edges), ...edgeCopies];
-  return { nodes, edges };
 }
 
 export interface ReconnectEdgeParams<N extends GraphNode, E extends GraphEdge> {
@@ -171,11 +129,18 @@ function withBlockData<N extends GraphNode, E extends GraphEdge>(
     return graph;
   }
   const data = change(node.data);
+  const changed = { ...node, data };
+  const handles = outputHandles(changed);
+  // NOTE: mudar dados pode tirar uma saída (prazo apagado, ramo removido); a conexão que saía dela vai junto.
+  const kept = graph.edges.filter(
+    (edge) => edge.source !== nodeId || handles.includes(sourceHandleOf(edge)),
+  );
+  const edges = kept.length === graph.edges.length ? graph.edges : kept;
   return {
     nodes: graph.nodes.map((candidate) =>
-      candidate.id === nodeId ? { ...candidate, data } : candidate,
+      candidate.id === nodeId ? changed : candidate,
     ),
-    edges: graph.edges,
+    edges,
   };
 }
 
@@ -215,7 +180,7 @@ export function addBranch<N extends GraphNode, E extends GraphEdge>(
       const branches = data.branches ?? [];
       const branch = {
         id: createId(),
-        label: `Caminho ${branches.length + 1}`,
+        label: suggestedBranchLabel(branches.length + 1),
       };
       return { ...data, branches: [...branches, branch] };
     },
@@ -255,12 +220,12 @@ export interface RemoveBranchParams<N extends GraphNode, E extends GraphEdge> {
   readonly branchId: string;
 }
 
-/** Tira o ramo da Decisão e a conexão que saía dele. */
+/** Tira o ramo e, com ele, a conexão que saía dele. */
 export function removeBranch<N extends GraphNode, E extends GraphEdge>(
   params: RemoveBranchParams<N, E>,
 ): Graph<N, E> {
-  const { nodeId, branchId } = params;
-  const withoutBranch = withBlockData({
+  const { branchId } = params;
+  return withBlockData({
     ...params,
     change: (data) => {
       const branches = data.branches ?? [];
@@ -268,18 +233,6 @@ export function removeBranch<N extends GraphNode, E extends GraphEdge>(
       return { ...data, branches: kept };
     },
   });
-  if (withoutBranch === params.graph) {
-    return withoutBranch;
-  }
-  const edges: E[] = [];
-  for (const edge of withoutBranch.edges) {
-    const leavesRemovedBranch =
-      edge.source === nodeId && sourceHandleOf(edge) === branchId;
-    if (!leavesRemovedBranch) {
-      edges.push(edge);
-    }
-  }
-  return { nodes: withoutBranch.nodes, edges };
 }
 
 export interface UpdateEdgeLabelParams<

@@ -1,8 +1,7 @@
 import { MarkerType } from '@xyflow/react';
-
+import { BLOCK_SIZE } from './model/geometry';
 import { block, decisionBranches, link } from './model/test-graph';
 import {
-  BLOCK_SIZE,
   blockOrigin,
   displayEdges,
   edgeLabel,

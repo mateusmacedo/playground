@@ -45,3 +45,12 @@ export const decisionBranches = [
   { id: 'yes', label: 'Sim' },
   { id: 'no', label: 'Não' },
 ];
+
+/** Gerador de ids previsíveis: `copy-1`, `copy-2` e assim por diante. */
+export function sequentialIds(prefix = 'copy'): () => string {
+  let next = 0;
+  return () => {
+    next += 1;
+    return `${prefix}-${next}`;
+  };
+}

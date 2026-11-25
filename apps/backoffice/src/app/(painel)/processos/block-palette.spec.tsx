@@ -3,12 +3,14 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { BLOCK_DRAG_TYPE, BlockPalette } from './block-palette';
 
 describe('BlockPalette', () => {
-  it('lista os seis blocos e insere pelo botão', () => {
+  it('lista os dezessete blocos e insere pelo botão', () => {
     const onAdd = vi.fn();
     render(<BlockPalette onAdd={onAdd} />);
 
-    expect(screen.getAllByRole('listitem')).toHaveLength(6);
-    fireEvent.click(screen.getByRole('button', { name: 'Inserir Decisão' }));
+    expect(screen.getAllByRole('listitem')).toHaveLength(17);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Inserir Decisão exclusiva' }),
+    );
 
     expect(onAdd).toHaveBeenCalledWith('decision');
   });
@@ -18,7 +20,9 @@ describe('BlockPalette', () => {
     const dataTransfer = { setData: vi.fn(), effectAllowed: 'none' };
 
     fireEvent.dragStart(
-      screen.getByText('Convergência').closest('li') as HTMLElement,
+      screen
+        .getByText('Convergência de alternativas')
+        .closest('li') as HTMLElement,
       { dataTransfer },
     );
 

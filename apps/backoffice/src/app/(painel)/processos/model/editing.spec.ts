@@ -1,9 +1,7 @@
 import type { Graph, GraphEdge, LinkData } from './blocks';
 import {
   addBranch,
-  DUPLICATE_OFFSET,
   deleteSelection,
-  duplicateSelection,
   reconnectEdge,
   removeBranch,
   renameBranch,
@@ -11,14 +9,6 @@ import {
   updateEdgeLabel,
 } from './editing';
 import { block, decisionBranches, link } from './test-graph';
-
-function sequentialIds() {
-  let next = 0;
-  return () => {
-    next += 1;
-    return `copy-${next}`;
-  };
-}
 
 const graph: Graph = {
   nodes: [
@@ -85,41 +75,6 @@ describe('deleteSelection', () => {
 
   it('devolve o mesmo grafo sem seleção', () => {
     expect(deleteSelection(graph)).toBe(graph);
-  });
-});
-
-describe('duplicateSelection', () => {
-  it('copia os blocos selecionados e as conexões entre eles, e seleciona as cópias', () => {
-    const result = duplicateSelection({
-      graph: select({
-        source: graph,
-        ids: {
-          nodes: ['decision', 'task'],
-          edges: ['task-out-end'],
-        },
-      }),
-      createId: sequentialIds(),
-    });
-    const copies = result.nodes.filter((node) => node.selected);
-
-    expect(copies.map((node) => node.id)).toEqual(['copy-1', 'copy-2']);
-    expect(copies[0]?.position).toEqual(DUPLICATE_OFFSET);
-    expect(copies[0]?.data.branches).toEqual(decisionBranches);
-    expect(result.nodes).toHaveLength(6);
-    expect(result.edges.at(-1)).toMatchObject({
-      id: 'copy-3',
-      source: 'copy-1',
-      target: 'copy-2',
-      sourceHandle: 'yes',
-    });
-    expect(result.edges).toHaveLength(5);
-    expect(result.edges.some((edge) => edge.selected)).toBe(false);
-  });
-
-  it('devolve o mesmo grafo sem seleção', () => {
-    expect(duplicateSelection({ graph, createId: sequentialIds() })).toBe(
-      graph,
-    );
   });
 });
 

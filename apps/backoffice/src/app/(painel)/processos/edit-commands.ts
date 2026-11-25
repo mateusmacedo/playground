@@ -1,8 +1,9 @@
-import { type BlockKind, createBlock, type Point } from './model/blocks';
+import { createBlock } from './model/block-factory';
+import type { BlockKind, Point } from './model/blocks';
+import { duplicateSelection } from './model/clipboard';
 import {
   addBranch,
   deleteSelection,
-  duplicateSelection,
   removeBranch,
   renameBranch,
   unselected,

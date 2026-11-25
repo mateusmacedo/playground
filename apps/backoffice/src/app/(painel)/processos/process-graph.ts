@@ -9,6 +9,8 @@ import {
   type Point,
 } from './model/blocks';
 import { sourceHandleOf } from './model/connections';
+import { BLOCK_SIZE } from './model/geometry';
+import { findOutputPort } from './model/ports';
 import type { ProcessIssue } from './model/validation';
 
 export type ProcessNode = Node<BlockData, BlockKind>;
@@ -23,6 +25,7 @@ export function toProcessGraph(graph: Graph): ProcessGraph {
       type: kindOf(node),
       position: node.position,
       data: node.data,
+      ...(node.parentId === undefined ? {} : { parentId: node.parentId }),
     })),
     edges: graph.edges.map((edge) => ({
       id: edge.id,
@@ -33,9 +36,6 @@ export function toProcessGraph(graph: Graph): ProcessGraph {
     })),
   };
 }
-
-/** Tamanho aproximado de um bloco, para centralizar no ponto de inserção. */
-export const BLOCK_SIZE = { width: 180, height: 64 } as const;
 
 /** Canto superior esquerdo de um bloco centralizado em `point`. */
 export function blockOrigin(point: Point): Point {
@@ -67,14 +67,17 @@ export interface EdgeLabelParams {
   readonly edge: ProcessEdge;
 }
 
-/** Rótulo da conexão: o nome do ramo quando ela sai de uma Decisão, senão o rótulo próprio dela. */
+/**
+ * Rótulo da conexão: o nome da saída quando ela tem um (ramo, evento recebido, prazo expirado, exceção), senão o
+ * rótulo próprio da conexão.
+ */
 export function edgeLabel(params: EdgeLabelParams): string {
   const { graph, edge } = params;
   const source = graph.nodes.find((node) => node.id === edge.source);
-  const branch = source?.data.branches?.find(
-    (candidate) => candidate.id === sourceHandleOf(edge),
-  );
-  return branch?.label ?? edge.data?.label ?? '';
+  const port = source
+    ? findOutputPort({ node: source, handle: sourceHandleOf(edge) })
+    : undefined;
+  return port?.label ?? edge.data?.label ?? '';
 }
 
 export interface DisplayEdgesParams {

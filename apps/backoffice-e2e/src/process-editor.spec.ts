@@ -97,7 +97,9 @@ test.describe('editor de processos', () => {
   }) => {
     await openEditor(page);
 
-    await page.getByRole('button', { name: 'Inserir Decisão' }).click();
+    await page
+      .getByRole('button', { name: 'Inserir Decisão exclusiva' })
+      .click();
     const properties = page.getByRole('region', { name: 'Propriedades' });
     await properties.getByLabel('Título').fill('Aprovado?');
     await properties.getByRole('button', { name: 'Adicionar ramo' }).click();

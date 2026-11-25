@@ -54,41 +54,59 @@ describe('ProcessEditor', () => {
   it('insere a Decisão pela biblioteca com os ramos e o painel dela', async () => {
     await renderEditor();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Inserir Decisão' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Inserir Decisão exclusiva' }),
+    );
 
     expect(within(canvas()).getByText('Sim')).toBeTruthy();
     expect(within(canvas()).getByText('Não')).toBeTruthy();
     expect(screen.getByRole('group', { name: 'Ramos' })).toBeTruthy();
     expect(issueStatus()).toBe('3 problemas');
     expect(
-      within(canvas()).getAllByText(/Problemas: Decisão não tem conexão/),
+      within(canvas()).getAllByText(
+        /Problemas: Decisão exclusiva não tem conexão/,
+      ),
     ).toHaveLength(1);
   });
 
   it('desfaz, refaz, duplica e exclui pelos atalhos de teclado', async () => {
     await renderEditor();
     fireEvent.click(
-      screen.getByRole('button', { name: 'Inserir Convergência' }),
+      screen.getByRole('button', {
+        name: 'Inserir Convergência de alternativas',
+      }),
     );
-    expect(within(canvas()).getAllByText('Convergência')).toHaveLength(1);
+    expect(
+      within(canvas()).getAllByText('Convergência de alternativas'),
+    ).toHaveLength(1);
 
     key({ target: document.body, init: { key: 'd', ctrlKey: true } });
-    expect(within(canvas()).getAllByText('Convergência')).toHaveLength(2);
+    expect(
+      within(canvas()).getAllByText('Convergência de alternativas'),
+    ).toHaveLength(2);
 
     key({ target: document.body, init: { key: 'Delete' } });
-    expect(within(canvas()).getAllByText('Convergência')).toHaveLength(1);
+    expect(
+      within(canvas()).getAllByText('Convergência de alternativas'),
+    ).toHaveLength(1);
 
     key({ target: document.body, init: { key: 'z', ctrlKey: true } });
-    expect(within(canvas()).getAllByText('Convergência')).toHaveLength(2);
+    expect(
+      within(canvas()).getAllByText('Convergência de alternativas'),
+    ).toHaveLength(2);
 
     key({ target: document.body, init: { key: 'y', metaKey: true } });
-    expect(within(canvas()).getAllByText('Convergência')).toHaveLength(1);
+    expect(
+      within(canvas()).getAllByText('Convergência de alternativas'),
+    ).toHaveLength(1);
   });
 
   it('deixa as teclas para o campo de texto e para os botões', async () => {
     await renderEditor();
     fireEvent.click(
-      screen.getByRole('button', { name: 'Inserir Convergência' }),
+      screen.getByRole('button', {
+        name: 'Inserir Convergência de alternativas',
+      }),
     );
 
     key({
@@ -101,7 +119,9 @@ describe('ProcessEditor', () => {
     });
     key({ target: document.body, init: { key: 'k', ctrlKey: true } });
 
-    expect(within(canvas()).getAllByText('Convergência')).toHaveLength(1);
+    expect(
+      within(canvas()).getAllByText('Convergência de alternativas'),
+    ).toHaveLength(1);
   });
 
   it('edita a anotação pelo painel e desfaz pela barra', async () => {
@@ -138,7 +158,9 @@ describe('ProcessEditor', () => {
       clientY: { value: 80 },
     });
     fireEvent(canvas(), drop);
-    expect(within(canvas()).getByText('Convergência')).toBeTruthy();
+    expect(
+      within(canvas()).getByText('Convergência de alternativas'),
+    ).toBeTruthy();
 
     const fileDrag = { types: ['Files'], getData: () => '' };
     expect(fireEvent.dragOver(canvas(), { dataTransfer: fileDrag })).toBe(true);
