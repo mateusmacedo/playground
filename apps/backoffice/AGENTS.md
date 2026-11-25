@@ -5,6 +5,7 @@ Painel administrativo em Next.js 16 (App Router) com CoreUI React 5 ([ADR 0003](
 ## Next.js 16
 
 - **OBRIGATÓRIO**: esta versão do Next.js difere do que modelos conhecem. Antes de escrever código, leia o guia relevante em `node_modules/next/dist/docs/` e siga a rule `nextjs-16` (`.agents/rules/nextjs-16.md`), que lista o que o modelo costuma escrever errado. Na dúvida, Context7 `/vercel/next.js/v16.4.5`.
+- **OBRIGATÓRIO**: o servidor do painel roda **sempre na porta 3000**, em qualquer situação: desenvolvimento, conferência de resultado, teste no navegador, MCP `next-devtools` e e2e (o `webServer` do `apps/backoffice-e2e` espera a 3000). Suba com `pnpm nx dev backoffice`, que já usa a 3000; nunca passe `--port` com outro valor nem suba uma segunda instância noutra porta, por motivo nenhum. Se a 3000 estiver ocupada, descubra o processo que a ocupa e pergunte ao usuário antes de agir.
 - MCP `next-devtools` (`.mcp.json` da raiz, versão fixa): só funciona com `pnpm nx dev backoffice` rodando. Tools: `nextjs_index` (descobre o servidor de desenvolvimento), `nextjs_call` (chama as tools dele: `get_errors`, `get_logs`, `get_routes`, `get_page_metadata` e outras), `nextjs_docs` (aponta os docs da versão instalada) e `browser_eval` (aponta a CLI `agent-browser`).
 - `allowedDevOrigins` em `next.config.js` existe por causa do e2e local; leia o [ADR 0006](../../docs/adr/0006-next-16-4-6-e-allowed-dev-origins.md) antes de mudar.
 
