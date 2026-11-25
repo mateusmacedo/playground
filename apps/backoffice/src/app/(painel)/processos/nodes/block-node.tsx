@@ -91,6 +91,35 @@ export function BlockPorts({ id, node }: Readonly<BlockPortsProps>) {
   );
 }
 
+interface SubprocessSummaryProps {
+  readonly data: ProcessNode['data'];
+}
+
+/** Representação externa do subprocesso: o que ele recebe e o que devolve, além do objetivo. */
+function SubprocessSummary({ data }: Readonly<SubprocessSummaryProps>) {
+  const inputs = data.inputs?.trim();
+  const outputs = data.outputs?.trim();
+  if (!inputs && !outputs) {
+    return null;
+  }
+  return (
+    <dl className="process-block__io">
+      {inputs ? (
+        <>
+          <dt>Entradas</dt>
+          <dd>{inputs}</dd>
+        </>
+      ) : null}
+      {outputs ? (
+        <>
+          <dt>Saídas</dt>
+          <dd>{outputs}</dd>
+        </>
+      ) : null}
+    </dl>
+  );
+}
+
 /** Atividades, esperas e subprocesso: cor e nome do tipo, o detalhe principal e as saídas que o tipo tem. */
 export function BlockNode({ id, type, data }: NodeProps<ProcessNode>) {
   const kind = kindOf({ type });
@@ -110,6 +139,7 @@ export function BlockNode({ id, type, data }: NodeProps<ProcessNode>) {
       {detail ? (
         <span className="process-block__description">{detail}</span>
       ) : null}
+      {kind === 'subprocess' ? <SubprocessSummary data={data} /> : null}
       {kind === 'subprocess' ? (
         <button
           type="button"

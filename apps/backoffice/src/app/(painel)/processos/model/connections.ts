@@ -100,3 +100,37 @@ export function connectionProblem(
   }
   return null;
 }
+
+export type HandleRole = 'source' | 'target';
+
+/** Ligação como o arraste a vê: de onde ela saiu e onde o mouse está, em qualquer sentido. */
+export interface DraggedConnection {
+  readonly fromNodeId: string;
+  readonly fromHandleId: string | null;
+  readonly fromHandleRole: HandleRole;
+  readonly toNodeId: string;
+  readonly toHandleId: string | null;
+}
+
+/** A conexão que o arraste formaria: quem arrasta a partir de uma entrada liga no sentido contrário. */
+export function draggedRequest(dragged: DraggedConnection): ConnectionRequest {
+  if (dragged.fromHandleRole === 'source') {
+    return {
+      source: dragged.fromNodeId,
+      sourceHandle: dragged.fromHandleId,
+      target: dragged.toNodeId,
+      targetHandle: dragged.toHandleId,
+    };
+  }
+  return {
+    source: dragged.toNodeId,
+    sourceHandle: dragged.toHandleId,
+    target: dragged.fromNodeId,
+    targetHandle: dragged.fromHandleId,
+  };
+}
+
+/** Frase que explica ao usuário por que a conexão não foi feita. */
+export function refusalText(problem: ConnectionProblem): string {
+  return `Conexão recusada: ${CONNECTION_PROBLEM_TEXT[problem]}`;
+}

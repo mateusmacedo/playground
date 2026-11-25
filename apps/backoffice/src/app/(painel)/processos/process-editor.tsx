@@ -194,6 +194,16 @@ function EditorLayout({ opening, store }: Readonly<EditorLayoutProps>) {
             crumbs={editor.crumbs}
             onOpenLevel={editor.openLevel}
           />
+          {editor.refusal ? (
+            <CAlert
+              color="danger"
+              dismissible
+              onClose={editor.dismissRefusal}
+              className="py-2 small mb-2"
+            >
+              {editor.refusal}
+            </CAlert>
+          ) : null}
           <div ref={canvasRef} className="process-editor__canvas">
             <ProcessCanvas
               editor={editor}

@@ -413,6 +413,26 @@ $process-kind-colors: (
   color: var(--cui-warning-text-emphasis);
 }
 
+.process-block__io {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0 0.375rem;
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+
+  dt {
+    color: var(--cui-secondary-color);
+    font-weight: 400;
+  }
+
+  dd {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 .process-block__open {
   margin-top: 0.25rem;
   font-size: 0.75rem;
@@ -647,6 +667,14 @@ $process-kind-colors: (
 .process-connection-line {
   stroke: var(--cui-secondary-color);
   stroke-width: 2;
+}
+
+.process-connection-reason {
+  fill: var(--cui-danger-text-emphasis);
+  font-size: 0.75rem;
+  paint-order: stroke;
+  stroke: var(--cui-body-bg);
+  stroke-width: 4px;
 }
 
 .process-connection-line--valid {

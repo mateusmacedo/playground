@@ -1,5 +1,10 @@
 import type { Graph } from './blocks';
-import { connectionProblem, sourceHandleOf } from './connections';
+import {
+  connectionProblem,
+  draggedRequest,
+  refusalText,
+  sourceHandleOf,
+} from './connections';
 import { block, decisionBranches, link } from './test-graph';
 
 const graph: Graph = {
@@ -202,5 +207,30 @@ describe('sourceHandleOf', () => {
   it('usa a saída única quando a conexão não diz o ponto', () => {
     expect(sourceHandleOf({ sourceHandle: null })).toBe('out');
     expect(sourceHandleOf({ sourceHandle: 'yes' })).toBe('yes');
+  });
+});
+
+describe('draggedRequest e refusalText', () => {
+  it('inverte o sentido quando o arraste começa numa entrada', () => {
+    expect(
+      draggedRequest({
+        fromNodeId: 'b',
+        fromHandleId: 'in',
+        fromHandleRole: 'target',
+        toNodeId: 'a',
+        toHandleId: 'out',
+      }),
+    ).toEqual({
+      source: 'a',
+      sourceHandle: 'out',
+      target: 'b',
+      targetHandle: 'in',
+    });
+  });
+
+  it('explica a recusa em PT-BR', () => {
+    expect(refusalText('self')).toBe(
+      'Conexão recusada: o bloco não pode ligar a ele mesmo.',
+    );
   });
 });

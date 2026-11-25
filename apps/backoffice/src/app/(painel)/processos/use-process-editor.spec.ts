@@ -1,5 +1,9 @@
 import { act, renderHook } from '@testing-library/react';
-import { EdgeChangeset, NodeChangeset } from '@xyflow/react';
+import {
+  EdgeChangeset,
+  type FinalConnectionState,
+  NodeChangeset,
+} from '@xyflow/react';
 
 import type { Graph } from './model/blocks';
 import { sampleProcess } from './model/sample-process';
@@ -12,6 +16,39 @@ function sequentialIds() {
     next += 1;
     return `new-${next}`;
   };
+}
+
+const NO_CONNECTION: FinalConnectionState = {
+  isValid: null,
+  from: null,
+  fromHandle: null,
+  fromPosition: null,
+  fromNode: null,
+  to: null,
+  toHandle: null,
+  toPosition: null,
+  toNode: null,
+  pointer: null,
+};
+
+/** Estado final de uma ligação solta sobre um ponto; só os campos que o editor lê. */
+interface DroppedOnParams {
+  readonly from: string;
+  readonly fromHandle: string;
+  readonly to: string;
+  readonly toHandle: string;
+}
+
+function droppedOn(params: DroppedOnParams): FinalConnectionState {
+  const state = {
+    ...NO_CONNECTION,
+    isValid: false,
+    fromNode: { id: params.from },
+    fromHandle: { id: params.fromHandle, type: 'source' },
+    toNode: { id: params.to },
+    toHandle: { id: params.toHandle, type: 'target' },
+  };
+  return state as unknown as FinalConnectionState;
 }
 
 function setup(initial: Graph = sampleProcess) {
@@ -147,7 +184,9 @@ describe('useProcessEditor', () => {
       target: 'end',
     });
 
-    act(() => result.current.onReconnectEnd());
+    act(() =>
+      result.current.onReconnectEnd(null, edge, 'target', NO_CONNECTION),
+    );
     expect(result.current.isValidConnection(busy)).toBe(false);
   });
 
@@ -507,5 +546,77 @@ describe('useProcessEditor nos comandos de estrutura', () => {
     expect(result.current.issues.map((issue) => issue.key)).toContain(
       `duplicate-lane:${second?.id}`,
     );
+  });
+});
+
+describe('useProcessEditor nas recusas de conexão', () => {
+  it('explica a recusa da ligação em andamento e guarda o motivo ao soltar', () => {
+    const { result } = setup();
+
+    expect(
+      result.current.explainConnection({
+        fromNodeId: 'start',
+        fromHandleId: 'out',
+        fromHandleRole: 'source',
+        toNodeId: 'task-1',
+        toHandleId: 'in',
+      }),
+    ).toBe('Conexão recusada: já existe a mesma conexão.');
+
+    act(() =>
+      result.current.reportRefusal(
+        droppedOn({
+          from: 'end',
+          fromHandle: 'out',
+          to: 'start',
+          toHandle: 'in',
+        }),
+      ),
+    );
+    expect(result.current.refusal).toBe(
+      'Conexão recusada: o bloco de origem não tem saída.',
+    );
+
+    act(() => result.current.dismissRefusal());
+    expect(result.current.refusal).toBeNull();
+  });
+
+  it('lê no sentido certo a ligação arrastada a partir de uma entrada', () => {
+    const { result } = setup();
+
+    expect(
+      result.current.explainConnection({
+        fromNodeId: 'task-1',
+        fromHandleId: 'in',
+        fromHandleRole: 'target',
+        toNodeId: 'start',
+        toHandleId: 'out',
+      }),
+    ).toBe('Conexão recusada: já existe a mesma conexão.');
+  });
+
+  it('limpa a recusa quando uma ligação é feita', () => {
+    const { result } = setup();
+    act(() =>
+      result.current.reportRefusal(
+        droppedOn({
+          from: 'end',
+          fromHandle: 'out',
+          to: 'start',
+          toHandle: 'in',
+        }),
+      ),
+    );
+
+    act(() =>
+      result.current.onConnect({
+        source: 'start',
+        sourceHandle: 'out',
+        target: 'end',
+        targetHandle: 'in',
+      }),
+    );
+
+    expect(result.current.refusal).toBeNull();
   });
 });

@@ -8,6 +8,7 @@ import {
 import { Position } from '@xyflow/react';
 
 import { BLOCK_DRAG_TYPE } from './block-palette';
+import { CanvasActionsProvider } from './canvas-actions';
 import { ProcessConnectionLine } from './connection-line';
 import { sampleProcess } from './model/sample-process';
 import { ProcessEditor } from './process-editor';
@@ -205,31 +206,65 @@ describe('ProcessEditor', () => {
 });
 
 describe('ProcessConnectionLine', () => {
+  const explainConnection = vi.fn(
+    () => 'Conexão recusada: já existe a mesma conexão.',
+  );
+
   function renderLine(status: 'valid' | 'invalid' | null) {
     const { container } = render(
-      <svg>
-        <title>linha</title>
-        <ProcessConnectionLine
-          {...({
-            fromX: 0,
-            fromY: 0,
-            fromPosition: Position.Bottom,
-            toX: 50,
-            toY: 80,
-            toPosition: Position.Top,
-            connectionStatus: status,
-          } as Parameters<typeof ProcessConnectionLine>[0])}
-        />
-      </svg>,
+      <CanvasActionsProvider
+        value={{
+          openSubprocess: vi.fn(),
+          requestInsertOnEdge: vi.fn(),
+          explainConnection,
+        }}
+      >
+        <svg>
+          <title>linha</title>
+          <ProcessConnectionLine
+            {...({
+              fromX: 0,
+              fromY: 0,
+              fromPosition: Position.Bottom,
+              toX: 50,
+              toY: 80,
+              toPosition: Position.Top,
+              connectionStatus: status,
+              fromNode: { id: 'a' },
+              fromHandle: { id: 'out', type: 'source' },
+              toNode: { id: 'b' },
+              toHandle: { id: 'in', type: 'target' },
+            } as unknown as Parameters<typeof ProcessConnectionLine>[0])}
+          />
+        </svg>
+      </CanvasActionsProvider>,
     );
-    return container.querySelector('path');
+    return container;
   }
 
   it('pinta a linha conforme a conexão é aceita ou recusada', () => {
-    expect(renderLine('valid')?.getAttribute('class')).toContain(
-      'process-connection-line--valid',
+    expect(
+      renderLine('valid').querySelector('path')?.getAttribute('class'),
+    ).toContain('process-connection-line--valid');
+    expect(
+      renderLine('invalid').querySelector('path')?.getAttribute('class'),
+    ).toContain('--invalid');
+    expect(
+      renderLine(null).querySelector('path')?.getAttribute('class'),
+    ).toContain('--idle');
+  });
+
+  it('escreve o motivo da recusa junto da ponta, só quando recusa', () => {
+    expect(renderLine('invalid').querySelector('text')?.textContent).toBe(
+      'Conexão recusada: já existe a mesma conexão.',
     );
-    expect(renderLine('invalid')?.getAttribute('class')).toContain('--invalid');
-    expect(renderLine(null)?.getAttribute('class')).toContain('--idle');
+    expect(explainConnection).toHaveBeenCalledWith({
+      fromNodeId: 'a',
+      fromHandleId: 'out',
+      fromHandleRole: 'source',
+      toNodeId: 'b',
+      toHandleId: 'in',
+    });
+    expect(renderLine('valid').querySelector('text')).toBeNull();
   });
 });

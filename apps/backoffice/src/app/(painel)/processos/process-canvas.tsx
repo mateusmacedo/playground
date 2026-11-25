@@ -67,8 +67,9 @@ export function ProcessCanvas({
       openSubprocess: editor.openSubprocess,
       requestInsertOnEdge: (edgeId: string) =>
         onRequestPick({ purpose: 'edge', edgeId }),
+      explainConnection: editor.explainConnection,
     }),
-    [editor.openSubprocess, onRequestPick],
+    [editor.openSubprocess, editor.explainConnection, onRequestPick],
   );
 
   function handleDragOver(event: DragEvent<HTMLDivElement>) {
@@ -102,7 +103,11 @@ export function ProcessCanvas({
   ) {
     const pointer = pointerOf(event);
     const droppedOnPane = !state.isValid && state.toNode === null;
-    if (!droppedOnPane || !state.fromNode || !state.fromHandle || !pointer) {
+    if (!droppedOnPane) {
+      editor.reportRefusal(state);
+      return;
+    }
+    if (!state.fromNode || !state.fromHandle || !pointer) {
       return;
     }
     if (state.fromHandle.type !== 'source') {
