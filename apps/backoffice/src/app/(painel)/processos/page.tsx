@@ -13,7 +13,7 @@ export default function ProcessesPage() {
           <h1 className="h4 mb-0">Editor de processos</h1>
           <span className="badge text-bg-info">Beta</span>
           <span className="small text-body-secondary">
-            Em teste: pode mudar, e o processo não é gravado.
+            Em teste: pode mudar. O rascunho fica salvo neste navegador.
           </span>
         </div>
         <p className="small text-body-secondary">

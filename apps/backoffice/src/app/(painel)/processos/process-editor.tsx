@@ -2,11 +2,21 @@
 
 import '@xyflow/react/dist/style.css';
 
+import { CAlert } from '@coreui/react';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+
+import { useIsClient } from '@/shared/hooks/use-is-client';
 
 import { BlockPalette } from './block-palette';
-import { EditorDialogs, useEditorDialogs } from './editor-dialogs';
+import { DraftBar } from './draft-bar';
+import { createBrowserDraftStore, type DraftStore } from './draft-store';
+import {
+  EditorDialogs,
+  type EditorDialogsState,
+  useEditorDialogs,
+} from './editor-dialogs';
+import { type EditorOpening, openEditor } from './editor-opening';
 import { EditorToolbar } from './editor-toolbar';
 import type { BlockKind, Graph, Point } from './model/blocks';
 import { countIssues } from './model/issues';
@@ -16,6 +26,7 @@ import { ProcessSearch } from './process-search';
 import { LanesEditor } from './properties/lanes-editor';
 import { PropertiesPanel } from './properties/properties-panel';
 import { SubprocessBreadcrumb } from './subprocess-breadcrumb';
+import { useDraft } from './use-draft';
 import { useEditorFocus } from './use-editor-focus';
 import { useEditorShortcuts } from './use-editor-shortcuts';
 import {
@@ -28,7 +39,10 @@ const CASCADE_STEP = 24;
 const CASCADE_LENGTH = 5;
 
 export interface ProcessEditorProps {
+  /** Processo de exemplo, aberto quando não há rascunho salvo. */
   readonly initial: Graph;
+  /** Onde o rascunho é guardado; por padrão, o `localStorage` do navegador. */
+  readonly store?: DraftStore;
 }
 
 interface CanvasCenterParams {
@@ -74,8 +88,51 @@ function EditorSidebar({
   );
 }
 
-function EditorLayout({ initial }: Readonly<ProcessEditorProps>) {
-  const editor = useProcessEditor({ initial });
+interface EditorTopProps {
+  readonly editor: ProcessEditorState;
+  readonly dialogs: EditorDialogsState;
+  readonly onFitView: () => void;
+}
+
+/** Barra de ações e o resumo da validação, acima do editor. */
+function EditorTop({ editor, dialogs, onFitView }: Readonly<EditorTopProps>) {
+  const { graph } = editor;
+  return (
+    <EditorToolbar
+      canUndo={editor.canUndo}
+      canRedo={editor.canRedo}
+      hasSelection={hasSelectedItem(graph)}
+      selectedNodes={graph.nodes.filter((node) => node.selected).length}
+      isEmpty={graph.nodes.length === 0}
+      issueCount={countIssues(editor.issues)}
+      onUndo={editor.undo}
+      onRedo={editor.redo}
+      onDuplicate={editor.duplicateSelected}
+      onDelete={editor.deleteSelected}
+      onAlign={editor.align}
+      onDistribute={editor.distribute}
+      onAutoLayout={editor.autoLayout}
+      onFitView={onFitView}
+      onClear={dialogs.askClear}
+    />
+  );
+}
+
+interface EditorLayoutProps {
+  readonly opening: EditorOpening;
+  readonly store: DraftStore;
+}
+
+function EditorLayout({ opening, store }: Readonly<EditorLayoutProps>) {
+  const editor = useProcessEditor({
+    initial: opening.graph,
+    lanes: opening.lanes,
+  });
+  const draft = useDraft({
+    document: editor.document,
+    store,
+    restored: opening.restored,
+  });
   const { screenToFlowPosition, fitView } = useReactFlow();
   const canvasRef = useRef<HTMLDivElement>(null);
   const dialogs = useEditorDialogs();
@@ -102,24 +159,24 @@ function EditorLayout({ initial }: Readonly<ProcessEditorProps>) {
 
   return (
     <div className="process-editor">
-      <EditorToolbar
-        canUndo={editor.canUndo}
-        canRedo={editor.canRedo}
-        hasSelection={hasSelectedItem(graph)}
-        selectedNodes={graph.nodes.filter((node) => node.selected).length}
-        isEmpty={graph.nodes.length === 0}
-        issueCount={countIssues(editor.issues)}
-        onUndo={editor.undo}
-        onRedo={editor.redo}
-        onDuplicate={editor.duplicateSelected}
-        onDelete={editor.deleteSelected}
-        onAlign={editor.align}
-        onDistribute={editor.distribute}
-        onAutoLayout={editor.autoLayout}
+      {opening.unreadable ? (
+        <CAlert color="warning" dismissible className="py-2 small">
+          O rascunho salvo não pôde ser lido; o exemplo foi aberto no lugar.
+        </CAlert>
+      ) : null}
+      <DraftBar
+        status={draft.status}
+        everSaved={draft.everSaved}
+        onSave={() => {
+          void draft.save();
+        }}
+      />
+      <EditorTop
+        editor={editor}
+        dialogs={dialogs}
         onFitView={() => {
           void fitView({ maxZoom: 1.2 });
         }}
-        onClear={dialogs.askClear}
       />
       <div className="process-editor__body">
         <EditorSidebar
@@ -154,10 +211,35 @@ function EditorLayout({ initial }: Readonly<ProcessEditorProps>) {
 }
 
 /** Editor visual de processos: biblioteca, canvas, propriedades e barra de ações sobre o mesmo estado. */
-export function ProcessEditor({ initial }: Readonly<ProcessEditorProps>) {
+function OpenedEditor({
+  initial,
+  store,
+}: Readonly<Required<ProcessEditorProps>>) {
+  // NOTE: lido uma vez, na montagem; depois disso o rascunho só muda quando o usuário salva.
+  const [opening] = useState(() => openEditor({ store, sample: initial }));
   return (
     <ReactFlowProvider>
-      <EditorLayout initial={initial} />
+      <EditorLayout opening={opening} store={store} />
     </ReactFlowProvider>
   );
+}
+
+/**
+ * Editor visual de processos. O rascunho mora no navegador, então o editor só monta no cliente: o servidor e a
+ * hidratação mostram o aviso de carregamento, e o HTML dos dois lados é o mesmo.
+ */
+export function ProcessEditor({
+  initial,
+  store,
+}: Readonly<ProcessEditorProps>) {
+  const isClient = useIsClient();
+  const [browserStore] = useState(() => store ?? createBrowserDraftStore());
+  if (!isClient) {
+    return (
+      <p role="status" className="small text-body-secondary">
+        Carregando o editor…
+      </p>
+    );
+  }
+  return <OpenedEditor initial={initial} store={browserStore} />;
 }

@@ -15,7 +15,9 @@ describe('ProcessesPage', () => {
     ).toBeTruthy();
     expect(screen.getByText('Beta')).toBeTruthy();
     expect(
-      screen.getByText('Em teste: pode mudar, e o processo não é gravado.'),
+      screen.getByText(
+        'Em teste: pode mudar. O rascunho fica salvo neste navegador.',
+      ),
     ).toBeTruthy();
     expect(await screen.findByText('Primeira etapa')).toBeTruthy();
   });

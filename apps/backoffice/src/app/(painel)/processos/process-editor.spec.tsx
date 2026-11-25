@@ -20,7 +20,9 @@ function canvas() {
 }
 
 function issueStatus() {
-  return screen.getByRole('status').textContent;
+  return within(
+    screen.getByRole('toolbar', { name: 'Ações do editor' }),
+  ).getByRole('status').textContent;
 }
 
 interface KeyParams {
