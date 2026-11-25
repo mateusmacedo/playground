@@ -16,12 +16,13 @@ describe('openEditor', () => {
       lanes: [],
       restored: false,
       unreadable: false,
+      adjusted: 0,
     });
   });
 
   it('retoma o rascunho salvo', () => {
     const text = serializeDocument({
-      version: 1,
+      version: 2,
       lanes: [{ id: 'a', name: 'A', width: 256 }],
       graph: { nodes: [], edges: [] },
     });

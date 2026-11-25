@@ -67,6 +67,7 @@ function commandsMock() {
     openSubprocess: vi.fn(),
     requestInsertOnEdge: vi.fn(),
     focusIssue: vi.fn(),
+    setDefaultBranch: vi.fn(),
   } satisfies PanelCommands;
 }
 

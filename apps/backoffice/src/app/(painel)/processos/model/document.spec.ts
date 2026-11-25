@@ -6,6 +6,7 @@ import {
   type Lane,
   laneAtBlock,
   laneBands,
+  laneIssues,
   moveLane,
   type ProcessDocument,
   renameLane,
@@ -23,7 +24,7 @@ function at(node: GraphNode, x: number): GraphNode {
 }
 
 const document: ProcessDocument = {
-  version: 1,
+  version: 2,
   lanes,
   graph: {
     nodes: [
@@ -174,5 +175,17 @@ describe('syncLanesFromPosition', () => {
     expect(syncLanesFromPosition({ document, nodeIds: ['review'] })).toBe(
       document,
     );
+  });
+});
+
+describe('laneIssues', () => {
+  it('aponta raia sem nome e nome repetido, sem diferença de maiúsculas', () => {
+    expect(
+      laneIssues([
+        { id: 'a', name: 'Vendas', width: LANE_WIDTH },
+        { id: 'b', name: ' vendas ', width: LANE_WIDTH },
+        { id: 'c', name: '', width: LANE_WIDTH },
+      ]).map((issue) => issue.key),
+    ).toEqual(['duplicate-lane:b', 'unnamed-lane:c']);
   });
 });

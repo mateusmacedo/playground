@@ -7,7 +7,7 @@ import {
 } from './edit-commands';
 import { createEditorDocument } from './editor-document';
 import type { Graph } from './model/blocks';
-import type { Lane } from './model/document';
+import { type Lane, laneIssues } from './model/document';
 import { findIssues } from './model/validation';
 import { createStructureCommands } from './structure-commands';
 import { useConnectionCommands } from './use-connection-commands';
@@ -30,8 +30,13 @@ export function useProcessEditor(params: UseProcessEditorParams) {
     createEditorDocument({ graph: params.initial, lanes: params.lanes }),
   );
   const clipboard: ClipboardRef = useRef(null);
-  const { graph, change, changeDocument, path } = history;
-  const issues = useMemo(() => findIssues(graph), [graph]);
+  const { graph, change, changeDocument, path, lanes } = history;
+  const atRoot = path.length === 0;
+  // NOTE: as raias são do processo principal; os subprocessos não têm raias próprias.
+  const issues = useMemo(
+    () => [...(atRoot ? laneIssues(lanes) : []), ...findIssues(graph)],
+    [atRoot, lanes, graph],
+  );
   const connections = useConnectionCommands({ graph, change, createId });
   const commands = createEditCommands({ change, createId, graph, clipboard });
   const branches = createBranchCommands({ change, createId });

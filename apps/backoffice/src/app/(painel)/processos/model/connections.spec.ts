@@ -129,7 +129,7 @@ describe('connectionProblem nos tipos novos', () => {
       block({
         id: 'timed',
         type: 'wait-event',
-        data: { deadline: '48 horas' },
+        data: { deadline: { amount: 48, unit: 'hours' } },
       }),
       block({ id: 'work', type: 'automated-task' }),
       { ...block({ id: 'failure', type: 'exception' }), parentId: 'work' },

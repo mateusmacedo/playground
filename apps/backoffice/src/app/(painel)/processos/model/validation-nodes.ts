@@ -1,33 +1,19 @@
 import {
   acceptsExceptions,
   blockName,
-  type Graph,
-  type GraphEdge,
   type GraphNode,
   hasBranches,
   kindOf,
   specOf,
 } from './blocks';
 import { sourceHandleOf } from './connections';
-import type { IssueSeverity, ProcessIssue } from './issues';
+import type { ProcessIssue } from './issues';
 import { outputPorts } from './ports';
+import { branchNameRules, fieldRules } from './validation-fields';
+import type { NewIssue, NodeRulesParams } from './validation-rule';
 
 /** Tipos que reúnem caminhos e por isso precisam de pelo menos duas entradas. */
 const GATHERING_KINDS = new Set(['merge', 'inclusive-join', 'parallel-join']);
-
-interface NewIssue {
-  readonly code: string;
-  readonly message: string;
-  readonly severity?: IssueSeverity;
-  readonly branchId?: string;
-}
-
-export interface NodeRulesParams {
-  readonly graph: Graph;
-  readonly node: GraphNode;
-  readonly incoming: readonly GraphEdge[];
-  readonly outgoing: readonly GraphEdge[];
-}
 
 function inputRules(params: NodeRulesParams): NewIssue[] {
   const issues: NewIssue[] = [];
@@ -118,51 +104,68 @@ function isBlank(value: string | undefined): boolean {
 }
 
 interface OperationalField {
+  readonly field: string;
   readonly missing: (node: GraphNode) => boolean;
   readonly text: string;
 }
 
 /** O que cada tipo precisa ter preenchido para ser operado; falta disso é aviso, não erro de estrutura. */
-const OPERATIONAL_FIELDS: Readonly<Record<string, OperationalField>> = {
-  'human-task': {
-    missing: (node) => isBlank(node.data.role),
-    text: 'não tem papel responsável',
-  },
-  'automated-task': {
-    missing: (node) => isBlank(node.data.system),
-    text: 'não indica o sistema que executa a operação',
-  },
-  'send-message': {
-    missing: (node) => isBlank(node.data.recipient),
-    text: 'não tem destinatário',
-  },
-  'wait-event': {
-    missing: (node) => isBlank(node.data.eventName),
-    text: 'não indica o evento aguardado',
-  },
-  timer: {
-    missing: (node) =>
-      node.data.timerMode === 'until'
-        ? isBlank(node.data.until)
-        : isBlank(node.data.duration),
-    text: 'não tem duração nem data definida',
-  },
-  end: {
-    missing: (node) => isBlank(node.data.outcome),
-    text: 'não tem desfecho definido',
-  },
+const OPERATIONAL_FIELDS: Readonly<
+  Record<string, readonly OperationalField[]>
+> = {
+  'human-task': [
+    {
+      field: 'role',
+      missing: (node) => isBlank(node.data.role),
+      text: 'não tem papel responsável',
+    },
+  ],
+  'automated-task': [
+    {
+      field: 'system',
+      missing: (node) => isBlank(node.data.system),
+      text: 'não indica o sistema que executa a operação',
+    },
+  ],
+  'send-message': [
+    {
+      field: 'recipient',
+      missing: (node) => isBlank(node.data.recipient),
+      text: 'não tem destinatário',
+    },
+    {
+      field: 'channel',
+      missing: (node) => node.data.channel === undefined,
+      text: 'não indica o canal',
+    },
+  ],
+  'wait-event': [
+    {
+      field: 'eventName',
+      missing: (node) => isBlank(node.data.eventName),
+      text: 'não indica o evento aguardado',
+    },
+  ],
+  end: [
+    {
+      field: 'outcome',
+      missing: (node) => node.data.outcome === undefined,
+      text: 'não tem desfecho definido',
+    },
+  ],
 };
 
 function operationalRules(params: NodeRulesParams): NewIssue[] {
   const issues: NewIssue[] = [];
   const { node } = params;
-  const field = OPERATIONAL_FIELDS[kindOf(node)];
-  if (field?.missing(node)) {
-    issues.push({
-      code: 'incomplete',
-      severity: 'warning',
-      message: `${blockName(node)} ${field.text}.`,
-    });
+  for (const entry of OPERATIONAL_FIELDS[kindOf(node)] ?? []) {
+    if (entry.missing(node)) {
+      issues.push({
+        code: `incomplete-${entry.field}`,
+        severity: 'warning',
+        message: `${blockName(node)} ${entry.text}.`,
+      });
+    }
   }
   return issues;
 }
@@ -171,7 +174,9 @@ const RULES = [
   inputRules,
   outputRules,
   branchRules,
+  branchNameRules,
   exceptionRules,
+  fieldRules,
   operationalRules,
 ];
 

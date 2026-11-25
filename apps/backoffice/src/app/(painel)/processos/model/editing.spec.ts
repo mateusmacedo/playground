@@ -5,6 +5,7 @@ import {
   reconnectEdge,
   removeBranch,
   renameBranch,
+  setDefaultBranch,
   updateBlockData,
   updateEdgeLabel,
 } from './editing';
@@ -213,5 +214,38 @@ describe('updateEdgeLabel', () => {
     expect(updateEdgeLabel({ graph: labeled, edgeId: 'x', label: 'y' })).toBe(
       labeled,
     );
+  });
+});
+
+describe('setDefaultBranch', () => {
+  it('marca o caminho padrão e limpa a condição dele', () => {
+    const decision: Graph = {
+      nodes: [
+        block({
+          id: 'd',
+          type: 'decision',
+          data: {
+            branches: [
+              { id: 'yes', label: 'Sim', condition: 'aprovado' },
+              { id: 'no', label: 'Não', condition: 'recusado' },
+            ],
+          },
+        }),
+      ],
+      edges: [],
+    };
+
+    const result = setDefaultBranch({
+      graph: decision,
+      nodeId: 'd',
+      branchId: 'no',
+    });
+    const data = result.nodes[0]?.data;
+
+    expect(data?.defaultBranchId).toBe('no');
+    expect(data?.branches).toEqual([
+      { id: 'yes', label: 'Sim', condition: 'aprovado' },
+      { id: 'no', label: 'Não', condition: undefined },
+    ]);
   });
 });

@@ -46,6 +46,22 @@ describe('LanesEditor', () => {
     ).toBe(true);
   });
 
+  it('avisa nome de raia vazio ou repetido', () => {
+    render(
+      <LanesEditor
+        lanes={[
+          { id: 'a', name: 'Vendas', width: LANE_WIDTH },
+          { id: 'b', name: 'vendas', width: LANE_WIDTH },
+          { id: 'c', name: ' ', width: LANE_WIDTH },
+        ]}
+        commands={commandsMock()}
+      />,
+    );
+
+    expect(screen.getByText('Já existe uma raia com este nome.')).toBeTruthy();
+    expect(screen.getByText('Dê um nome à raia.')).toBeTruthy();
+  });
+
   it('explica quando ainda não há raias', () => {
     render(<LanesEditor lanes={[]} commands={commandsMock()} />);
 

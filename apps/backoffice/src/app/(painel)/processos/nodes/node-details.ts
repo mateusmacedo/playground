@@ -1,4 +1,11 @@
-import { type GraphNode, kindOf } from '../model/blocks';
+import { type BlockData, type GraphNode, kindOf } from '../model/blocks';
+import {
+  channelLabel,
+  formatDateTime,
+  formatDuration,
+  formatSchedule,
+  outcomeText,
+} from '../model/fields';
 
 function filled(value: string | undefined): value is string {
   return value !== undefined && value.trim() !== '';
@@ -8,24 +15,52 @@ function filled(value: string | undefined): value is string {
 export function nodeDetail(node: Pick<GraphNode, 'type' | 'data'>): string {
   const { data } = node;
   switch (kindOf(node)) {
+    case 'start':
+      return startDetail(data);
     case 'human-task':
       return filled(data.role) ? `Papel: ${data.role}` : '';
     case 'automated-task':
       return filled(data.system) ? `Sistema: ${data.system}` : '';
     case 'send-message':
-      return filled(data.recipient) ? `Para: ${data.recipient}` : '';
+      return messageDetail(data);
     case 'wait-event':
-      return filled(data.deadline) ? `Prazo: ${data.deadline}` : '';
+      return data.deadline ? `Prazo: ${formatDuration(data.deadline)}` : '';
     case 'timer':
-      if (data.timerMode === 'until') {
-        return filled(data.until) ? `Até ${data.until.replace('T', ' ')}` : '';
-      }
-      return filled(data.duration) ? `Espera ${data.duration}` : '';
+      return timerDetail(data);
+    case 'exception':
+      return data.exceptionTrigger === 'timeout' && data.timeout
+        ? `Após ${formatDuration(data.timeout)}`
+        : '';
     case 'subprocess':
       return filled(data.goal) ? data.goal : '';
     case 'end':
-      return filled(data.outcome) ? data.outcome : '';
+      return outcomeText(data);
     default:
       return filled(data.description) ? data.description : '';
   }
+}
+
+function messageDetail(data: BlockData): string {
+  if (!data.channel) {
+    return '';
+  }
+  const channel = channelLabel(data.channel);
+  return filled(data.recipient) ? `${channel} para ${data.recipient}` : channel;
+}
+
+function startDetail(data: BlockData): string {
+  if (data.trigger === 'schedule' && data.schedule) {
+    return formatSchedule(data.schedule);
+  }
+  if (data.trigger === 'message' && filled(data.triggerMessage)) {
+    return `Ao receber: ${data.triggerMessage}`;
+  }
+  return '';
+}
+
+function timerDetail(data: BlockData): string {
+  if (data.timerMode === 'until') {
+    return data.until ? `Até ${formatDateTime(data.until)}` : '';
+  }
+  return data.duration ? `Espera ${formatDuration(data.duration)}` : '';
 }

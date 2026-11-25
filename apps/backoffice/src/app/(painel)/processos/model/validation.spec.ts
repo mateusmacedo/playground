@@ -30,13 +30,20 @@ const referenceProcess: Graph = {
       type: 'decision',
       data: { label: 'Dados completos?', branches: decisionBranches },
     }),
-    block({ id: 'ask', type: 'send-message', data: { recipient: 'Cliente' } }),
+    block({
+      id: 'ask',
+      type: 'send-message',
+      data: { recipient: 'Cliente', channel: 'email' },
+    }),
     block({
       id: 'wait',
       type: 'wait-event',
-      data: { eventName: 'Resposta do cliente', deadline: '48 horas' },
+      data: {
+        eventName: 'Resposta do cliente',
+        deadline: { amount: 48, unit: 'hours' },
+      },
     }),
-    block({ id: 'expired', type: 'end', data: { outcome: 'Expirado' } }),
+    block({ id: 'expired', type: 'end', data: { outcome: 'expired' } }),
     block({
       id: 'split',
       type: 'parallel-split',
@@ -56,7 +63,7 @@ const referenceProcess: Graph = {
     block({ id: 'notify', type: 'human-task', data: { role: 'Atendimento' } }),
     block({ id: 'sync', type: 'parallel-join', data: { pairId: 'split' } }),
     block({ id: 'close', type: 'human-task', data: { role: 'Analista' } }),
-    block({ id: 'done', type: 'end', data: { outcome: 'Concluído' } }),
+    block({ id: 'done', type: 'end', data: { outcome: 'completed' } }),
   ],
   edges: [
     link({ source: 'start', target: 'again' }),
@@ -103,7 +110,7 @@ describe('findIssues', () => {
     const graph: Graph = {
       nodes: [
         block({ id: 'task', type: 'task' }),
-        block({ id: 'end', type: 'end', data: { outcome: 'Concluído' } }),
+        block({ id: 'end', type: 'end', data: { outcome: 'completed' } }),
       ],
       edges: [link({ source: 'task', target: 'end' })],
     };
@@ -116,7 +123,7 @@ describe('findIssues', () => {
       nodes: [
         block({ id: 'a', type: 'start' }),
         block({ id: 'b', type: 'start' }),
-        block({ id: 'end', type: 'end', data: { outcome: 'Concluído' } }),
+        block({ id: 'end', type: 'end', data: { outcome: 'completed' } }),
       ],
       edges: [
         link({ source: 'a', target: 'end' }),
@@ -251,7 +258,7 @@ describe('findIssues', () => {
       nodes: [
         block({ id: 'start', type: 'start' }),
         block({ id: 'person', type: 'human-task', data: { label: 'Aprovar' } }),
-        block({ id: 'end', type: 'end', data: { outcome: 'Concluído' } }),
+        block({ id: 'end', type: 'end', data: { outcome: 'completed' } }),
       ],
       edges: [
         link({ source: 'start', target: 'person' }),
@@ -261,7 +268,7 @@ describe('findIssues', () => {
 
     expect(findIssues(graph)).toEqual([
       {
-        key: 'incomplete:person',
+        key: 'incomplete-role:person',
         nodeId: 'person',
         severity: 'warning',
         message: 'Aprovar não tem papel responsável.',
@@ -286,7 +293,7 @@ describe('findIssues', () => {
       nodes: [
         block({ id: 'start', type: 'start' }),
         block({ id: 'task', type: 'task' }),
-        block({ id: 'end', type: 'end', data: { outcome: 'Concluído' } }),
+        block({ id: 'end', type: 'end', data: { outcome: 'completed' } }),
       ],
       edges: [
         link({ source: 'start', target: 'task' }),
@@ -398,7 +405,7 @@ describe('findIssues nos subprocessos', () => {
           type: 'subprocess',
           data: { label: 'Cobrança', process: { nodes: [], edges: [] } },
         }),
-        block({ id: 'end', type: 'end', data: { outcome: 'Concluído' } }),
+        block({ id: 'end', type: 'end', data: { outcome: 'completed' } }),
       ],
       edges: [
         link({ source: 'start', target: 'sub' }),

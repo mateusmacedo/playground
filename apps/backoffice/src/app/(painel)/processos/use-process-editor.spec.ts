@@ -448,3 +448,64 @@ describe('useProcessEditor nos subprocessos', () => {
     expect(nodeIds(result)).toEqual(['start', 'task-1', 'end']);
   });
 });
+
+describe('useProcessEditor nos comandos de estrutura', () => {
+  it('prende exceção, alinha, distribui e mexe nas raias, cada um num passo', () => {
+    const { result } = setup();
+    act(() =>
+      result.current.addBlock({
+        kind: 'automated-task',
+        position: { x: 300, y: 0 },
+      }),
+    );
+    const taskId = result.current.graph.nodes.at(-1)?.id ?? '';
+
+    act(() => result.current.addException(taskId));
+    expect(result.current.graph.nodes.at(-1)?.parentId).toBe(taskId);
+
+    for (const id of ['start', 'task-1', 'end']) {
+      selectNode({ result, id });
+    }
+    act(() =>
+      result.current.selectOnly({ nodeIds: ['start', 'task-1', 'end'] }),
+    );
+    act(() => result.current.align('left'));
+    const lefts = result.current.graph.nodes
+      .filter((node) => ['start', 'task-1', 'end'].includes(node.id))
+      .map((node) => node.position.x);
+    expect(new Set(lefts).size).toBe(1);
+    act(() => result.current.distribute('vertical'));
+
+    act(() => result.current.addLane());
+    act(() => result.current.addLane());
+    const [first] = result.current.lanes;
+    act(() =>
+      result.current.renameLane({ laneId: first?.id ?? '', name: 'Vendas' }),
+    );
+    act(() =>
+      result.current.moveLane({ laneId: first?.id ?? '', direction: 'after' }),
+    );
+    expect(result.current.lanes.map((lane) => lane.name)).toEqual([
+      'Raia 2',
+      'Vendas',
+    ]);
+  });
+
+  it('acusa nome de raia repetido entre os problemas', () => {
+    const { result } = setup();
+    act(() => result.current.addLane());
+    act(() => result.current.addLane());
+    const [first, second] = result.current.lanes;
+
+    act(() =>
+      result.current.renameLane({
+        laneId: second?.id ?? '',
+        name: first?.name ?? '',
+      }),
+    );
+
+    expect(result.current.issues.map((issue) => issue.key)).toContain(
+      `duplicate-lane:${second?.id}`,
+    );
+  });
+});

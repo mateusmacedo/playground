@@ -24,6 +24,11 @@ export interface UpdateBranchChange {
   readonly patch: Partial<Omit<Branch, 'id'>>;
 }
 
+export interface SetDefaultBranchChange {
+  readonly nodeId: string;
+  readonly branchId: string | undefined;
+}
+
 export interface RemoveBranchChange {
   readonly nodeId: string;
   readonly branchId: string;
@@ -46,6 +51,7 @@ export interface PanelCommands {
   readonly addBranch: (nodeId: string) => void;
   readonly renameBranch: (change: RenameBranchChange) => void;
   readonly updateBranch: (change: UpdateBranchChange) => void;
+  readonly setDefaultBranch: (change: SetDefaultBranchChange) => void;
   readonly removeBranch: (change: RemoveBranchChange) => void;
   readonly updateEdgeLabel: (change: UpdateEdgeLabelChange) => void;
   readonly duplicateSelected: () => void;

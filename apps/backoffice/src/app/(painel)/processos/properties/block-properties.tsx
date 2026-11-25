@@ -57,7 +57,12 @@ export function BlockProperties({
           onChange={(event) => updateLabel(event.target.value)}
         />
       )}
-      <BlockFields node={node} graph={graph} commands={commands} />
+      <BlockFields
+        node={node}
+        graph={graph}
+        lanes={lanes}
+        commands={commands}
+      />
       {hasBranches(kind) ? (
         <BranchEditor node={node} commands={commands} />
       ) : null}

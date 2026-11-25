@@ -74,3 +74,17 @@ describe('distributeSelection', () => {
     expect(distributeSelection({ graph: pair, axis: 'vertical' })).toBe(pair);
   });
 });
+
+describe('alignSelection nas outras bordas', () => {
+  it('alinha à direita, à base e pelo meio', () => {
+    expect(positions(alignSelection({ graph, mode: 'right' })).a?.x).toBe(480);
+    expect(positions(alignSelection({ graph, mode: 'bottom' })).a?.y).toBe(400);
+    expect(positions(alignSelection({ graph, mode: 'middle' })).c?.y).toBe(208);
+  });
+
+  it('distribui na vertical', () => {
+    const result = positions(distributeSelection({ graph, axis: 'vertical' }));
+
+    expect(result.b?.y).toBe(208);
+  });
+});

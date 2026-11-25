@@ -50,8 +50,7 @@ function eventPorts(node: PortNode): OutputPort[] {
   const ports: OutputPort[] = [
     { id: RECEIVED_HANDLE, meaning: 'received', label: 'Evento recebido' },
   ];
-  const hasDeadline = (node.data.deadline ?? '').trim() !== '';
-  if (hasDeadline) {
+  if (node.data.deadline !== undefined) {
     ports.push({
       id: EXPIRED_HANDLE,
       meaning: 'expired',

@@ -17,7 +17,18 @@ interface BranchRowProps {
   readonly branch: Branch;
   readonly position: number;
   readonly hasCondition: boolean;
+  /** Outro ramo da mesma decisão já usa este nome. */
+  readonly repeated: boolean;
   readonly commands: PanelCommands;
+}
+
+function nameProblem(
+  params: Readonly<Pick<BranchRowProps, 'branch' | 'repeated'>>,
+): string | null {
+  if (params.branch.label.trim() === '') {
+    return 'Dê um nome ao ramo.';
+  }
+  return params.repeated ? 'Já existe um ramo com este nome.' : null;
 }
 
 function BranchRow({
@@ -25,14 +36,19 @@ function BranchRow({
   branch,
   position,
   hasCondition,
+  repeated,
   commands,
 }: Readonly<BranchRowProps>) {
+  const isDefault = branch.id === node.data.defaultBranchId;
+  const problem = nameProblem({ branch, repeated });
   return (
     <li className="process-branch-row">
       <div className="d-flex gap-2">
         <CFormInput
           size="sm"
           aria-label={`Nome do ramo ${position}`}
+          invalid={problem !== null}
+          feedbackInvalid={problem ?? undefined}
           value={branch.label}
           onChange={(event) =>
             commands.renameBranch({
@@ -54,7 +70,13 @@ function BranchRow({
           <CIcon icon={cilTrash} aria-hidden="true" />
         </CButton>
       </div>
-      {hasCondition ? (
+      {hasCondition && isDefault ? (
+        <p className="small text-body-secondary mt-1 mb-0">
+          Caminho padrão: segue quando nenhuma condição é atendida, por isso não
+          tem condição.
+        </p>
+      ) : null}
+      {hasCondition && !isDefault ? (
         <CFormInput
           size="sm"
           className="mt-1"
@@ -88,11 +110,26 @@ function BranchRow({
   );
 }
 
+/** Ids dos ramos cujo nome já apareceu antes na mesma decisão, sem diferença de maiúsculas e espaços. */
+function repeatedBranchIds(branches: readonly Branch[]): Set<string> {
+  const seen = new Set<string>();
+  const repeated = new Set<string>();
+  for (const branch of branches) {
+    const key = branch.label.trim().toLocaleLowerCase('pt-BR');
+    if (key !== '' && seen.has(key)) {
+      repeated.add(branch.id);
+    }
+    seen.add(key);
+  }
+  return repeated;
+}
+
 /** Ramos de uma decisão ou abertura: nome, condição, descrição, caminho padrão, criar e remover. */
 export function BranchEditor({ node, commands }: Readonly<BranchEditorProps>) {
   const branches = node.data.branches ?? [];
   const hasCondition = kindOf(node) !== 'parallel-split';
   const defaultId = useId();
+  const repeatedNames = repeatedBranchIds(branches);
   return (
     <fieldset className="mb-3">
       <legend className="fs-6 fw-semibold">Ramos</legend>
@@ -104,6 +141,7 @@ export function BranchEditor({ node, commands }: Readonly<BranchEditorProps>) {
             branch={branch}
             position={index + 1}
             hasCondition={hasCondition}
+            repeated={repeatedNames.has(branch.id)}
             commands={commands}
           />
         ))}
@@ -125,9 +163,9 @@ export function BranchEditor({ node, commands }: Readonly<BranchEditorProps>) {
           label="Caminho padrão"
           value={node.data.defaultBranchId ?? ''}
           onChange={(event) =>
-            commands.updateBlock({
+            commands.setDefaultBranch({
               nodeId: node.id,
-              patch: { defaultBranchId: event.target.value || undefined },
+              branchId: event.target.value || undefined,
             })
           }
         >

@@ -24,6 +24,7 @@ function commandsMock() {
     openSubprocess: vi.fn(),
     requestInsertOnEdge: vi.fn(),
     focusIssue: vi.fn(),
+    setDefaultBranch: vi.fn(),
   } satisfies PanelCommands;
 }
 
@@ -130,9 +131,9 @@ describe('BlockProperties', () => {
       branchId: 'yes',
       patch: { condition: 'valor > 100' },
     });
-    expect(commands.updateBlock).toHaveBeenCalledWith({
+    expect(commands.setDefaultBranch).toHaveBeenCalledWith({
       nodeId: 'd',
-      patch: { defaultBranchId: 'no' },
+      branchId: 'no',
     });
   });
 
@@ -197,5 +198,194 @@ describe('BlockProperties', () => {
 
     expect(commands.openSubprocess).toHaveBeenCalledWith('sub');
     expect(commands.focusIssue).toHaveBeenCalledWith(issue);
+  });
+});
+
+describe('BlockProperties nos campos de relógio e de lista', () => {
+  it('troca o temporizador para data e horário apagando a duração', () => {
+    const commands = renderBlock({
+      graph: {
+        nodes: [
+          block({
+            id: 't',
+            type: 'timer',
+            data: {
+              timerMode: 'duration',
+              duration: { amount: 2, unit: 'days' },
+            },
+          }),
+        ],
+        edges: [],
+      },
+      nodeId: 't',
+    });
+
+    fireEvent.change(screen.getByLabelText('Tipo de espera'), {
+      target: { value: 'until' },
+    });
+
+    expect(commands.updateBlock).toHaveBeenCalledWith({
+      nodeId: 't',
+      patch: expect.objectContaining({
+        timerMode: 'until',
+        duration: undefined,
+      }),
+    });
+  });
+
+  it('grava o agendamento junto com o gatilho e não oferece texto livre de horário', () => {
+    const commands = renderBlock({
+      graph: { nodes: [block({ id: 's', type: 'start' })], edges: [] },
+      nodeId: 's',
+    });
+
+    fireEvent.change(screen.getByLabelText('Gatilho'), {
+      target: { value: 'schedule' },
+    });
+
+    expect(commands.updateBlock).toHaveBeenCalledWith({
+      nodeId: 's',
+      patch: {
+        trigger: 'schedule',
+        schedule: { recurrence: 'daily', time: '09:00' },
+        triggerMessage: undefined,
+      },
+    });
+  });
+
+  it('pede o nome do desfecho quando ele é Outro', () => {
+    const commands = renderBlock({
+      graph: {
+        nodes: [block({ id: 'e', type: 'end', data: { outcome: 'other' } })],
+        edges: [],
+      },
+      nodeId: 'e',
+    });
+
+    expect(screen.getByText('Dê um nome ao desfecho.')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Desfecho'), {
+      target: { value: 'expired' },
+    });
+
+    expect(commands.updateBlock).toHaveBeenCalledWith({
+      nodeId: 'e',
+      patch: { outcome: 'expired', outcomeLabel: undefined },
+    });
+  });
+
+  it('escolhe o canal numa lista fechada', () => {
+    const commands = renderBlock({
+      graph: { nodes: [block({ id: 'm', type: 'send-message' })], edges: [] },
+      nodeId: 'm',
+    });
+    const channel = screen.getByLabelText('Canal') as HTMLSelectElement;
+
+    expect([...channel.options].map((option) => option.text)).toEqual([
+      'Escolha o canal',
+      'E-mail',
+      'SMS',
+      'WhatsApp',
+      'Notificação no sistema',
+    ]);
+    fireEvent.change(channel, { target: { value: 'sms' } });
+    expect(commands.updateBlock).toHaveBeenCalledWith({
+      nodeId: 'm',
+      patch: { channel: 'sms' },
+    });
+  });
+
+  it('mostra o papel da raia sem campo de texto quando há raias', () => {
+    renderBlock({
+      graph: {
+        nodes: [
+          block({
+            id: 'p',
+            type: 'human-task',
+            data: { role: 'Jurídico', laneId: 'legal' },
+          }),
+        ],
+        edges: [],
+      },
+      nodeId: 'p',
+    });
+
+    expect(screen.queryByLabelText('Papel responsável')).toBeNull();
+    expect(
+      screen.getByText(/Papel responsável/).closest('p')?.textContent,
+    ).toBe('Papel responsável: Jurídico');
+  });
+
+  it('tira a condição do caminho padrão e avisa nome de ramo repetido', () => {
+    renderBlock({
+      graph: {
+        nodes: [
+          block({
+            id: 'd',
+            type: 'decision',
+            data: {
+              branches: [
+                { id: 'a', label: 'Sim' },
+                { id: 'b', label: 'sim' },
+              ],
+              defaultBranchId: 'a',
+            },
+          }),
+        ],
+        edges: [],
+      },
+      nodeId: 'd',
+    });
+
+    expect(screen.queryByLabelText('Condição do ramo Sim')).toBeNull();
+    expect(screen.getByLabelText('Condição do ramo sim')).toBeTruthy();
+    expect(screen.getByText('Já existe um ramo com este nome.')).toBeTruthy();
+  });
+});
+
+describe('BlockProperties nos campos que dependem do modo', () => {
+  it('mostra o agendamento do início agendado', () => {
+    renderBlock({
+      graph: {
+        nodes: [
+          block({
+            id: 's',
+            type: 'start',
+            data: {
+              trigger: 'schedule',
+              schedule: { recurrence: 'daily', time: '07:00' },
+            },
+          }),
+        ],
+        edges: [],
+      },
+      nodeId: 's',
+    });
+
+    expect((screen.getByLabelText('Horário') as HTMLInputElement).value).toBe(
+      '07:00',
+    );
+  });
+
+  it('mostra o tempo limite da exceção por tempo esgotado', () => {
+    renderBlock({
+      graph: {
+        nodes: [
+          block({
+            id: 'x',
+            type: 'exception',
+            data: {
+              exceptionTrigger: 'timeout',
+              timeout: { amount: 30, unit: 'minutes' },
+            },
+          }),
+        ],
+        edges: [],
+      },
+      nodeId: 'x',
+    });
+
+    expect(
+      (screen.getByLabelText('Tempo limite') as HTMLInputElement).value,
+    ).toBe('30');
   });
 });

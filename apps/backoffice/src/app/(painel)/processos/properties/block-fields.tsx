@@ -1,24 +1,26 @@
-import {
-  CFormCheck,
-  CFormInput,
-  CFormSelect,
-  CFormTextarea,
-} from '@coreui/react';
+import { CFormFeedback, CFormInput } from '@coreui/react';
 import { useId } from 'react';
 
-import {
-  type BlockData,
-  blockName,
-  kindOf,
-  PAIRED_SPLIT,
-} from '../model/blocks';
+import type { BlockData, EndOutcome } from '../model/blocks';
+import { blockName, kindOf, PAIRED_SPLIT } from '../model/blocks';
 import {
   type BlockField,
   FIELD_LABEL,
   FIELDS_BY_KIND,
 } from '../model/conversion';
+import type { Lane } from '../model/document';
+import { CHANNELS, isChannel, OUTCOMES } from '../model/fields';
 import type { ProcessGraph, ProcessNode } from '../process-graph';
+import { EVENT_FIELDS, EventField } from './event-fields';
+import {
+  Choice,
+  type FieldProps,
+  TEXTAREA_FIELDS,
+  TextField,
+  type Update,
+} from './field-controls';
 import type { PanelCommands } from './panel-commands';
+import { OptionalDuration } from './time-inputs';
 
 /** Campos que o painel desenha à parte: os ramos no editor de ramos e o canvas interno pela navegação. */
 const SEPARATE_FIELDS = new Set<BlockField>([
@@ -27,82 +29,156 @@ const SEPARATE_FIELDS = new Set<BlockField>([
   'process',
 ]);
 
-const TEXTAREA_FIELDS = new Set<BlockField>([
-  'description',
-  'instructions',
-  'expectedResult',
-  'inputs',
-  'outputs',
-  'content',
+/** Campos que são de fato texto: nomes de sistema, operação, destinatário, evento e objetivo. */
+const TEXT_FIELDS = new Set<BlockField>([
+  'system',
+  'operation',
+  'recipient',
+  'eventName',
+  'goal',
 ]);
 
-interface Option {
-  readonly value: string;
-  readonly label: string;
+/** Escolher "Outro" abre o nome do desfecho; escolher da lista apaga um nome antigo. */
+export function outcomePatch(outcome: EndOutcome): Partial<BlockData> {
+  return outcome === 'other'
+    ? { outcome, outcomeLabel: '' }
+    : { outcome, outcomeLabel: undefined };
 }
 
-const SELECT_OPTIONS: Readonly<Partial<Record<BlockField, readonly Option[]>>> =
-  {
-    trigger: [
-      { value: 'manual', label: 'Manual' },
-      { value: 'message', label: 'Por mensagem' },
-      { value: 'schedule', label: 'Por agendamento' },
-    ],
-    timerMode: [
-      { value: 'duration', label: 'Por uma duração' },
-      { value: 'until', label: 'Até data e horário' },
-    ],
-    exceptionTrigger: [
-      { value: 'error', label: 'Erro técnico' },
-      { value: 'timeout', label: 'Tempo esgotado' },
-    ],
-  };
-
-const PLACEHOLDER: Readonly<Partial<Record<BlockField, string>>> = {
-  deadline: 'Ex.: 48 horas; vazio, sem prazo',
-  duration: 'Ex.: 2 dias',
-  dueIn: 'Ex.: 24 horas',
-};
-
-const OUTCOMES = ['Concluído', 'Recusado', 'Cancelado', 'Expirado'];
-
-interface VisibleParams {
-  readonly node: ProcessNode;
-  readonly field: BlockField;
+/** Com raias, o papel é o da raia e muda pela raia; sem raias, é o nome digitado. */
+function RoleField({ node, lanes, update }: Readonly<FieldProps>) {
+  const id = useId();
+  if (lanes.length > 0) {
+    const role = node.data.role?.trim();
+    return (
+      <p className="small mb-3">
+        <span className="fw-semibold">{FIELD_LABEL.role}:</span>{' '}
+        {role ? role : 'escolha a raia da tarefa abaixo'}
+      </p>
+    );
+  }
+  return (
+    <CFormInput
+      id={id}
+      label={FIELD_LABEL.role}
+      className="mb-3"
+      value={node.data.role ?? ''}
+      onChange={(event) => update({ role: event.target.value })}
+    />
+  );
 }
 
-/** O campo aparece para o tipo e, no temporizador, só o do modo escolhido. */
-function isVisible(params: VisibleParams): boolean {
-  const { node, field } = params;
-  if (SEPARATE_FIELDS.has(field)) {
-    return false;
+function OutcomeLabelField({ node, update }: Readonly<FieldProps>) {
+  const id = useId();
+  const feedbackId = useId();
+  if (node.data.outcome !== 'other') {
+    return null;
   }
-  const untilMode = node.data.timerMode === 'until';
-  if (field === 'duration') {
-    return !untilMode;
+  const blank = (node.data.outcomeLabel ?? '').trim() === '';
+  return (
+    <div className="mb-3">
+      <CFormInput
+        id={id}
+        label={FIELD_LABEL.outcomeLabel}
+        required
+        invalid={blank}
+        aria-describedby={blank ? feedbackId : undefined}
+        value={node.data.outcomeLabel ?? ''}
+        onChange={(event) => update({ outcomeLabel: event.target.value })}
+      />
+      {blank ? (
+        <CFormFeedback invalid id={feedbackId} className="d-block">
+          Dê um nome ao desfecho.
+        </CFormFeedback>
+      ) : null}
+    </div>
+  );
+}
+
+function PairSelect({ node, graph, update }: Readonly<FieldProps>) {
+  const splitKind = PAIRED_SPLIT[kindOf(node)];
+  const options = graph.nodes
+    .filter((candidate) => kindOf(candidate) === splitKind)
+    .map((split) => ({ value: split.id, label: blockName(split) }));
+  return (
+    <Choice
+      label={FIELD_LABEL.pairId}
+      value={node.data.pairId}
+      options={options}
+      placeholder="Escolha a abertura"
+      onChange={(pairId) => update({ pairId })}
+    />
+  );
+}
+
+/** O controle de cada campo, conforme o propósito dele. */
+function FieldControl(props: Readonly<FieldProps>) {
+  const { field, node, update } = props;
+  const { data } = node;
+  if (EVENT_FIELDS.has(field)) {
+    return <EventField {...props} />;
   }
-  if (field === 'until') {
-    return untilMode;
+  switch (field) {
+    case 'role':
+      return <RoleField {...props} />;
+    case 'dueIn':
+      return (
+        <OptionalDuration
+          toggleLabel="Tem prazo de atendimento"
+          label={FIELD_LABEL.dueIn}
+          value={data.dueIn}
+          onChange={(dueIn) => update({ dueIn })}
+        />
+      );
+    case 'channel':
+      return (
+        <Choice
+          label={FIELD_LABEL.channel}
+          value={isChannel(data.channel) ? data.channel : undefined}
+          options={CHANNELS}
+          placeholder="Escolha o canal"
+          onChange={(channel) => update({ channel })}
+        />
+      );
+    case 'pairId':
+      return <PairSelect {...props} />;
+    case 'outcome':
+      return (
+        <Choice
+          label={FIELD_LABEL.outcome}
+          value={data.outcome}
+          options={OUTCOMES}
+          placeholder="Escolha o desfecho"
+          onChange={(outcome) => update(outcomePatch(outcome))}
+        />
+      );
+    case 'outcomeLabel':
+      return <OutcomeLabelField {...props} />;
+    default:
+      return TEXT_FIELDS.has(field) || TEXTAREA_FIELDS.has(field) ? (
+        <TextField {...props} />
+      ) : null;
   }
-  return true;
 }
 
 export interface BlockFieldsProps {
   readonly node: ProcessNode;
   readonly graph: ProcessGraph;
+  readonly lanes: readonly Lane[];
   readonly commands: PanelCommands;
 }
 
-/** Os campos próprios do tipo do bloco, na ordem de `FIELDS_BY_KIND`. */
+/** Os campos próprios do tipo do bloco, na ordem de `FIELDS_BY_KIND`, cada um com o controle do seu propósito. */
 export function BlockFields({
   node,
   graph,
+  lanes,
   commands,
 }: Readonly<BlockFieldsProps>) {
-  const update = (patch: Partial<BlockData>) =>
+  const update: Update = (patch) =>
     commands.updateBlock({ nodeId: node.id, patch });
-  const fields = FIELDS_BY_KIND[kindOf(node)].filter((field) =>
-    isVisible({ node, field }),
+  const fields = FIELDS_BY_KIND[kindOf(node)].filter(
+    (field) => !SEPARATE_FIELDS.has(field),
   );
   return (
     <>
@@ -112,125 +188,10 @@ export function BlockFields({
           field={field}
           node={node}
           graph={graph}
+          lanes={lanes}
           update={update}
         />
       ))}
     </>
-  );
-}
-
-interface FieldControlProps {
-  readonly field: BlockField;
-  readonly node: ProcessNode;
-  readonly graph: ProcessGraph;
-  readonly update: (patch: Partial<BlockData>) => void;
-}
-
-function FieldControl({
-  field,
-  node,
-  graph,
-  update,
-}: Readonly<FieldControlProps>) {
-  const id = useId();
-  const label = FIELD_LABEL[field];
-  const value = node.data[field];
-  const text = typeof value === 'string' ? value : '';
-  const options = SELECT_OPTIONS[field];
-
-  if (field === 'interrupting') {
-    return (
-      <CFormCheck
-        id={id}
-        className="mb-3"
-        label="Interrompe a atividade (sem marcar, abre um caminho a mais)"
-        checked={node.data.interrupting !== false}
-        onChange={(event) => update({ interrupting: event.target.checked })}
-      />
-    );
-  }
-  if (field === 'pairId') {
-    return <PairSelect node={node} graph={graph} update={update} />;
-  }
-  if (options) {
-    return (
-      <CFormSelect
-        id={id}
-        label={label}
-        className="mb-3"
-        value={text || options[0]?.value}
-        onChange={(event) => update({ [field]: event.target.value })}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </CFormSelect>
-    );
-  }
-  if (TEXTAREA_FIELDS.has(field)) {
-    return (
-      <CFormTextarea
-        id={id}
-        label={label}
-        rows={field === 'description' ? 2 : 3}
-        className="mb-3"
-        value={text}
-        onChange={(event) => update({ [field]: event.target.value })}
-      />
-    );
-  }
-  return (
-    <>
-      <CFormInput
-        id={id}
-        label={label}
-        className="mb-3"
-        type={field === 'until' ? 'datetime-local' : 'text'}
-        placeholder={PLACEHOLDER[field]}
-        list={field === 'outcome' ? `${node.id}-outcomes` : undefined}
-        value={text}
-        onChange={(event) => update({ [field]: event.target.value })}
-      />
-      {field === 'outcome' ? (
-        <datalist id={`${node.id}-outcomes`}>
-          {OUTCOMES.map((outcome) => (
-            <option key={outcome} value={outcome} />
-          ))}
-        </datalist>
-      ) : null}
-    </>
-  );
-}
-
-interface PairSelectProps {
-  readonly node: ProcessNode;
-  readonly graph: ProcessGraph;
-  readonly update: (patch: Partial<BlockData>) => void;
-}
-
-/** A abertura que a sincronização ou a junção espera, entre as do tipo certo neste canvas. */
-function PairSelect({ node, graph, update }: Readonly<PairSelectProps>) {
-  const id = useId();
-  const splitKind = PAIRED_SPLIT[kindOf(node)];
-  const splits = graph.nodes.filter(
-    (candidate) => kindOf(candidate) === splitKind,
-  );
-  return (
-    <CFormSelect
-      id={id}
-      label={FIELD_LABEL.pairId}
-      className="mb-3"
-      value={node.data.pairId ?? ''}
-      onChange={(event) => update({ pairId: event.target.value || undefined })}
-    >
-      <option value="">Escolha a abertura</option>
-      {splits.map((split) => (
-        <option key={split.id} value={split.id}>
-          {blockName(split)}
-        </option>
-      ))}
-    </CFormSelect>
   );
 }

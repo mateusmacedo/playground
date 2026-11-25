@@ -1,5 +1,9 @@
 import { type Graph, kindOf } from './model/blocks';
-import type { Lane, ProcessDocument } from './model/document';
+import {
+  DOCUMENT_VERSION,
+  type Lane,
+  type ProcessDocument,
+} from './model/document';
 import {
   graphAt,
   type ProcessPath,
@@ -25,7 +29,7 @@ export function createEditorDocument(
   params: CreateDocumentParams,
 ): EditorDocument {
   const { graph, lanes = [] } = params;
-  return { version: 1, lanes, graph: toProcessGraph(graph) };
+  return { version: DOCUMENT_VERSION, lanes, graph: toProcessGraph(graph) };
 }
 
 /**

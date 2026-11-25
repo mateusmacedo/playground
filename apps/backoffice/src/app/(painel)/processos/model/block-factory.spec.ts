@@ -53,10 +53,14 @@ describe('createBlock', () => {
     );
     expect(createBlock({ kind: 'end', position: at, createId }).data).toEqual({
       label: 'Fim',
-      outcome: 'Concluído',
+      outcome: 'completed',
     });
     expect(createBlock({ kind: 'timer', position: at, createId }).data).toEqual(
-      { label: 'Temporizador', timerMode: 'duration' },
+      {
+        label: 'Temporizador',
+        timerMode: 'duration',
+        duration: { amount: 1, unit: 'hours' },
+      },
     );
     expect(
       createBlock({ kind: 'exception', position: at, createId }).data,

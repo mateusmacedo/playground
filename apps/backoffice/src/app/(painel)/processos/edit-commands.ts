@@ -12,6 +12,7 @@ import {
   deleteSelection,
   removeBranch,
   renameBranch,
+  setDefaultBranch,
   unselected,
   updateBlockData,
   updateBranch,
@@ -21,6 +22,7 @@ import type { ProcessEdge, ProcessGraph, ProcessNode } from './process-graph';
 import type {
   RemoveBranchChange,
   RenameBranchChange,
+  SetDefaultBranchChange,
   UpdateBlockChange,
   UpdateBranchChange,
   UpdateEdgeLabelChange,
@@ -190,9 +192,20 @@ export function createBranchCommands({
     });
   }
 
+  function chooseDefaultBranch({
+    nodeId,
+    branchId,
+  }: Readonly<SetDefaultBranchChange>) {
+    change({
+      update: (current) =>
+        setDefaultBranch({ graph: current, nodeId, branchId }),
+    });
+  }
+
   return {
     addBranch: addDecisionBranch,
     updateBranch: updateDecisionBranch,
+    setDefaultBranch: chooseDefaultBranch,
     renameBranch: renameDecisionBranch,
     removeBranch: removeDecisionBranch,
   };

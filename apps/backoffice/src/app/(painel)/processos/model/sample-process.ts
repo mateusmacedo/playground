@@ -19,7 +19,7 @@ export const sampleProcess: Graph = {
       id: 'end',
       type: 'end',
       position: { x: 40, y: 280 },
-      data: { label: 'Fim', outcome: 'Concluído' },
+      data: { label: 'Fim', outcome: 'completed' },
     },
   ],
   edges: [

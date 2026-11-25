@@ -29,7 +29,11 @@ describe('outputHandles', () => {
     ]);
     expect(
       outputHandles(
-        block({ id: 'w', type: 'wait-event', data: { deadline: '48 horas' } }),
+        block({
+          id: 'w',
+          type: 'wait-event',
+          data: { deadline: { amount: 48, unit: 'hours' } },
+        }),
       ),
     ).toEqual(['received', 'expired']);
   });

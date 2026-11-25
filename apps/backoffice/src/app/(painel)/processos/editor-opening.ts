@@ -10,6 +10,8 @@ export interface EditorOpening {
   readonly restored: boolean;
   /** Havia rascunho, mas ele não pôde ser lido; a tela avisa e abre o exemplo. */
   readonly unreadable: boolean;
+  /** Campos do rascunho que estavam fora da regra e foram convertidos ou removidos na abertura. */
+  readonly adjusted: number;
 }
 
 export interface OpenEditorParams {
@@ -20,16 +22,29 @@ export interface OpenEditorParams {
 export function openEditor({ store, sample }: OpenEditorParams): EditorOpening {
   const text = store.load();
   if (text === null) {
-    return { graph: sample, lanes: [], restored: false, unreadable: false };
+    return {
+      graph: sample,
+      lanes: [],
+      restored: false,
+      unreadable: false,
+      adjusted: 0,
+    };
   }
-  const document = parseDocument(text);
-  if (document === null) {
-    return { graph: sample, lanes: [], restored: false, unreadable: true };
+  const reading = parseDocument(text);
+  if (reading === null) {
+    return {
+      graph: sample,
+      lanes: [],
+      restored: false,
+      unreadable: true,
+      adjusted: 0,
+    };
   }
   return {
-    graph: document.graph,
-    lanes: document.lanes,
-    restored: true,
+    graph: reading.document.graph,
+    lanes: reading.document.lanes,
+    restored: reading.adjusted === 0,
     unreadable: false,
+    adjusted: reading.adjusted,
   };
 }

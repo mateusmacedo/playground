@@ -240,6 +240,35 @@ export function updateBranch<N extends GraphNode, E extends GraphEdge>(
   });
 }
 
+export interface SetDefaultBranchParams<
+  N extends GraphNode,
+  E extends GraphEdge,
+> {
+  readonly graph: Graph<N, E>;
+  readonly nodeId: string;
+  /** Ramo que passa a ser o padrão; `undefined` tira o padrão. */
+  readonly branchId: string | undefined;
+}
+
+/** Marca o caminho padrão e limpa a condição dele, porque o padrão é o que segue quando nenhuma condição vale. */
+export function setDefaultBranch<N extends GraphNode, E extends GraphEdge>(
+  params: SetDefaultBranchParams<N, E>,
+): Graph<N, E> {
+  const { branchId } = params;
+  return withBlockData({
+    ...params,
+    change: (data) => {
+      const branches: Branch[] = [];
+      for (const branch of data.branches ?? []) {
+        branches.push(
+          branch.id === branchId ? { ...branch, condition: undefined } : branch,
+        );
+      }
+      return { ...data, branches, defaultBranchId: branchId };
+    },
+  });
+}
+
 export interface RemoveBranchParams<N extends GraphNode, E extends GraphEdge> {
   readonly graph: Graph<N, E>;
   readonly nodeId: string;

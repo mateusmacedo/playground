@@ -164,6 +164,11 @@ function EditorLayout({ opening, store }: Readonly<EditorLayoutProps>) {
           O rascunho salvo não pôde ser lido; o exemplo foi aberto no lugar.
         </CAlert>
       ) : null}
+      {opening.adjusted > 0 ? (
+        <CAlert color="info" dismissible className="py-2 small">
+          {`O rascunho tinha ${opening.adjusted} valor(es) fora do formato atual, que foram convertidos ou removidos. Confira os blocos e salve de novo.`}
+        </CAlert>
+      ) : null}
       <DraftBar
         status={draft.status}
         everSaved={draft.everSaved}

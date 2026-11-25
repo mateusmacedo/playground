@@ -8,6 +8,7 @@ import {
   type Point,
   specOf,
 } from './blocks';
+import { DEFAULT_DURATION } from './fields';
 
 /** Distância vertical entre o Início e o Fim do canvas interno de um subprocesso novo. */
 const INNER_GAP = 160;
@@ -44,7 +45,7 @@ function startToEnd({ createId }: IdSource): InnerProcess {
         id: endId,
         type: 'end',
         position: { x: 0, y: INNER_GAP },
-        data: { label: specOf('end').label, outcome: 'Concluído' },
+        data: { label: specOf('end').label, outcome: 'completed' },
       },
     ],
     edges: [
@@ -81,9 +82,9 @@ function defaultData(params: DefaultDataParams): BlockData {
     case 'start':
       return { label, trigger: 'manual' };
     case 'end':
-      return { label, outcome: 'Concluído' };
+      return { label, outcome: 'completed' };
     case 'timer':
-      return { label, timerMode: 'duration' };
+      return { label, timerMode: 'duration', duration: DEFAULT_DURATION };
     case 'exception':
       return { label, exceptionTrigger: 'error', interrupting: true };
     case 'subprocess':

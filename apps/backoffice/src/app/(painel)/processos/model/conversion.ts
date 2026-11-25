@@ -18,7 +18,7 @@ export type BlockField = Exclude<keyof BlockData, 'label' | 'laneId'>;
 export const FIELDS_BY_KIND: Readonly<
   Record<BlockKind, readonly BlockField[]>
 > = {
-  start: ['trigger'],
+  start: ['trigger', 'schedule', 'triggerMessage'],
   task: ['description'],
   'human-task': [
     'description',
@@ -37,9 +37,9 @@ export const FIELDS_BY_KIND: Readonly<
   'inclusive-join': ['description', 'pairId'],
   'parallel-split': ['description', 'branches'],
   'parallel-join': ['description', 'pairId'],
-  exception: ['exceptionTrigger', 'interrupting'],
+  exception: ['exceptionTrigger', 'timeout', 'interrupting'],
   subprocess: ['description', 'goal', 'inputs', 'outputs', 'process'],
-  end: ['outcome'],
+  end: ['outcome', 'outcomeLabel'],
   annotation: [],
 };
 
@@ -48,6 +48,8 @@ export const FIELD_LABEL: Readonly<Record<BlockField, string>> = {
   branches: 'Ramos',
   defaultBranchId: 'Caminho padrão',
   trigger: 'Gatilho',
+  schedule: 'Agendamento',
+  triggerMessage: 'Mensagem que inicia',
   role: 'Papel responsável',
   instructions: 'Instruções',
   expectedResult: 'Resultado esperado',
@@ -66,10 +68,12 @@ export const FIELD_LABEL: Readonly<Record<BlockField, string>> = {
   until: 'Data e horário',
   pairId: 'Abertura correspondente',
   exceptionTrigger: 'Gatilho da exceção',
+  timeout: 'Tempo limite',
   interrupting: 'Interrompe a atividade',
   goal: 'Objetivo',
   process: 'Canvas interno',
   outcome: 'Desfecho',
+  outcomeLabel: 'Nome do desfecho',
 };
 
 /** Conversões oferecidas no painel de cada tipo. */

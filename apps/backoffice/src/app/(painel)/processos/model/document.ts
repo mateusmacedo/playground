@@ -1,5 +1,6 @@
 import { type Graph, type GraphEdge, type GraphNode, kindOf } from './blocks';
 import { BLOCK_SIZE, snapToGrid } from './geometry';
+import type { ProcessIssue } from './issues';
 
 /** Coluna de um papel responsável; as raias ficam lado a lado a partir de x = 0, na ordem da lista. */
 export interface Lane {
@@ -8,12 +9,15 @@ export interface Lane {
   readonly width: number;
 }
 
+/** Versão do formato do documento; a 2 trocou prazos, durações, canal e desfecho em texto por valores estruturados. */
+export const DOCUMENT_VERSION = 2;
+
 /** Tudo o que o editor salva e desfaz: as raias e o grafo do nível raiz (os subprocessos vão dentro dele). */
 export interface ProcessDocument<
   N extends GraphNode = GraphNode,
   E extends GraphEdge = GraphEdge,
 > {
-  readonly version: 1;
+  readonly version: typeof DOCUMENT_VERSION;
   readonly lanes: readonly Lane[];
   readonly graph: Graph<N, E>;
 }
@@ -255,4 +259,37 @@ export function syncLanesFromPosition<N extends GraphNode, E extends GraphEdge>(
     return document;
   }
   return { ...document, graph: { ...document.graph, nodes } };
+}
+
+/** Nome comparável de raia: sem espaços nas pontas e sem diferença de maiúsculas. */
+export function laneKey(name: string): string {
+  return name.trim().toLocaleLowerCase('pt-BR');
+}
+
+/** Raias sem nome ou com nome repetido deixam o papel responsável ambíguo. */
+export function laneIssues(lanes: readonly Lane[]): ProcessIssue[] {
+  const issues: ProcessIssue[] = [];
+  const seen = new Set<string>();
+  for (let index = 0; index < lanes.length; index += 1) {
+    const lane = lanes[index];
+    if (lane === undefined) {
+      continue;
+    }
+    const key = laneKey(lane.name);
+    if (key === '') {
+      issues.push({
+        key: `unnamed-lane:${lane.id}`,
+        severity: 'error',
+        message: `A raia ${index + 1} está sem nome.`,
+      });
+    } else if (seen.has(key)) {
+      issues.push({
+        key: `duplicate-lane:${lane.id}`,
+        severity: 'error',
+        message: `Há mais de uma raia chamada "${lane.name.trim()}".`,
+      });
+    }
+    seen.add(key);
+  }
+  return issues;
 }
