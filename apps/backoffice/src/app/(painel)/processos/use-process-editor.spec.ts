@@ -25,7 +25,12 @@ function nodeIds(result: Editor): string[] {
   return result.current.graph.nodes.map((node) => node.id);
 }
 
-function selectNode(result: Editor, id: string) {
+interface SelectNodeParams {
+  readonly result: Editor;
+  readonly id: string;
+}
+
+function selectNode({ result, id }: Readonly<SelectNodeParams>) {
   act(() =>
     result.current.onNodesChange(
       new NodeChangeset<ProcessNode>([{ id, type: 'select', selected: true }]),
@@ -33,12 +38,19 @@ function selectNode(result: Editor, id: string) {
   );
 }
 
-function moveNode(
-  result: Editor,
-  id: string,
-  position: { x: number; y: number },
-  dragging?: boolean,
-) {
+interface MoveNodeParams {
+  readonly result: Editor;
+  readonly id: string;
+  readonly position: { x: number; y: number };
+  readonly dragging?: boolean;
+}
+
+function moveNode({
+  result,
+  id,
+  position,
+  dragging,
+}: Readonly<MoveNodeParams>) {
   act(() =>
     result.current.onNodesChange(
       new NodeChangeset<ProcessNode>([
@@ -60,7 +72,7 @@ describe('useProcessEditor', () => {
 
   it('insere bloco selecionado, desfaz e refaz', () => {
     const { result } = setup();
-    selectNode(result, 'start');
+    selectNode({ result, id: 'start' });
 
     act(() =>
       result.current.addBlock({ kind: 'decision', position: { x: 10, y: 20 } }),
@@ -141,7 +153,7 @@ describe('useProcessEditor', () => {
 
   it('não grava seleção nem medida como passo', () => {
     const { result } = setup();
-    selectNode(result, 'task-1');
+    selectNode({ result, id: 'task-1' });
     act(() =>
       result.current.onEdgesChange(
         new EdgeChangeset<ProcessEdge>([
@@ -157,8 +169,8 @@ describe('useProcessEditor', () => {
 
   it('junta os movimentos seguidos pelo teclado num passo', () => {
     const { result } = setup();
-    moveNode(result, 'task-1', { x: 1, y: 0 });
-    moveNode(result, 'task-1', { x: 2, y: 0 });
+    moveNode({ result, id: 'task-1', position: { x: 1, y: 0 } });
+    moveNode({ result, id: 'task-1', position: { x: 2, y: 0 } });
 
     act(() => result.current.undo());
     expect(result.current.graph.nodes[1]?.position).toEqual({ x: 0, y: 120 });
@@ -167,8 +179,18 @@ describe('useProcessEditor', () => {
   it('grava o arraste inteiro como um passo, e o arraste sem movimento como nenhum', () => {
     const { result } = setup();
     act(() => result.current.onDragStart());
-    moveNode(result, 'task-1', { x: 50, y: 120 }, true);
-    moveNode(result, 'task-1', { x: 80, y: 120 }, false);
+    moveNode({
+      result,
+      id: 'task-1',
+      position: { x: 50, y: 120 },
+      dragging: true,
+    });
+    moveNode({
+      result,
+      id: 'task-1',
+      position: { x: 80, y: 120 },
+      dragging: false,
+    });
     act(() => result.current.onDragStop());
 
     expect(result.current.canUndo).toBe(true);
@@ -204,7 +226,7 @@ describe('useProcessEditor', () => {
 
   it('exclui, duplica e limpa a seleção', () => {
     const { result } = setup();
-    selectNode(result, 'task-1');
+    selectNode({ result, id: 'task-1' });
 
     act(() => result.current.duplicateSelected());
     expect(nodeIds(result)).toEqual(['start', 'task-1', 'end', 'new-1']);

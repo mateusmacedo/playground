@@ -8,24 +8,28 @@ import { IssueList } from './issue-list';
 import type { PanelCommands } from './panel-commands';
 import { SelectionActions } from './selection-actions';
 
-function count(params: {
+interface CountParams {
   readonly amount: number;
   readonly singular: string;
   readonly plural: string;
-}): string {
+}
+
+function count(params: CountParams): string {
   const { amount, singular, plural } = params;
   return `${amount} ${amount === 1 ? singular : plural}`;
+}
+
+interface PanelContentProps {
+  readonly graph: ProcessGraph;
+  readonly issues: readonly ProcessIssue[];
+  readonly commands: PanelCommands;
 }
 
 function PanelContent({
   graph,
   issues,
   commands,
-}: Readonly<{
-  graph: ProcessGraph;
-  issues: readonly ProcessIssue[];
-  commands: PanelCommands;
-}>) {
+}: Readonly<PanelContentProps>) {
   const nodes = graph.nodes.filter((node) => node.selected);
   const edges = graph.edges.filter((edge) => edge.selected);
   const selected = nodes.length + edges.length;
@@ -90,14 +94,14 @@ function PanelContent({
   );
 }
 
+export interface PropertiesPanelProps {
+  readonly graph: ProcessGraph;
+  readonly issues: readonly ProcessIssue[];
+  readonly commands: PanelCommands;
+}
+
 /** Painel contextual: resumo do processo, seleção múltipla ou as propriedades do elemento selecionado. */
-export function PropertiesPanel(
-  props: Readonly<{
-    graph: ProcessGraph;
-    issues: readonly ProcessIssue[];
-    commands: PanelCommands;
-  }>,
-) {
+export function PropertiesPanel(props: Readonly<PropertiesPanelProps>) {
   const headingId = useId();
   return (
     <section aria-labelledby={headingId}>

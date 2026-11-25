@@ -18,7 +18,11 @@ import { useProcessEditor } from './use-process-editor';
 const CASCADE_STEP = 24;
 const CASCADE_LENGTH = 5;
 
-function EditorLayout({ initial }: Readonly<{ initial: Graph }>) {
+export interface ProcessEditorProps {
+  readonly initial: Graph;
+}
+
+function EditorLayout({ initial }: Readonly<ProcessEditorProps>) {
   const editor = useProcessEditor({ initial });
   const { screenToFlowPosition, fitView } = useReactFlow();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -110,7 +114,7 @@ function EditorLayout({ initial }: Readonly<{ initial: Graph }>) {
 }
 
 /** Editor visual de processos: biblioteca, canvas, propriedades e barra de ações sobre o mesmo estado. */
-export function ProcessEditor({ initial }: Readonly<{ initial: Graph }>) {
+export function ProcessEditor({ initial }: Readonly<ProcessEditorProps>) {
   return (
     <ReactFlowProvider>
       <EditorLayout initial={initial} />

@@ -5,11 +5,13 @@ import { CButton, CFormInput } from '@coreui/react';
 import type { ProcessNode } from '../process-graph';
 import type { PanelCommands } from './panel-commands';
 
+export interface BranchEditorProps {
+  readonly node: ProcessNode;
+  readonly commands: PanelCommands;
+}
+
 /** Ramos da Decisão: renomear, remover (com a conexão que sai dele) e criar. */
-export function BranchEditor({
-  node,
-  commands,
-}: Readonly<{ node: ProcessNode; commands: PanelCommands }>) {
+export function BranchEditor({ node, commands }: Readonly<BranchEditorProps>) {
   const branches = node.data.branches ?? [];
   return (
     <fieldset className="mb-3">

@@ -20,11 +20,13 @@ export interface ProcessIssue {
   readonly edgeId?: string;
 }
 
-/** Blocos alcançados a partir de algum Início, seguindo as conexões no sentido delas. */
-function reachableFrom(params: {
+interface ReachableFromParams {
   readonly starts: readonly GraphNode[];
   readonly edges: readonly GraphEdge[];
-}): ReadonlySet<string> {
+}
+
+/** Blocos alcançados a partir de algum Início, seguindo as conexões no sentido delas. */
+function reachableFrom(params: ReachableFromParams): ReadonlySet<string> {
   const { starts, edges } = params;
   const visited = new Set<string>();
   const pending = starts.map((node) => node.id);
@@ -59,11 +61,18 @@ function startIssues(starts: readonly GraphNode[]): ProcessIssue[] {
   }));
 }
 
-function nodeIssues(params: {
+interface NodeIssuesParams {
   readonly node: GraphNode;
   readonly edges: readonly GraphEdge[];
   readonly reachable: ReadonlySet<string> | undefined;
-}): ProcessIssue[] {
+}
+
+interface AddIssue {
+  readonly code: string;
+  readonly message: string;
+}
+
+function nodeIssues(params: NodeIssuesParams): ProcessIssue[] {
   const { node, edges, reachable } = params;
   const kind = kindOf(node);
   const spec = specOf(kind);
@@ -71,7 +80,7 @@ function nodeIssues(params: {
   const incoming = edges.filter((edge) => edge.target === node.id);
   const outgoing = edges.filter((edge) => edge.source === node.id);
   const issues: ProcessIssue[] = [];
-  const add = (issue: { readonly code: string; readonly message: string }) => {
+  const add = (issue: AddIssue) => {
     issues.push({
       key: `${issue.code}:${node.id}`,
       nodeId: node.id,

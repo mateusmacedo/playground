@@ -17,15 +17,17 @@ function trimmed<T>(past: readonly T[]): readonly T[] {
   return past.length > HISTORY_LIMIT ? past.slice(-HISTORY_LIMIT) : past;
 }
 
+export interface CommitParams<T> {
+  readonly history: History<T>;
+  readonly next: T;
+  readonly key?: string;
+}
+
 /**
  * Grava um passo: o estado atual vai para o passado e `next` vira o atual. Com a mesma `key` do passo anterior, só
  * troca o atual, sem passo novo. Um passo novo apaga o futuro desfeito.
  */
-export function commit<T>(params: {
-  readonly history: History<T>;
-  readonly next: T;
-  readonly key?: string;
-}): History<T> {
+export function commit<T>(params: CommitParams<T>): History<T> {
   const { history, next, key } = params;
   if (next === history.present) {
     return history;
@@ -41,20 +43,24 @@ export function commit<T>(params: {
   };
 }
 
-/** Troca o estado atual sem gravar passo: seleção, medidas e posições no meio de um arraste. */
-export function replacePresent<T>(params: {
+export interface ReplacePresentParams<T> {
   readonly history: History<T>;
   readonly next: T;
-}): History<T> {
+}
+
+/** Troca o estado atual sem gravar passo: seleção, medidas e posições no meio de um arraste. */
+export function replacePresent<T>(params: ReplacePresentParams<T>): History<T> {
   const { history, next } = params;
   return next === history.present ? history : { ...history, present: next };
 }
 
-/** Grava como um passo o que mudou desde `before`, como o fim de um arraste, mantendo o estado atual. */
-export function commitSince<T>(params: {
+export interface CommitSinceParams<T> {
   readonly history: History<T>;
   readonly before: T;
-}): History<T> {
+}
+
+/** Grava como um passo o que mudou desde `before`, como o fim de um arraste, mantendo o estado atual. */
+export function commitSince<T>(params: CommitSinceParams<T>): History<T> {
   const { history, before } = params;
   if (before === history.present) {
     return history;

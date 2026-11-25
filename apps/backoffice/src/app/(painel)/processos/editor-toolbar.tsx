@@ -39,10 +39,12 @@ function issueSummary(count: number): string {
   return count === 1 ? '1 problema' : `${count} problemas`;
 }
 
-function ActionGroup({
-  label,
-  actions,
-}: Readonly<{ label: string; actions: readonly ToolbarAction[] }>) {
+interface ActionGroupProps {
+  readonly label: string;
+  readonly actions: readonly ToolbarAction[];
+}
+
+function ActionGroup({ label, actions }: Readonly<ActionGroupProps>) {
   return (
     <CButtonGroup role="group" aria-label={label} size="sm">
       {actions.map((action) => (

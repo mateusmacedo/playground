@@ -35,17 +35,21 @@ export function deleteSelection<N extends GraphNode, E extends GraphEdge>(
   };
 }
 
+export interface DuplicateSelectionParams<
+  N extends GraphNode,
+  E extends GraphEdge,
+> {
+  readonly graph: Graph<N, E>;
+  readonly createId: () => string;
+}
+
 /**
  * Copia os blocos selecionados com ids novos, deslocados, e as conexões entre eles. A seleção passa para as cópias.
  * Os ids dos ramos se repetem na cópia de propósito: o id do ponto de saída só precisa ser único dentro do bloco.
  */
-export function duplicateSelection<
-  N extends GraphNode,
-  E extends GraphEdge,
->(params: {
-  readonly graph: Graph<N, E>;
-  readonly createId: () => string;
-}): Graph<N, E> {
+export function duplicateSelection<N extends GraphNode, E extends GraphEdge>(
+  params: DuplicateSelectionParams<N, E>,
+): Graph<N, E> {
   const { graph, createId } = params;
   const selected = graph.nodes.filter((node) => node.selected);
   if (selected.length === 0) {
@@ -85,15 +89,16 @@ export function duplicateSelection<
   return { nodes: [...nodes, ...nodeCopies], edges: [...edges, ...edgeCopies] };
 }
 
-/** Move as pontas da conexão se as regras deixarem; senão devolve o próprio grafo. */
-export function reconnectEdge<
-  N extends GraphNode,
-  E extends GraphEdge,
->(params: {
+export interface ReconnectEdgeParams<N extends GraphNode, E extends GraphEdge> {
   readonly graph: Graph<N, E>;
   readonly edgeId: string;
   readonly connection: ConnectionRequest;
-}): Graph<N, E> {
+}
+
+/** Move as pontas da conexão se as regras deixarem; senão devolve o próprio grafo. */
+export function reconnectEdge<N extends GraphNode, E extends GraphEdge>(
+  params: ReconnectEdgeParams<N, E>,
+): Graph<N, E> {
   const { graph, edgeId, connection } = params;
   const exists = graph.edges.some((edge) => edge.id === edgeId);
   const problem = connectionProblem({
@@ -120,11 +125,15 @@ export function reconnectEdge<
   };
 }
 
-function withBlockData<N extends GraphNode, E extends GraphEdge>(params: {
+interface WithBlockDataParams<N extends GraphNode, E extends GraphEdge> {
   readonly graph: Graph<N, E>;
   readonly nodeId: string;
   readonly change: (data: BlockData) => BlockData;
-}): Graph<N, E> {
+}
+
+function withBlockData<N extends GraphNode, E extends GraphEdge>(
+  params: WithBlockDataParams<N, E>,
+): Graph<N, E> {
   const { graph, nodeId, change } = params;
   const node = graph.nodes.find((candidate) => candidate.id === nodeId);
   if (!node) {
@@ -139,14 +148,18 @@ function withBlockData<N extends GraphNode, E extends GraphEdge>(params: {
   };
 }
 
-export function updateBlockData<
+export interface UpdateBlockDataParams<
   N extends GraphNode,
   E extends GraphEdge,
->(params: {
+> {
   readonly graph: Graph<N, E>;
   readonly nodeId: string;
   readonly patch: Partial<BlockData>;
-}): Graph<N, E> {
+}
+
+export function updateBlockData<N extends GraphNode, E extends GraphEdge>(
+  params: UpdateBlockDataParams<N, E>,
+): Graph<N, E> {
   const { patch } = params;
   return withBlockData({
     ...params,
@@ -154,12 +167,16 @@ export function updateBlockData<
   });
 }
 
-/** Ramo novo no fim da Decisão, com nome provisório. */
-export function addBranch<N extends GraphNode, E extends GraphEdge>(params: {
+export interface AddBranchParams<N extends GraphNode, E extends GraphEdge> {
   readonly graph: Graph<N, E>;
   readonly nodeId: string;
   readonly createId: () => string;
-}): Graph<N, E> {
+}
+
+/** Ramo novo no fim da Decisão, com nome provisório. */
+export function addBranch<N extends GraphNode, E extends GraphEdge>(
+  params: AddBranchParams<N, E>,
+): Graph<N, E> {
   const { createId } = params;
   return withBlockData({
     ...params,
@@ -174,12 +191,16 @@ export function addBranch<N extends GraphNode, E extends GraphEdge>(params: {
   });
 }
 
-export function renameBranch<N extends GraphNode, E extends GraphEdge>(params: {
+export interface RenameBranchParams<N extends GraphNode, E extends GraphEdge> {
   readonly graph: Graph<N, E>;
   readonly nodeId: string;
   readonly branchId: string;
   readonly label: string;
-}): Graph<N, E> {
+}
+
+export function renameBranch<N extends GraphNode, E extends GraphEdge>(
+  params: RenameBranchParams<N, E>,
+): Graph<N, E> {
   const { branchId, label } = params;
   return withBlockData({
     ...params,
@@ -192,12 +213,16 @@ export function renameBranch<N extends GraphNode, E extends GraphEdge>(params: {
   });
 }
 
-/** Tira o ramo da Decisão e a conexão que saía dele. */
-export function removeBranch<N extends GraphNode, E extends GraphEdge>(params: {
+export interface RemoveBranchParams<N extends GraphNode, E extends GraphEdge> {
   readonly graph: Graph<N, E>;
   readonly nodeId: string;
   readonly branchId: string;
-}): Graph<N, E> {
+}
+
+/** Tira o ramo da Decisão e a conexão que saía dele. */
+export function removeBranch<N extends GraphNode, E extends GraphEdge>(
+  params: RemoveBranchParams<N, E>,
+): Graph<N, E> {
   const { nodeId, branchId } = params;
   const withoutBranch = withBlockData({
     ...params,
@@ -219,14 +244,19 @@ export function removeBranch<N extends GraphNode, E extends GraphEdge>(params: {
   };
 }
 
-export function updateEdgeLabel<
+export interface UpdateEdgeLabelParams<
   N extends GraphNode,
   E extends GraphEdge & { readonly data?: LinkData },
->(params: {
+> {
   readonly graph: Graph<N, E>;
   readonly edgeId: string;
   readonly label: string;
-}): Graph<N, E> {
+}
+
+export function updateEdgeLabel<
+  N extends GraphNode,
+  E extends GraphEdge & { readonly data?: LinkData },
+>(params: UpdateEdgeLabelParams<N, E>): Graph<N, E> {
   const { graph, edgeId, label } = params;
   if (!graph.edges.some((edge) => edge.id === edgeId)) {
     return graph;

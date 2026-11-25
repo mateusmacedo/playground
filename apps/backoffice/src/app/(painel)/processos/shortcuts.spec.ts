@@ -1,10 +1,16 @@
 import { ariaLabels } from './aria-labels';
 import { isEditableTarget, shortcutFor } from './shortcuts';
 
-function press(
-  key: string,
-  modifiers: Partial<{ ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }>,
-) {
+interface PressParams {
+  readonly key: string;
+  readonly modifiers: Partial<{
+    ctrlKey: boolean;
+    metaKey: boolean;
+    shiftKey: boolean;
+  }>;
+}
+
+function press({ key, modifiers }: Readonly<PressParams>) {
   return shortcutFor({
     key,
     ctrlKey: false,
@@ -16,20 +22,22 @@ function press(
 
 describe('shortcutFor', () => {
   it('reconhece desfazer e refazer com Ctrl ou Cmd', () => {
-    expect(press('z', { ctrlKey: true })).toBe('undo');
-    expect(press('Z', { metaKey: true, shiftKey: true })).toBe('redo');
-    expect(press('y', { ctrlKey: true })).toBe('redo');
+    expect(press({ key: 'z', modifiers: { ctrlKey: true } })).toBe('undo');
+    expect(
+      press({ key: 'Z', modifiers: { metaKey: true, shiftKey: true } }),
+    ).toBe('redo');
+    expect(press({ key: 'y', modifiers: { ctrlKey: true } })).toBe('redo');
   });
 
   it('reconhece duplicar e excluir', () => {
-    expect(press('d', { ctrlKey: true })).toBe('duplicate');
-    expect(press('Delete', {})).toBe('delete');
-    expect(press('Backspace', {})).toBe('delete');
+    expect(press({ key: 'd', modifiers: { ctrlKey: true } })).toBe('duplicate');
+    expect(press({ key: 'Delete', modifiers: {} })).toBe('delete');
+    expect(press({ key: 'Backspace', modifiers: {} })).toBe('delete');
   });
 
   it('ignora letra sem modificador e combinação sem atalho', () => {
-    expect(press('z', {})).toBeNull();
-    expect(press('k', { ctrlKey: true })).toBeNull();
+    expect(press({ key: 'z', modifiers: {} })).toBeNull();
+    expect(press({ key: 'k', modifiers: { ctrlKey: true } })).toBeNull();
   });
 });
 

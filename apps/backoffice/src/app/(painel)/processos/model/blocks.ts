@@ -161,12 +161,14 @@ export function outputHandles(node: GraphNode): readonly string[] {
   return [];
 }
 
-/** Bloco novo com os dados padrão do tipo; a Decisão já nasce com os ramos "Sim" e "Não". */
-export function createBlock(params: {
+export interface CreateBlockParams {
   readonly kind: BlockKind;
   readonly position: Point;
   readonly createId: () => string;
-}) {
+}
+
+/** Bloco novo com os dados padrão do tipo; a Decisão já nasce com os ramos "Sim" e "Não". */
+export function createBlock(params: CreateBlockParams) {
   const { kind, position, createId } = params;
   const label = specOf(kind).label;
   const data: BlockData =

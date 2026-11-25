@@ -18,10 +18,12 @@ import type { ProcessEditorState } from './use-process-editor';
 
 const SNAP_GRID: [number, number] = [16, 16];
 
+export interface ProcessCanvasProps {
+  readonly editor: ProcessEditorState;
+}
+
 /** O canvas do React Flow ligado ao estado do editor, com o drop dos blocos vindos da biblioteca. */
-export function ProcessCanvas({
-  editor,
-}: Readonly<{ editor: ProcessEditorState }>) {
+export function ProcessCanvas({ editor }: Readonly<ProcessCanvasProps>) {
   const { screenToFlowPosition } = useReactFlow();
   const { graph, issues } = editor;
   const issuesById = useMemo(() => issuesByElement(issues), [issues]);

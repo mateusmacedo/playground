@@ -43,15 +43,19 @@ export function sourceHandleOf(edge: Pick<GraphEdge, 'sourceHandle'>): string {
   return edge.sourceHandle ?? OUTPUT_HANDLE;
 }
 
+export interface ConnectionProblemParams {
+  readonly graph: Graph;
+  readonly connection: ConnectionRequest;
+  readonly ignoreEdgeId?: string;
+}
+
 /**
  * Motivo para recusar a conexão, ou `null` quando ela pode ser criada. `ignoreEdgeId` tira da conta a conexão que está
  * sendo reconectada ou validada, para ela não colidir com ela mesma.
  */
-export function connectionProblem(params: {
-  readonly graph: Graph;
-  readonly connection: ConnectionRequest;
-  readonly ignoreEdgeId?: string;
-}): ConnectionProblem | null {
+export function connectionProblem(
+  params: ConnectionProblemParams,
+): ConnectionProblem | null {
   const { graph, connection, ignoreEdgeId } = params;
   const source = graph.nodes.find((node) => node.id === connection.source);
   const target = graph.nodes.find((node) => node.id === connection.target);

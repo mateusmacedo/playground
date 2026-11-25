@@ -20,8 +20,11 @@ describe('findIssues', () => {
 
   it('sem Início, não repete "inalcançável" em cada bloco', () => {
     const graph: Graph = {
-      nodes: [block('task', 'task'), block('end', 'end')],
-      edges: [link('task', 'end')],
+      nodes: [
+        block({ id: 'task', type: 'task' }),
+        block({ id: 'end', type: 'end' }),
+      ],
+      edges: [link({ source: 'task', target: 'end' })],
     };
 
     expect(keys(graph)).toEqual(['missing-start', 'no-input:task']);
@@ -29,8 +32,15 @@ describe('findIssues', () => {
 
   it('aponta cada Início quando há mais de um', () => {
     const graph: Graph = {
-      nodes: [block('a', 'start'), block('b', 'start'), block('end', 'end')],
-      edges: [link('a', 'end'), link('b', 'end')],
+      nodes: [
+        block({ id: 'a', type: 'start' }),
+        block({ id: 'b', type: 'start' }),
+        block({ id: 'end', type: 'end' }),
+      ],
+      edges: [
+        link({ source: 'a', target: 'end' }),
+        link({ source: 'b', target: 'end' }),
+      ],
     };
 
     expect(keys(graph)).toEqual(['multiple-starts:a', 'multiple-starts:b']);
@@ -38,7 +48,10 @@ describe('findIssues', () => {
 
   it('aponta bloco sem entrada ou sem saída, com o nome do tipo quando o título está vazio', () => {
     const graph: Graph = {
-      nodes: [block('start', 'start'), block('task', 'task', { label: ' ' })],
+      nodes: [
+        block({ id: 'start', type: 'start' }),
+        block({ id: 'task', type: 'task', data: { label: ' ' } }),
+      ],
       edges: [],
     };
     const issues = findIssues(graph);
@@ -55,11 +68,14 @@ describe('findIssues', () => {
   it('aponta Convergência com uma só entrada', () => {
     const graph: Graph = {
       nodes: [
-        block('start', 'start'),
-        block('merge', 'merge'),
-        block('end', 'end'),
+        block({ id: 'start', type: 'start' }),
+        block({ id: 'merge', type: 'merge' }),
+        block({ id: 'end', type: 'end' }),
       ],
-      edges: [link('start', 'merge'), link('merge', 'end')],
+      edges: [
+        link({ source: 'start', target: 'merge' }),
+        link({ source: 'merge', target: 'end' }),
+      ],
     };
 
     expect(keys(graph)).toEqual(['few-inputs:merge']);
@@ -68,18 +84,26 @@ describe('findIssues', () => {
   it('aponta Decisão com menos de dois ramos e ramo sem conexão', () => {
     const graph: Graph = {
       nodes: [
-        block('start', 'start'),
-        block('decision', 'decision', { branches: decisionBranches }),
-        block('single', 'decision', {
-          branches: [{ id: 'only', label: 'Único' }],
+        block({ id: 'start', type: 'start' }),
+        block({
+          id: 'decision',
+          type: 'decision',
+          data: { branches: decisionBranches },
         }),
-        block('end', 'end'),
+        block({
+          id: 'single',
+          type: 'decision',
+          data: {
+            branches: [{ id: 'only', label: 'Único' }],
+          },
+        }),
+        block({ id: 'end', type: 'end' }),
       ],
       edges: [
-        link('start', 'decision'),
-        link('decision', 'end', 'yes'),
-        link('decision', 'single', 'no'),
-        link('single', 'end', 'only'),
+        link({ source: 'start', target: 'decision' }),
+        link({ source: 'decision', target: 'end', sourceHandle: 'yes' }),
+        link({ source: 'decision', target: 'single', sourceHandle: 'no' }),
+        link({ source: 'single', target: 'end', sourceHandle: 'only' }),
       ],
     };
     const issues = findIssues(graph);
@@ -98,15 +122,15 @@ describe('findIssues', () => {
   it('aponta bloco que não é alcançado a partir do Início', () => {
     const graph: Graph = {
       nodes: [
-        block('start', 'start'),
-        block('end', 'end'),
-        block('loop-a', 'task'),
-        block('loop-b', 'task'),
+        block({ id: 'start', type: 'start' }),
+        block({ id: 'end', type: 'end' }),
+        block({ id: 'loop-a', type: 'task' }),
+        block({ id: 'loop-b', type: 'task' }),
       ],
       edges: [
-        link('start', 'end'),
-        link('loop-a', 'loop-b'),
-        link('loop-b', 'loop-a'),
+        link({ source: 'start', target: 'end' }),
+        link({ source: 'loop-a', target: 'loop-b' }),
+        link({ source: 'loop-b', target: 'loop-a' }),
       ],
     };
 
@@ -116,7 +140,10 @@ describe('findIssues', () => {
   it('ignora as anotações', () => {
     expect(
       findIssues({
-        nodes: [...sampleProcess.nodes, block('note', 'annotation')],
+        nodes: [
+          ...sampleProcess.nodes,
+          block({ id: 'note', type: 'annotation' }),
+        ],
         edges: sampleProcess.edges,
       }),
     ).toEqual([]);
@@ -125,11 +152,15 @@ describe('findIssues', () => {
   it('aponta conexão que quebra as regras', () => {
     const graph: Graph = {
       nodes: [
-        block('start', 'start'),
-        block('task', 'task'),
-        block('end', 'end'),
+        block({ id: 'start', type: 'start' }),
+        block({ id: 'task', type: 'task' }),
+        block({ id: 'end', type: 'end' }),
       ],
-      edges: [link('start', 'task'), link('task', 'end'), link('end', 'task')],
+      edges: [
+        link({ source: 'start', target: 'task' }),
+        link({ source: 'task', target: 'end' }),
+        link({ source: 'end', target: 'task' }),
+      ],
     };
     const issues = findIssues(graph);
 

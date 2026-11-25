@@ -4,11 +4,16 @@ import { CButton } from '@coreui/react';
 
 import type { PanelCommands } from './panel-commands';
 
+export interface SelectionActionsProps {
+  readonly commands: PanelCommands;
+  readonly canDuplicate: boolean;
+}
+
 /** Duplicar e excluir o que está selecionado; conexão sozinha não se duplica. */
 export function SelectionActions({
   commands,
   canDuplicate,
-}: Readonly<{ commands: PanelCommands; canDuplicate: boolean }>) {
+}: Readonly<SelectionActionsProps>) {
   return (
     <div className="d-flex flex-wrap gap-2">
       {canDuplicate ? (

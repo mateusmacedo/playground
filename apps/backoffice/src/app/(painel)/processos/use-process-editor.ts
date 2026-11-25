@@ -2,7 +2,6 @@ import type { Connection } from '@xyflow/react';
 import { useMemo, useRef } from 'react';
 
 import {
-  type BlockData,
   type BlockKind,
   createBlock,
   type Graph,
@@ -26,6 +25,12 @@ import {
   type ProcessNode,
   toProcessGraph,
 } from './process-graph';
+import type {
+  RemoveBranchChange,
+  RenameBranchChange,
+  UpdateBlockChange,
+  UpdateEdgeLabelChange,
+} from './properties/panel-commands';
 import { useGraphHistory } from './use-graph-history';
 
 const EMPTY_GRAPH: ProcessGraph = { nodes: [], edges: [] };
@@ -42,11 +47,18 @@ function unselected<T extends { readonly selected?: boolean }>(
   );
 }
 
-/** Estado e comandos do editor: o que a barra, a biblioteca, o painel e o canvas chamam. */
-export function useProcessEditor(params: {
+export interface UseProcessEditorParams {
   readonly initial: Graph;
   readonly createId?: () => string;
-}) {
+}
+
+interface AddBlockParams {
+  readonly kind: BlockKind;
+  readonly position: Point;
+}
+
+/** Estado e comandos do editor: o que a barra, a biblioteca, o painel e o canvas chamam. */
+export function useProcessEditor(params: UseProcessEditorParams) {
   const createId = params.createId ?? defaultCreateId;
   const history = useGraphHistory(() => toProcessGraph(params.initial));
   const reconnecting = useRef<string | null>(null);
@@ -74,10 +86,7 @@ export function useProcessEditor(params: {
     });
   }
 
-  function addBlock(params: {
-    readonly kind: BlockKind;
-    readonly position: Point;
-  }) {
+  function addBlock(params: AddBlockParams) {
     const { kind, position } = params;
     const block: ProcessNode = {
       ...createBlock({ kind, position, createId }),
@@ -91,10 +100,7 @@ export function useProcessEditor(params: {
     });
   }
 
-  function updateBlock(params: {
-    readonly nodeId: string;
-    readonly patch: Partial<BlockData>;
-  }) {
+  function updateBlock(params: UpdateBlockChange) {
     const { nodeId, patch } = params;
     change({
       update: (current) => updateBlockData({ graph: current, nodeId, patch }),
@@ -102,11 +108,7 @@ export function useProcessEditor(params: {
     });
   }
 
-  function renameDecisionBranch(params: {
-    readonly nodeId: string;
-    readonly branchId: string;
-    readonly label: string;
-  }) {
+  function renameDecisionBranch(params: RenameBranchChange) {
     const { nodeId, branchId, label } = params;
     change({
       update: (current) =>
@@ -115,20 +117,14 @@ export function useProcessEditor(params: {
     });
   }
 
-  function removeDecisionBranch(params: {
-    readonly nodeId: string;
-    readonly branchId: string;
-  }) {
+  function removeDecisionBranch(params: RemoveBranchChange) {
     const { nodeId, branchId } = params;
     change({
       update: (current) => removeBranch({ graph: current, nodeId, branchId }),
     });
   }
 
-  function updateConnectionLabel(params: {
-    readonly edgeId: string;
-    readonly label: string;
-  }) {
+  function updateConnectionLabel(params: UpdateEdgeLabelChange) {
     const { edgeId, label } = params;
     change({
       update: (current) => updateEdgeLabel({ graph: current, edgeId, label }),

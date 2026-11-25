@@ -9,16 +9,18 @@ import { IssueList } from './issue-list';
 import type { PanelCommands } from './panel-commands';
 import { SelectionActions } from './selection-actions';
 
+export interface BlockPropertiesProps {
+  readonly node: ProcessNode;
+  readonly issues: readonly ProcessIssue[];
+  readonly commands: PanelCommands;
+}
+
 /** Propriedades do bloco selecionado: título ou texto, descrição da Etapa e ramos da Decisão. */
 export function BlockProperties({
   node,
   issues,
   commands,
-}: Readonly<{
-  node: ProcessNode;
-  issues: readonly ProcessIssue[];
-  commands: PanelCommands;
-}>) {
+}: Readonly<BlockPropertiesProps>) {
   const kind = kindOf(node);
   const spec = specOf(kind);
   const labelId = useId();

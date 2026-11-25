@@ -8,25 +8,38 @@ import { PropertiesPanel } from './properties-panel';
 
 const base = toProcessGraph({
   nodes: [
-    block('start', 'start', { label: 'Início' }),
-    block('task', 'task', { label: 'Revisar', description: 'Ler o pedido' }),
-    block('decision', 'decision', {
-      label: 'Aprovado?',
-      branches: decisionBranches,
+    block({ id: 'start', type: 'start', data: { label: 'Início' } }),
+    block({
+      id: 'task',
+      type: 'task',
+      data: { label: 'Revisar', description: 'Ler o pedido' },
     }),
-    block('note', 'annotation', { label: 'Lembrete' }),
+    block({
+      id: 'decision',
+      type: 'decision',
+      data: {
+        label: 'Aprovado?',
+        branches: decisionBranches,
+      },
+    }),
+    block({ id: 'note', type: 'annotation', data: { label: 'Lembrete' } }),
   ],
   edges: [
-    link('start', 'task'),
-    link('task', 'decision'),
-    link('decision', 'start', 'yes'),
+    link({ source: 'start', target: 'task' }),
+    link({ source: 'task', target: 'decision' }),
+    link({ source: 'decision', target: 'start', sourceHandle: 'yes' }),
   ],
 });
 
-function selecting(
-  ids: readonly string[],
-  graph: ProcessGraph = base,
-): ProcessGraph {
+interface SelectingParams {
+  readonly ids: readonly string[];
+  readonly graph?: ProcessGraph;
+}
+
+function selecting({
+  ids,
+  graph = base,
+}: Readonly<SelectingParams>): ProcessGraph {
   return {
     nodes: graph.nodes.map((node) => ({
       ...node,
@@ -51,10 +64,12 @@ function commandsMock() {
   } satisfies PanelCommands;
 }
 
-function renderPanel(
-  graph: ProcessGraph,
-  issues: readonly ProcessIssue[] = [],
-) {
+interface RenderPanelParams {
+  readonly graph: ProcessGraph;
+  readonly issues?: readonly ProcessIssue[];
+}
+
+function renderPanel({ graph, issues = [] }: Readonly<RenderPanelParams>) {
   const commands = commandsMock();
   render(<PropertiesPanel graph={graph} issues={issues} commands={commands} />);
   return commands;
@@ -62,7 +77,7 @@ function renderPanel(
 
 describe('PropertiesPanel', () => {
   it('resume o processo e diz quando não há problema', () => {
-    renderPanel(base);
+    renderPanel({ graph: base });
 
     expect(
       screen.getByRole('region', { name: 'Propriedades' }).textContent,
@@ -71,16 +86,19 @@ describe('PropertiesPanel', () => {
   });
 
   it('lista os problemas do processo', () => {
-    renderPanel({ nodes: base.nodes.slice(0, 1), edges: [] }, [
-      { key: 'x', message: 'Início não tem conexão de saída.' },
-    ]);
+    renderPanel({
+      graph: { nodes: base.nodes.slice(0, 1), edges: [] },
+      issues: [{ key: 'x', message: 'Início não tem conexão de saída.' }],
+    });
 
     expect(screen.getByText(/1 bloco e 0 conexões/)).toBeTruthy();
     expect(screen.getByText('Início não tem conexão de saída.')).toBeTruthy();
   });
 
   it('mostra a quantidade e as ações da seleção múltipla', () => {
-    const commands = renderPanel(selecting(['task', 'start-out-task']));
+    const commands = renderPanel({
+      graph: selecting({ ids: ['task', 'start-out-task'] }),
+    });
 
     expect(screen.getByText('2 itens selecionados.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Duplicar' }));
@@ -91,16 +109,21 @@ describe('PropertiesPanel', () => {
   });
 
   it('não oferece duplicar quando só há conexões selecionadas', () => {
-    renderPanel(selecting(['start-out-task', 'task-out-decision']));
+    renderPanel({
+      graph: selecting({ ids: ['start-out-task', 'task-out-decision'] }),
+    });
 
     expect(screen.queryByRole('button', { name: 'Duplicar' })).toBeNull();
   });
 
   it('edita título e descrição da Etapa e mostra os problemas dela', () => {
-    const commands = renderPanel(selecting(['task']), [
-      { key: 'a', message: 'Revisar não tem saída.', nodeId: 'task' },
-      { key: 'b', message: 'Outro problema.', nodeId: 'decision' },
-    ]);
+    const commands = renderPanel({
+      graph: selecting({ ids: ['task'] }),
+      issues: [
+        { key: 'a', message: 'Revisar não tem saída.', nodeId: 'task' },
+        { key: 'b', message: 'Outro problema.', nodeId: 'decision' },
+      ],
+    });
 
     fireEvent.change(screen.getByLabelText('Título'), {
       target: { value: 'Conferir' },
@@ -122,7 +145,7 @@ describe('PropertiesPanel', () => {
   });
 
   it('edita o texto da Anotação', () => {
-    const commands = renderPanel(selecting(['note']));
+    const commands = renderPanel({ graph: selecting({ ids: ['note'] }) });
 
     fireEvent.change(screen.getByLabelText('Texto'), {
       target: { value: 'Atenção ao prazo' },
@@ -136,7 +159,7 @@ describe('PropertiesPanel', () => {
   });
 
   it('cria, renomeia e remove ramos da Decisão', () => {
-    const commands = renderPanel(selecting(['decision']));
+    const commands = renderPanel({ graph: selecting({ ids: ['decision'] }) });
 
     fireEvent.change(screen.getByLabelText('Nome do ramo 2'), {
       target: { value: 'Recusado' },
@@ -157,7 +180,9 @@ describe('PropertiesPanel', () => {
   });
 
   it('edita o rótulo da conexão comum', () => {
-    const commands = renderPanel(selecting(['start-out-task']));
+    const commands = renderPanel({
+      graph: selecting({ ids: ['start-out-task'] }),
+    });
 
     expect(screen.getByText('Conexão de Início para Revisar.')).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Rótulo'), {
@@ -174,7 +199,7 @@ describe('PropertiesPanel', () => {
   });
 
   it('mostra que o rótulo da conexão de ramo vem do ramo', () => {
-    renderPanel(selecting(['decision-yes-start']));
+    renderPanel({ graph: selecting({ ids: ['decision-yes-start'] }) });
 
     expect(screen.getByText(/O rótulo vem do ramo "Sim"/)).toBeTruthy();
     expect(screen.queryByLabelText('Rótulo')).toBeNull();
@@ -183,9 +208,9 @@ describe('PropertiesPanel', () => {
   it('nomeia ponta de conexão cujo bloco não existe mais', () => {
     const orphan: ProcessGraph = {
       nodes: [],
-      edges: [{ ...link('x', 'y'), selected: true }],
+      edges: [{ ...link({ source: 'x', target: 'y' }), selected: true }],
     };
-    renderPanel(orphan);
+    renderPanel({ graph: orphan });
 
     expect(
       screen.getByText('Conexão de bloco removido para bloco removido.'),

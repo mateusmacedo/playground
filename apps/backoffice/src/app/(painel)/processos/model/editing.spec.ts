@@ -22,23 +22,29 @@ function sequentialIds() {
 
 const graph: Graph = {
   nodes: [
-    block('start', 'start'),
-    block('decision', 'decision', { branches: decisionBranches }),
-    block('task', 'task'),
-    block('end', 'end'),
+    block({ id: 'start', type: 'start' }),
+    block({
+      id: 'decision',
+      type: 'decision',
+      data: { branches: decisionBranches },
+    }),
+    block({ id: 'task', type: 'task' }),
+    block({ id: 'end', type: 'end' }),
   ],
   edges: [
-    link('start', 'decision'),
-    link('decision', 'task', 'yes'),
-    link('decision', 'end', 'no'),
-    link('task', 'end'),
+    link({ source: 'start', target: 'decision' }),
+    link({ source: 'decision', target: 'task', sourceHandle: 'yes' }),
+    link({ source: 'decision', target: 'end', sourceHandle: 'no' }),
+    link({ source: 'task', target: 'end' }),
   ],
 };
 
-function select(
-  source: Graph,
-  ids: { readonly nodes?: string[]; readonly edges?: string[] },
-): Graph {
+interface SelectParams {
+  readonly source: Graph;
+  readonly ids: { readonly nodes?: string[]; readonly edges?: string[] };
+}
+
+function select({ source, ids }: Readonly<SelectParams>): Graph {
   return {
     nodes: source.nodes.map((node) => ({
       ...node,
@@ -53,7 +59,9 @@ function select(
 
 describe('deleteSelection', () => {
   it('tira os blocos selecionados e as conexões ligadas a eles', () => {
-    const result = deleteSelection(select(graph, { nodes: ['task'] }));
+    const result = deleteSelection(
+      select({ source: graph, ids: { nodes: ['task'] } }),
+    );
 
     expect(result.nodes.map((node) => node.id)).toEqual([
       'start',
@@ -68,7 +76,7 @@ describe('deleteSelection', () => {
 
   it('tira só a conexão selecionada', () => {
     const result = deleteSelection(
-      select(graph, { edges: ['decision-no-end'] }),
+      select({ source: graph, ids: { edges: ['decision-no-end'] } }),
     );
 
     expect(result.nodes).toHaveLength(4);
@@ -83,9 +91,12 @@ describe('deleteSelection', () => {
 describe('duplicateSelection', () => {
   it('copia os blocos selecionados e as conexões entre eles, e seleciona as cópias', () => {
     const result = duplicateSelection({
-      graph: select(graph, {
-        nodes: ['decision', 'task'],
-        edges: ['task-out-end'],
+      graph: select({
+        source: graph,
+        ids: {
+          nodes: ['decision', 'task'],
+          edges: ['task-out-end'],
+        },
       }),
       createId: sequentialIds(),
     });

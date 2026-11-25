@@ -7,18 +7,25 @@ import { BLOCK_SPECS, type BlockKind } from './model/blocks';
 /** Tipo do dado no arraste da biblioteca para o canvas; o valor é o tipo do bloco. */
 export const BLOCK_DRAG_TYPE = 'application/x-process-block';
 
-function startBlockDrag(event: DragEvent<HTMLElement>, kind: BlockKind) {
+interface StartBlockDragParams {
+  readonly event: DragEvent<HTMLElement>;
+  readonly kind: BlockKind;
+}
+
+function startBlockDrag({ event, kind }: Readonly<StartBlockDragParams>) {
   event.dataTransfer.setData(BLOCK_DRAG_TYPE, kind);
   event.dataTransfer.effectAllowed = 'copy';
+}
+
+export interface BlockPaletteProps {
+  readonly onAdd: (kind: BlockKind) => void;
 }
 
 /**
  * Biblioteca de blocos. O item inteiro é arrastável, e o botão "+" insere no centro do canvas, que é o caminho pelo
  * teclado. O arraste fica no item, e não no botão, porque o Firefox não arrasta elemento `button`.
  */
-export function BlockPalette({
-  onAdd,
-}: Readonly<{ onAdd: (kind: BlockKind) => void }>) {
+export function BlockPalette({ onAdd }: Readonly<BlockPaletteProps>) {
   const headingId = useId();
   return (
     <section aria-labelledby={headingId}>
@@ -34,7 +41,7 @@ export function BlockPalette({
             key={spec.kind}
             className={`process-palette-item process-palette-item--${spec.kind}`}
             draggable
-            onDragStart={(event) => startBlockDrag(event, spec.kind)}
+            onDragStart={(event) => startBlockDrag({ event, kind: spec.kind })}
           >
             <span className="flex-grow-1">
               <span className="d-block fw-semibold">{spec.label}</span>

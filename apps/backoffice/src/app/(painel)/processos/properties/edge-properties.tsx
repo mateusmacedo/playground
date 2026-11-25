@@ -9,18 +9,20 @@ import { IssueList } from './issue-list';
 import type { PanelCommands } from './panel-commands';
 import { SelectionActions } from './selection-actions';
 
+export interface EdgePropertiesProps {
+  readonly edge: ProcessEdge;
+  readonly graph: ProcessGraph;
+  readonly issues: readonly ProcessIssue[];
+  readonly commands: PanelCommands;
+}
+
 /** Propriedades da conexão selecionada: de onde sai, para onde vai e o rótulo, que no ramo vem do próprio ramo. */
 export function EdgeProperties({
   edge,
   graph,
   issues,
   commands,
-}: Readonly<{
-  edge: ProcessEdge;
-  graph: ProcessGraph;
-  issues: readonly ProcessIssue[];
-  commands: PanelCommands;
-}>) {
+}: Readonly<EdgePropertiesProps>) {
   const labelId = useId();
   const source = graph.nodes.find((node) => node.id === edge.source);
   const target = graph.nodes.find((node) => node.id === edge.target);

@@ -4,74 +4,120 @@ import { block, decisionBranches, link } from './test-graph';
 
 const graph: Graph = {
   nodes: [
-    block('start', 'start'),
-    block('task', 'task'),
-    block('other', 'task'),
-    block('decision', 'decision', { branches: decisionBranches }),
-    block('merge', 'merge'),
-    block('end', 'end'),
-    block('note', 'annotation'),
+    block({ id: 'start', type: 'start' }),
+    block({ id: 'task', type: 'task' }),
+    block({ id: 'other', type: 'task' }),
+    block({
+      id: 'decision',
+      type: 'decision',
+      data: { branches: decisionBranches },
+    }),
+    block({ id: 'merge', type: 'merge' }),
+    block({ id: 'end', type: 'end' }),
+    block({ id: 'note', type: 'annotation' }),
   ],
-  edges: [link('start', 'task'), link('decision', 'merge', 'yes')],
+  edges: [
+    link({ source: 'start', target: 'task' }),
+    link({ source: 'decision', target: 'merge', sourceHandle: 'yes' }),
+  ],
 };
 
-function problem(
-  connection: Parameters<typeof connectionProblem>[0]['connection'],
-  ignoreEdgeId?: string,
-) {
+interface ProblemParams {
+  readonly connection: Parameters<typeof connectionProblem>[0]['connection'];
+  readonly ignoreEdgeId?: string;
+}
+
+function problem({ connection, ignoreEdgeId }: Readonly<ProblemParams>) {
   return connectionProblem({ graph, connection, ignoreEdgeId });
 }
 
 describe('connectionProblem', () => {
   it('aceita a conexão que respeita as regras', () => {
     expect(
-      problem({ source: 'task', target: 'end', sourceHandle: 'out' }),
+      problem({
+        connection: { source: 'task', target: 'end', sourceHandle: 'out' },
+      }),
     ).toBeNull();
     expect(
-      problem({ source: 'decision', target: 'end', sourceHandle: 'no' }),
+      problem({
+        connection: { source: 'decision', target: 'end', sourceHandle: 'no' },
+      }),
     ).toBeNull();
   });
 
   it('aceita várias entradas na Convergência e no Fim', () => {
     expect(
-      problem({ source: 'task', target: 'merge', sourceHandle: 'out' }),
+      problem({
+        connection: { source: 'task', target: 'merge', sourceHandle: 'out' },
+      }),
     ).toBeNull();
   });
 
   it('recusa bloco inexistente e ligação do bloco com ele mesmo', () => {
-    expect(problem({ source: 'x', target: 'end' })).toBe('unknown-block');
-    expect(problem({ source: 'task', target: 'task' })).toBe('self');
+    expect(problem({ connection: { source: 'x', target: 'end' } })).toBe(
+      'unknown-block',
+    );
+    expect(problem({ connection: { source: 'task', target: 'task' } })).toBe(
+      'self',
+    );
   });
 
   it('recusa sair de bloco sem saída e entrar em bloco sem entrada', () => {
-    expect(problem({ source: 'end', target: 'task' })).toBe('no-output');
-    expect(problem({ source: 'note', target: 'task' })).toBe('no-output');
-    expect(problem({ source: 'other', target: 'start' })).toBe('no-input');
-    expect(problem({ source: 'other', target: 'note' })).toBe('no-input');
+    expect(problem({ connection: { source: 'end', target: 'task' } })).toBe(
+      'no-output',
+    );
+    expect(problem({ connection: { source: 'note', target: 'task' } })).toBe(
+      'no-output',
+    );
+    expect(problem({ connection: { source: 'other', target: 'start' } })).toBe(
+      'no-input',
+    );
+    expect(problem({ connection: { source: 'other', target: 'note' } })).toBe(
+      'no-input',
+    );
   });
 
   it('recusa ponto de saída que o bloco não tem', () => {
     expect(
-      problem({ source: 'decision', target: 'end', sourceHandle: 'talvez' }),
+      problem({
+        connection: {
+          source: 'decision',
+          target: 'end',
+          sourceHandle: 'talvez',
+        },
+      }),
     ).toBe('unknown-output');
   });
 
   it('recusa conexão repetida e saída já ocupada', () => {
     expect(
-      problem({ source: 'decision', target: 'merge', sourceHandle: 'yes' }),
+      problem({
+        connection: {
+          source: 'decision',
+          target: 'merge',
+          sourceHandle: 'yes',
+        },
+      }),
     ).toBe('duplicate');
-    expect(problem({ source: 'start', target: 'other' })).toBe('output-taken');
+    expect(problem({ connection: { source: 'start', target: 'other' } })).toBe(
+      'output-taken',
+    );
   });
 
   it('recusa a segunda entrada numa Etapa ou Decisão', () => {
     expect(
-      problem({ source: 'decision', target: 'task', sourceHandle: 'no' }),
+      problem({
+        connection: { source: 'decision', target: 'task', sourceHandle: 'no' },
+      }),
     ).toBe('input-taken');
   });
 
   it('ignora a própria conexão ao reconectá-la', () => {
     expect(
-      problem({ source: 'start', target: 'other' }, 'start-out-task'),
+      problem({
+        connection: { source: 'start', target: 'other' },
+        ignoreEdgeId: 'start-out-task',
+      }),
     ).toBeNull();
   });
 });

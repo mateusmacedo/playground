@@ -44,12 +44,18 @@ describe('catálogo de blocos', () => {
 
 describe('outputHandles', () => {
   it('dá a saída única, um ponto por ramo ou nenhum', () => {
-    expect(outputHandles(block('t', 'task'))).toEqual(['out']);
+    expect(outputHandles(block({ id: 't', type: 'task' }))).toEqual(['out']);
     expect(
-      outputHandles(block('d', 'decision', { branches: decisionBranches })),
+      outputHandles(
+        block({
+          id: 'd',
+          type: 'decision',
+          data: { branches: decisionBranches },
+        }),
+      ),
     ).toEqual(['yes', 'no']);
-    expect(outputHandles(block('d', 'decision'))).toEqual([]);
-    expect(outputHandles(block('e', 'end'))).toEqual([]);
+    expect(outputHandles(block({ id: 'd', type: 'decision' }))).toEqual([]);
+    expect(outputHandles(block({ id: 'e', type: 'end' }))).toEqual([]);
   });
 });
 

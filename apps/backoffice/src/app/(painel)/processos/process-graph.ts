@@ -62,11 +62,13 @@ export function issuesByElement(
   return grouped;
 }
 
-/** Rótulo da conexão: o nome do ramo quando ela sai de uma Decisão, senão o rótulo próprio dela. */
-export function edgeLabel(params: {
+export interface EdgeLabelParams {
   readonly graph: ProcessGraph;
   readonly edge: ProcessEdge;
-}): string {
+}
+
+/** Rótulo da conexão: o nome do ramo quando ela sai de uma Decisão, senão o rótulo próprio dela. */
+export function edgeLabel(params: EdgeLabelParams): string {
   const { graph, edge } = params;
   const source = graph.nodes.find((node) => node.id === edge.source);
   const branch = source?.data.branches?.find(
@@ -75,11 +77,13 @@ export function edgeLabel(params: {
   return branch?.label ?? edge.data?.label ?? '';
 }
 
-/** Conexões como aparecem no canvas: com seta, rótulo e o destaque das que quebram as regras. */
-export function displayEdges(params: {
+export interface DisplayEdgesParams {
   readonly graph: ProcessGraph;
   readonly issuesById: ReadonlyMap<string, readonly ProcessIssue[]>;
-}): ProcessEdge[] {
+}
+
+/** Conexões como aparecem no canvas: com seta, rótulo e o destaque das que quebram as regras. */
+export function displayEdges(params: DisplayEdgesParams): ProcessEdge[] {
   const { graph, issuesById } = params;
   return graph.edges.map((edge) => ({
     ...edge,

@@ -23,7 +23,12 @@ function issueStatus() {
   return screen.getByRole('status').textContent;
 }
 
-function key(target: Element, init: KeyboardEventInit) {
+interface KeyParams {
+  readonly target: Element;
+  readonly init: KeyboardEventInit;
+}
+
+function key({ target, init }: Readonly<KeyParams>) {
   fireEvent.keyDown(target, init);
 }
 
@@ -67,16 +72,16 @@ describe('ProcessEditor', () => {
     );
     expect(within(canvas()).getAllByText('Convergência')).toHaveLength(1);
 
-    key(document.body, { key: 'd', ctrlKey: true });
+    key({ target: document.body, init: { key: 'd', ctrlKey: true } });
     expect(within(canvas()).getAllByText('Convergência')).toHaveLength(2);
 
-    key(document.body, { key: 'Delete' });
+    key({ target: document.body, init: { key: 'Delete' } });
     expect(within(canvas()).getAllByText('Convergência')).toHaveLength(1);
 
-    key(document.body, { key: 'z', ctrlKey: true });
+    key({ target: document.body, init: { key: 'z', ctrlKey: true } });
     expect(within(canvas()).getAllByText('Convergência')).toHaveLength(2);
 
-    key(document.body, { key: 'y', metaKey: true });
+    key({ target: document.body, init: { key: 'y', metaKey: true } });
     expect(within(canvas()).getAllByText('Convergência')).toHaveLength(1);
   });
 
@@ -86,9 +91,15 @@ describe('ProcessEditor', () => {
       screen.getByRole('button', { name: 'Inserir Convergência' }),
     );
 
-    key(screen.getByLabelText('Título'), { key: 'z', ctrlKey: true });
-    key(screen.getByRole('button', { name: 'Desfazer' }), { key: 'Delete' });
-    key(document.body, { key: 'k', ctrlKey: true });
+    key({
+      target: screen.getByLabelText('Título'),
+      init: { key: 'z', ctrlKey: true },
+    });
+    key({
+      target: screen.getByRole('button', { name: 'Desfazer' }),
+      init: { key: 'Delete' },
+    });
+    key({ target: document.body, init: { key: 'k', ctrlKey: true } });
 
     expect(within(canvas()).getAllByText('Convergência')).toHaveLength(1);
   });

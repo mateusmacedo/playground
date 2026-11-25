@@ -13,10 +13,12 @@ import type { ProcessEdge, ProcessGraph, ProcessNode } from './process-graph';
 
 type GraphUpdate = (graph: ProcessGraph) => ProcessGraph;
 
-function positionsChanged(params: {
+interface PositionsChangedParams {
   readonly before: ProcessGraph;
   readonly after: ProcessGraph;
-}): boolean {
+}
+
+function positionsChanged(params: PositionsChangedParams): boolean {
   const { before, after } = params;
   return after.nodes.some((node) => {
     const previous = before.nodes.find((candidate) => candidate.id === node.id);
@@ -28,6 +30,11 @@ function positionsChanged(params: {
   });
 }
 
+export interface GraphChange {
+  readonly update: GraphUpdate;
+  readonly key?: string;
+}
+
 /**
  * Estado do grafo com desfazer e refazer. Ações do usuário viram passos; seleção, medidas e o meio de um arraste só
  * atualizam a tela. O arraste inteiro vira um passo quando termina, e as setas seguidas no mesmo bloco viram um só.
@@ -36,10 +43,7 @@ export function useGraphHistory(createInitial: () => ProcessGraph) {
   const [history, setHistory] = useState(() => createHistory(createInitial()));
   const dragOrigin = useRef<ProcessGraph | null>(null);
 
-  function change(params: {
-    readonly update: GraphUpdate;
-    readonly key?: string;
-  }) {
+  function change(params: GraphChange) {
     const { update, key } = params;
     setHistory((current) =>
       commit({ history: current, next: update(current.present), key }),

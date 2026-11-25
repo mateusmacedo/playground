@@ -1,11 +1,17 @@
 import type { BlockData, GraphEdge, GraphNode } from './blocks';
 
+export interface BlockParams {
+  readonly id: string;
+  readonly type: string;
+  readonly data?: Partial<BlockData>;
+}
+
 /** Bloco mínimo para os testes do modelo. */
-export function block(
-  id: string,
-  type: string,
-  data: Partial<BlockData> = {},
-): GraphNode {
+export function block({
+  id,
+  type,
+  data = {},
+}: Readonly<BlockParams>): GraphNode {
   return {
     id,
     type,
@@ -14,12 +20,18 @@ export function block(
   };
 }
 
+export interface LinkParams {
+  readonly source: string;
+  readonly target: string;
+  readonly sourceHandle?: string;
+}
+
 /** Conexão mínima; `sourceHandle` padrão é a saída única. */
-export function link(
-  source: string,
-  target: string,
+export function link({
+  source,
+  target,
   sourceHandle = 'out',
-): GraphEdge {
+}: Readonly<LinkParams>): GraphEdge {
   return {
     id: `${source}-${sourceHandle}-${target}`,
     source,

@@ -13,14 +13,18 @@ import {
 
 const graph: ProcessGraph = toProcessGraph({
   nodes: [
-    block('decision', 'decision', { branches: decisionBranches }),
-    block('task', 'outro'),
-    block('end', 'end'),
+    block({
+      id: 'decision',
+      type: 'decision',
+      data: { branches: decisionBranches },
+    }),
+    block({ id: 'task', type: 'outro' }),
+    block({ id: 'end', type: 'end' }),
   ],
   edges: [
-    link('decision', 'task', 'yes'),
+    link({ source: 'decision', target: 'task', sourceHandle: 'yes' }),
     {
-      ...link('task', 'end'),
+      ...link({ source: 'task', target: 'end' }),
       sourceHandle: undefined,
       targetHandle: undefined,
     },
