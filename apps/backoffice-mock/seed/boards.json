@@ -1,0 +1,88 @@
+[
+  {
+    "id": "board-1",
+    "name": "Quadro principal",
+    "revision": 1,
+    "schemaVersion": 3,
+    "board": {
+      "lanes": [
+        {
+          "id": "todo",
+          "title": "A fazer",
+          "cards": [
+            {
+              "id": "item-1",
+              "title": "Item 1",
+              "description": "Card de exemplo, sem tipo definido.",
+              "labelIds": ["label-2"],
+              "checklist": [
+                {
+                  "id": "item-1",
+                  "text": "Primeiro passo",
+                  "done": true
+                },
+                {
+                  "id": "item-2",
+                  "text": "Segundo passo",
+                  "done": false
+                }
+              ],
+              "number": 1
+            },
+            {
+              "id": "item-2",
+              "title": "Item 2",
+              "parentId": "item-1",
+              "number": 2
+            },
+            {
+              "id": "item-3",
+              "title": "Item 3",
+              "parentId": "item-1",
+              "number": 3
+            }
+          ]
+        },
+        {
+          "id": "doing",
+          "title": "Em andamento",
+          "cards": [
+            {
+              "id": "item-4",
+              "title": "Item 4",
+              "labelIds": ["label-1"],
+              "number": 4
+            }
+          ]
+        },
+        {
+          "id": "done",
+          "title": "Concluído",
+          "cards": []
+        }
+      ],
+      "archive": [],
+      "labels": [
+        {
+          "id": "label-1",
+          "name": "Urgente",
+          "color": "danger"
+        },
+        {
+          "id": "label-2",
+          "name": "Ideia",
+          "color": "info"
+        },
+        {
+          "id": "label-3",
+          "name": "Revisar",
+          "color": "warning"
+        }
+      ],
+      "nextNumber": 5,
+      "config": {
+        "keyPrefix": "QD"
+      }
+    }
+  }
+]

@@ -1,0 +1,1996 @@
+{
+  "uuid": "ba528516-1ba6-5ed0-a85f-b13784ce5c92",
+  "lastMigration": 33,
+  "name": "backoffice-mock",
+  "endpointPrefix": "",
+  "latency": 0,
+  "port": 4010,
+  "hostname": "",
+  "folders": [],
+  "routes": [
+    {
+      "uuid": "0e8449d5-9279-5c5a-a3dd-040aa1c0aff8",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "health",
+      "responses": [
+        {
+          "uuid": "f18cad2b-382d-5e9a-a7f0-bb4ef0d4c3c2",
+          "body": "{\"status\":\"ok\"}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Servidor no ar",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "eaf52f06-3aaa-5c76-a4c3-38b8f55a054a",
+      "type": "crud",
+      "documentation": "",
+      "method": "",
+      "endpoint": "boards",
+      "responses": [
+        {
+          "uuid": "a851d2ef-22f5-5af1-a2ee-b699d5ce97b2",
+          "body": "{\"type\":\"urn:playground:problem:internal-error\",\"title\":\"Falha inesperada\",\"status\":500,\"detail\":\"O servidor não conseguiu concluir a requisição.\",\"instance\":\"/boards{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 500,
+          "label": "Falha inesperada",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "X-Mock-Scenario",
+              "value": "error",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "ca79173d-c21b-535a-a751-f3d2b84526c0",
+          "body": "{\"type\":\"urn:playground:problem:unavailable\",\"title\":\"Serviço indisponível\",\"status\":503,\"detail\":\"O servidor está indisponível no momento. Tente de novo em instantes.\",\"instance\":\"/boards{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 503,
+          "label": "Serviço indisponível",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "X-Mock-Scenario",
+              "value": "unavailable",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "80a6700f-d933-558a-abfa-087e42b05f3e",
+          "body": "{\"type\":\"urn:playground:problem:method-not-allowed\",\"title\":\"Operação fora do contrato\",\"status\":405,\"detail\":\"A API não tem esta operação neste endereço.\",\"instance\":\"/boards{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 405,
+          "label": "Operação fora do contrato",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "patch",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "35cec511-aa9f-578e-a9b8-8487b8551bf2",
+          "body": "{\"type\":\"urn:playground:problem:method-not-allowed\",\"title\":\"Operação fora do contrato\",\"status\":405,\"detail\":\"A API não tem esta operação neste endereço.\",\"instance\":\"/boards{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 405,
+          "label": "Operação fora do contrato",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "delete",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": true,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d87b4b46-e327-5792-ad21-ae056181f6bb",
+          "body": "{\"type\":\"urn:playground:problem:precondition-required\",\"title\":\"Falta o cabeçalho If-Match\",\"status\":428,\"detail\":\"Envie no If-Match a revisão lida, entre aspas duplas.\",\"instance\":\"/boards{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 428,
+          "label": "Falta o cabeçalho If-Match",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "put",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "If-Match",
+              "value": "",
+              "invert": false,
+              "operator": "null"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "df3d5719-dba3-56c6-ae71-39a8a5df4211",
+          "body": "{\"type\":\"urn:playground:problem:not-found\",\"title\":\"Documento não encontrado\",\"status\":404,\"detail\":\"Não existe documento com este id.\",\"instance\":\"/boards{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "Documento não encontrado",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "templating",
+              "modifier": "{{dataRaw 'boards' (concat '$[?(@.id==\"' (urlParam 'id') '\")].id')}}",
+              "value": "",
+              "invert": false,
+              "operator": "null"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "4d4d618c-ae81-515c-a619-f430e9010fd7",
+          "body": "{\"type\":\"urn:playground:problem:revision-mismatch\",\"title\":\"Revisão desatualizada\",\"status\":412,\"detail\":\"A revisão gravada é {{dataRaw 'boards' (concat '$[?(@.id==\"' (urlParam 'id') '\")].revision')}}, diferente da enviada no If-Match.\",\"instance\":\"/boards{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 412,
+          "label": "Revisão desatualizada",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "put",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "templating",
+              "modifier": "{{eq (header 'If-Match') (concat '\"' (dataRaw 'boards' (concat '$[?(@.id==\"' (urlParam 'id') '\")].revision')) '\"')}}",
+              "value": "true",
+              "invert": true,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "057b383d-47d6-55ae-a8c2-e4382dc17132",
+          "body": "{\"type\":\"urn:playground:problem:malformed-body\",\"title\":\"Corpo ilegível\",\"status\":400,\"detail\":\"O corpo da requisição não é um JSON válido.\",\"instance\":\"/boards{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Corpo ilegível",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "^(post|put)$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "",
+              "value": "envelopes.JsonContainer",
+              "invert": true,
+              "operator": "valid_json_schema"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "fa126330-95e9-528b-a5cf-9776e4f12c78",
+          "body": "{\"type\":\"urn:playground:problem:invalid-document\",\"title\":\"Documento inválido\",\"status\":422,\"detail\":\"O corpo não tem os campos obrigatórios do documento.\",\"instance\":\"/boards{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "Documento inválido",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "put",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "",
+              "value": "envelopes.BoardDocument",
+              "invert": true,
+              "operator": "valid_json_schema"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "4b3a5f38-16ed-575b-a20e-41ae33210ce9",
+          "body": "{\"type\":\"urn:playground:problem:invalid-document\",\"title\":\"Documento inválido\",\"status\":422,\"detail\":\"O id do corpo não é o do endereço.\",\"instance\":\"/boards{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "Documento inválido",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "put",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "templating",
+              "modifier": "{{eq (bodyRaw 'id') (urlParam 'id')}}",
+              "value": "true",
+              "invert": true,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "422e7c05-99e6-5cea-a363-f26795484645",
+          "body": "{\"type\":\"urn:playground:problem:invalid-document\",\"title\":\"Documento inválido\",\"status\":422,\"detail\":\"A revision do corpo precisa ser a revisão lida mais 1; a gravada é {{dataRaw 'boards' (concat '$[?(@.id==\"' (urlParam 'id') '\")].revision')}}.\",\"instance\":\"/boards{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "Documento inválido",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "put",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "templating",
+              "modifier": "{{eq (bodyRaw 'revision') (add (dataRaw 'boards' (concat '$[?(@.id==\"' (urlParam 'id') '\")].revision')) 1)}}",
+              "value": "true",
+              "invert": true,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "07d9152a-28ea-5012-a0b6-d8ddcc31c61b",
+          "body": "{\"type\":\"urn:playground:problem:invalid-document\",\"title\":\"Documento inválido\",\"status\":422,\"detail\":\"O corpo não tem os campos obrigatórios do documento.\",\"instance\":\"/boards{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "Documento inválido",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "post",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "",
+              "value": "envelopes.BoardDocument",
+              "invert": true,
+              "operator": "valid_json_schema"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "55def828-919b-5932-a926-14bed96cbdce",
+          "body": "{\"type\":\"urn:playground:problem:invalid-document\",\"title\":\"Documento inválido\",\"status\":422,\"detail\":\"Já existe documento com este id.\",\"instance\":\"/boards{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "Documento inválido",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "post",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "templating",
+              "modifier": "{{dataRaw 'boards' (concat '$[?(@.id==\"' (bodyRaw 'id') '\")].id')}}",
+              "value": "",
+              "invert": true,
+              "operator": "null"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "420e1a75-dfeb-55ee-a5b1-0b0765ab78a2",
+          "body": "{\"type\":\"urn:playground:problem:invalid-document\",\"title\":\"Documento inválido\",\"status\":422,\"detail\":\"O documento novo começa com revision 1.\",\"instance\":\"/boards{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "Documento inválido",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "post",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "revision",
+              "value": "1",
+              "invert": true,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "4fd8403c-6149-5747-ae9d-cb4b64941985",
+          "body": "{\"type\":\"urn:playground:problem:invalid-document\",\"title\":\"Documento inválido\",\"status\":422,\"detail\":\"A coleção precisa ser uma lista de documentos com os campos obrigatórios.\",\"instance\":\"/boards{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "Documento inválido",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "put",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": true,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "",
+              "value": "envelopes.BoardDocumentList",
+              "invert": true,
+              "operator": "valid_json_schema"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "79f41cd3-cc27-55f3-ae15-bfbf15e50904",
+          "body": "{{#each (dataRaw 'boards')}}{{#if (eq id (urlParam 'id'))}}{{setData 'del' 'boards' @index}}{{/if}}{{/each}}",
+          "latency": 1500,
+          "statusCode": 204,
+          "label": "Remove o documento (cenário slow)",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "delete",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "X-Mock-Scenario",
+              "value": "slow",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "9a41c042-c440-50b7-a863-ec01c38ff5aa",
+          "body": "{{#each (dataRaw 'boards')}}{{#if (eq id (urlParam 'id'))}}{{setData 'del' 'boards' @index}}{{/if}}{{/each}}",
+          "latency": 0,
+          "statusCode": 204,
+          "label": "Remove o documento",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "delete",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "6ca7b926-96ac-5604-ab41-96ee64f859c3",
+          "body": "",
+          "latency": 1500,
+          "statusCode": 200,
+          "label": "Grava o documento (cenário slow)",
+          "headers": [
+            {
+              "key": "ETag",
+              "value": "\"{{bodyRaw 'revision'}}\""
+            }
+          ],
+          "bodyType": "DATABUCKET",
+          "filePath": "",
+          "databucketID": "boards",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "put",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "X-Mock-Scenario",
+              "value": "slow",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "bf8f59e7-30e5-5db2-a937-8df8430a48e1",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Grava o documento",
+          "headers": [
+            {
+              "key": "ETag",
+              "value": "\"{{bodyRaw 'revision'}}\""
+            }
+          ],
+          "bodyType": "DATABUCKET",
+          "filePath": "",
+          "databucketID": "boards",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "put",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "f42c2e62-157c-538c-ab43-f3ca68d95462",
+          "body": "",
+          "latency": 1500,
+          "statusCode": 200,
+          "label": "Cria o documento (cenário slow)",
+          "headers": [
+            {
+              "key": "ETag",
+              "value": "\"{{bodyRaw 'revision'}}\""
+            }
+          ],
+          "bodyType": "DATABUCKET",
+          "filePath": "",
+          "databucketID": "boards",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "post",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "X-Mock-Scenario",
+              "value": "slow",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d138049b-36b1-57e8-a522-308e8e27873a",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Cria o documento",
+          "headers": [
+            {
+              "key": "ETag",
+              "value": "\"{{bodyRaw 'revision'}}\""
+            }
+          ],
+          "bodyType": "DATABUCKET",
+          "filePath": "",
+          "databucketID": "boards",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "post",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "a5241115-7fbc-591e-a9f8-a81e6d89f2d3",
+          "body": "",
+          "latency": 1500,
+          "statusCode": 200,
+          "label": "Lê o documento (cenário slow)",
+          "headers": [
+            {
+              "key": "ETag",
+              "value": "\"{{dataRaw 'boards' (concat '$[?(@.id==\"' (urlParam 'id') '\")].revision')}}\""
+            }
+          ],
+          "bodyType": "DATABUCKET",
+          "filePath": "",
+          "databucketID": "boards",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "get",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "X-Mock-Scenario",
+              "value": "slow",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "2d95470b-6920-51a6-af2a-36df7025eaf9",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Lê o documento",
+          "headers": [
+            {
+              "key": "ETag",
+              "value": "\"{{dataRaw 'boards' (concat '$[?(@.id==\"' (urlParam 'id') '\")].revision')}}\""
+            }
+          ],
+          "bodyType": "DATABUCKET",
+          "filePath": "",
+          "databucketID": "boards",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "get",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "fcda4328-f490-5368-a5e0-87cfc95fce03",
+          "body": "",
+          "latency": 1500,
+          "statusCode": 200,
+          "label": "Lista ou semeia a coleção (cenário slow)",
+          "headers": [],
+          "bodyType": "DATABUCKET",
+          "filePath": "",
+          "databucketID": "boards",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "X-Mock-Scenario",
+              "value": "slow",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "ab495c62-68e0-5581-ab8c-2e46d7de4bc0",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Lista ou semeia a coleção",
+          "headers": [],
+          "bodyType": "DATABUCKET",
+          "filePath": "",
+          "databucketID": "boards",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "8e0323b3-949a-58a1-a301-969920956102",
+      "type": "crud",
+      "documentation": "",
+      "method": "",
+      "endpoint": "process-definitions",
+      "responses": [
+        {
+          "uuid": "68a8a9d5-111f-5c35-af90-c5796830d76e",
+          "body": "{\"type\":\"urn:playground:problem:internal-error\",\"title\":\"Falha inesperada\",\"status\":500,\"detail\":\"O servidor não conseguiu concluir a requisição.\",\"instance\":\"/process-definitions{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 500,
+          "label": "Falha inesperada",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "X-Mock-Scenario",
+              "value": "error",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "32dd588e-923d-5a8a-a229-e3c0a7d92e96",
+          "body": "{\"type\":\"urn:playground:problem:unavailable\",\"title\":\"Serviço indisponível\",\"status\":503,\"detail\":\"O servidor está indisponível no momento. Tente de novo em instantes.\",\"instance\":\"/process-definitions{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 503,
+          "label": "Serviço indisponível",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "X-Mock-Scenario",
+              "value": "unavailable",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "25eaa305-7900-5837-a664-70862c5467ac",
+          "body": "{\"type\":\"urn:playground:problem:method-not-allowed\",\"title\":\"Operação fora do contrato\",\"status\":405,\"detail\":\"A API não tem esta operação neste endereço.\",\"instance\":\"/process-definitions{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 405,
+          "label": "Operação fora do contrato",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "patch",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "3851322d-dd62-5e64-a83c-5eadab18a859",
+          "body": "{\"type\":\"urn:playground:problem:method-not-allowed\",\"title\":\"Operação fora do contrato\",\"status\":405,\"detail\":\"A API não tem esta operação neste endereço.\",\"instance\":\"/process-definitions{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 405,
+          "label": "Operação fora do contrato",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "delete",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "67712915-b89e-5a65-ae4c-516d537ab373",
+          "body": "{\"type\":\"urn:playground:problem:precondition-required\",\"title\":\"Falta o cabeçalho If-Match\",\"status\":428,\"detail\":\"Envie no If-Match a revisão lida, entre aspas duplas.\",\"instance\":\"/process-definitions{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 428,
+          "label": "Falta o cabeçalho If-Match",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "put",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "If-Match",
+              "value": "",
+              "invert": false,
+              "operator": "null"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "c7df53ad-c269-5eb5-a3a7-792ea2ca4ce0",
+          "body": "{\"type\":\"urn:playground:problem:not-found\",\"title\":\"Documento não encontrado\",\"status\":404,\"detail\":\"Não existe documento com este id.\",\"instance\":\"/process-definitions{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "Documento não encontrado",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "templating",
+              "modifier": "{{dataRaw 'process-definitions' (concat '$[?(@.id==\"' (urlParam 'id') '\")].id')}}",
+              "value": "",
+              "invert": false,
+              "operator": "null"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "848584cc-3388-5813-a6e5-990dd470cc1b",
+          "body": "{\"type\":\"urn:playground:problem:revision-mismatch\",\"title\":\"Revisão desatualizada\",\"status\":412,\"detail\":\"A revisão gravada é {{dataRaw 'process-definitions' (concat '$[?(@.id==\"' (urlParam 'id') '\")].revision')}}, diferente da enviada no If-Match.\",\"instance\":\"/process-definitions{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 412,
+          "label": "Revisão desatualizada",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "put",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "templating",
+              "modifier": "{{eq (header 'If-Match') (concat '\"' (dataRaw 'process-definitions' (concat '$[?(@.id==\"' (urlParam 'id') '\")].revision')) '\"')}}",
+              "value": "true",
+              "invert": true,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "94d5e3f2-1459-5b99-ac1e-6c65a3ae0452",
+          "body": "{\"type\":\"urn:playground:problem:malformed-body\",\"title\":\"Corpo ilegível\",\"status\":400,\"detail\":\"O corpo da requisição não é um JSON válido.\",\"instance\":\"/process-definitions{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "Corpo ilegível",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "^(post|put)$",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "",
+              "value": "envelopes.JsonContainer",
+              "invert": true,
+              "operator": "valid_json_schema"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "369c35e6-4ae3-5103-a2fe-0387b3733791",
+          "body": "{\"type\":\"urn:playground:problem:invalid-document\",\"title\":\"Documento inválido\",\"status\":422,\"detail\":\"O corpo não tem os campos obrigatórios do documento.\",\"instance\":\"/process-definitions{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "Documento inválido",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "put",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "",
+              "value": "envelopes.ProcessDefinitionDocument",
+              "invert": true,
+              "operator": "valid_json_schema"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "78c283f0-7e7a-5505-abba-e8f01fabe31a",
+          "body": "{\"type\":\"urn:playground:problem:invalid-document\",\"title\":\"Documento inválido\",\"status\":422,\"detail\":\"O id do corpo não é o do endereço.\",\"instance\":\"/process-definitions{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "Documento inválido",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "put",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "templating",
+              "modifier": "{{eq (bodyRaw 'id') (urlParam 'id')}}",
+              "value": "true",
+              "invert": true,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d495221a-5953-55ba-af34-3bc3cecedc2a",
+          "body": "{\"type\":\"urn:playground:problem:invalid-document\",\"title\":\"Documento inválido\",\"status\":422,\"detail\":\"A revision do corpo precisa ser a revisão lida mais 1; a gravada é {{dataRaw 'process-definitions' (concat '$[?(@.id==\"' (urlParam 'id') '\")].revision')}}.\",\"instance\":\"/process-definitions{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "Documento inválido",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "put",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "templating",
+              "modifier": "{{eq (bodyRaw 'revision') (add (dataRaw 'process-definitions' (concat '$[?(@.id==\"' (urlParam 'id') '\")].revision')) 1)}}",
+              "value": "true",
+              "invert": true,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "1068aac1-fb56-5fb5-af7e-ccbfbb7df30f",
+          "body": "{\"type\":\"urn:playground:problem:invalid-document\",\"title\":\"Documento inválido\",\"status\":422,\"detail\":\"O corpo não tem os campos obrigatórios do documento.\",\"instance\":\"/process-definitions{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "Documento inválido",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "post",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "",
+              "value": "envelopes.ProcessDefinitionDocument",
+              "invert": true,
+              "operator": "valid_json_schema"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "41168a3a-5077-50d2-acc5-c585765cddce",
+          "body": "{\"type\":\"urn:playground:problem:invalid-document\",\"title\":\"Documento inválido\",\"status\":422,\"detail\":\"Já existe documento com este id.\",\"instance\":\"/process-definitions{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "Documento inválido",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "post",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "templating",
+              "modifier": "{{dataRaw 'process-definitions' (concat '$[?(@.id==\"' (bodyRaw 'id') '\")].id')}}",
+              "value": "",
+              "invert": true,
+              "operator": "null"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "f5e1d2d7-dd4a-59be-a621-7272865056c3",
+          "body": "{\"type\":\"urn:playground:problem:invalid-document\",\"title\":\"Documento inválido\",\"status\":422,\"detail\":\"O documento novo começa com revision 1.\",\"instance\":\"/process-definitions{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "Documento inválido",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "post",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "revision",
+              "value": "1",
+              "invert": true,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "3a65ef1d-be8d-5f4c-afa4-992914fa01fc",
+          "body": "{\"type\":\"urn:playground:problem:invalid-document\",\"title\":\"Documento inválido\",\"status\":422,\"detail\":\"A coleção precisa ser uma lista de documentos com os campos obrigatórios.\",\"instance\":\"/process-definitions{{#if (urlParam 'id')}}/{{urlParam 'id'}}{{/if}}\"}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "Documento inválido",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/problem+json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "put",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": true,
+              "operator": "regex"
+            },
+            {
+              "target": "body",
+              "modifier": "",
+              "value": "envelopes.ProcessDefinitionDocumentList",
+              "invert": true,
+              "operator": "valid_json_schema"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "fa4252ab-632a-5d81-a02c-87ae3f800445",
+          "body": "",
+          "latency": 1500,
+          "statusCode": 200,
+          "label": "Grava o documento (cenário slow)",
+          "headers": [
+            {
+              "key": "ETag",
+              "value": "\"{{bodyRaw 'revision'}}\""
+            }
+          ],
+          "bodyType": "DATABUCKET",
+          "filePath": "",
+          "databucketID": "process-definitions",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "put",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "X-Mock-Scenario",
+              "value": "slow",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "0c9501c4-5edb-513e-acfc-4681e546f689",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Grava o documento",
+          "headers": [
+            {
+              "key": "ETag",
+              "value": "\"{{bodyRaw 'revision'}}\""
+            }
+          ],
+          "bodyType": "DATABUCKET",
+          "filePath": "",
+          "databucketID": "process-definitions",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "put",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "c5103256-7dc9-59f2-adfe-f32381c60886",
+          "body": "",
+          "latency": 1500,
+          "statusCode": 200,
+          "label": "Cria o documento (cenário slow)",
+          "headers": [
+            {
+              "key": "ETag",
+              "value": "\"{{bodyRaw 'revision'}}\""
+            }
+          ],
+          "bodyType": "DATABUCKET",
+          "filePath": "",
+          "databucketID": "process-definitions",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "post",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "header",
+              "modifier": "X-Mock-Scenario",
+              "value": "slow",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "8ed93437-df2c-55c9-a9c9-c8a4ec9de497",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Cria o documento",
+          "headers": [
+            {
+              "key": "ETag",
+              "value": "\"{{bodyRaw 'revision'}}\""
+            }
+          ],
+          "bodyType": "DATABUCKET",
+          "filePath": "",
+          "databucketID": "process-definitions",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "post",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "68a7ed1c-198d-5cce-ae24-f593d5a57993",
+          "body": "",
+          "latency": 1500,
+          "statusCode": 200,
+          "label": "Lê o documento (cenário slow)",
+          "headers": [
+            {
+              "key": "ETag",
+              "value": "\"{{dataRaw 'process-definitions' (concat '$[?(@.id==\"' (urlParam 'id') '\")].revision')}}\""
+            }
+          ],
+          "bodyType": "DATABUCKET",
+          "filePath": "",
+          "databucketID": "process-definitions",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "get",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            },
+            {
+              "target": "header",
+              "modifier": "X-Mock-Scenario",
+              "value": "slow",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "031e0440-6e53-5155-acbb-f26c0fcef03c",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Lê o documento",
+          "headers": [
+            {
+              "key": "ETag",
+              "value": "\"{{dataRaw 'process-definitions' (concat '$[?(@.id==\"' (urlParam 'id') '\")].revision')}}\""
+            }
+          ],
+          "bodyType": "DATABUCKET",
+          "filePath": "",
+          "databucketID": "process-definitions",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "method",
+              "modifier": "",
+              "value": "get",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "params",
+              "modifier": "id",
+              "value": ".+",
+              "invert": false,
+              "operator": "regex"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "95041404-aa9b-5aeb-a7b6-81eb60a30c4f",
+          "body": "",
+          "latency": 1500,
+          "statusCode": 200,
+          "label": "Lista ou semeia a coleção (cenário slow)",
+          "headers": [],
+          "bodyType": "DATABUCKET",
+          "filePath": "",
+          "databucketID": "process-definitions",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "X-Mock-Scenario",
+              "value": "slow",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "442b54f2-426b-566d-afbd-f468d58e833c",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Lista ou semeia a coleção",
+          "headers": [],
+          "bodyType": "DATABUCKET",
+          "filePath": "",
+          "databucketID": "process-definitions",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    }
+  ],
+  "rootChildren": [
+    {
+      "type": "route",
+      "uuid": "0e8449d5-9279-5c5a-a3dd-040aa1c0aff8"
+    },
+    {
+      "type": "route",
+      "uuid": "eaf52f06-3aaa-5c76-a4c3-38b8f55a054a"
+    },
+    {
+      "type": "route",
+      "uuid": "8e0323b3-949a-58a1-a301-969920956102"
+    }
+  ],
+  "proxyMode": false,
+  "proxyHost": "",
+  "proxyRemovePrefix": false,
+  "tlsOptions": {
+    "enabled": false,
+    "type": "CERT",
+    "pfxPath": "",
+    "certPath": "",
+    "keyPath": "",
+    "caPath": "",
+    "passphrase": ""
+  },
+  "cors": true,
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json"
+    },
+    {
+      "key": "Access-Control-Allow-Origin",
+      "value": "*"
+    },
+    {
+      "key": "Access-Control-Allow-Methods",
+      "value": "GET,POST,PUT,DELETE,OPTIONS"
+    },
+    {
+      "key": "Access-Control-Allow-Headers",
+      "value": "Content-Type, If-Match, X-Mock-Scenario"
+    },
+    {
+      "key": "Access-Control-Expose-Headers",
+      "value": "ETag"
+    }
+  ],
+  "proxyReqHeaders": [],
+  "proxyResHeaders": [],
+  "data": [
+    {
+      "uuid": "77325425-9ea1-5f72-a939-6a1c822e150f",
+      "id": "boards",
+      "name": "boards",
+      "documentation": "Dados iniciais de /boards.",
+      "value": "[{\"id\":\"board-1\",\"name\":\"Quadro principal\",\"revision\":1,\"schemaVersion\":3,\"board\":{\"lanes\":[{\"id\":\"todo\",\"title\":\"A fazer\",\"cards\":[{\"id\":\"item-1\",\"title\":\"Item 1\",\"description\":\"Card de exemplo, sem tipo definido.\",\"labelIds\":[\"label-2\"],\"checklist\":[{\"id\":\"item-1\",\"text\":\"Primeiro passo\",\"done\":true},{\"id\":\"item-2\",\"text\":\"Segundo passo\",\"done\":false}],\"number\":1},{\"id\":\"item-2\",\"title\":\"Item 2\",\"parentId\":\"item-1\",\"number\":2},{\"id\":\"item-3\",\"title\":\"Item 3\",\"parentId\":\"item-1\",\"number\":3}]},{\"id\":\"doing\",\"title\":\"Em andamento\",\"cards\":[{\"id\":\"item-4\",\"title\":\"Item 4\",\"labelIds\":[\"label-1\"],\"number\":4}]},{\"id\":\"done\",\"title\":\"Concluído\",\"cards\":[]}],\"archive\":[],\"labels\":[{\"id\":\"label-1\",\"name\":\"Urgente\",\"color\":\"danger\"},{\"id\":\"label-2\",\"name\":\"Ideia\",\"color\":\"info\"},{\"id\":\"label-3\",\"name\":\"Revisar\",\"color\":\"warning\"}],\"nextNumber\":5,\"config\":{\"keyPrefix\":\"QD\"}}}]"
+    },
+    {
+      "uuid": "60b981d9-cfc6-5e8c-a493-49679903b905",
+      "id": "process-definitions",
+      "name": "process-definitions",
+      "documentation": "Dados iniciais de /process-definitions.",
+      "value": "[{\"id\":\"process-1\",\"revision\":1,\"schemaVersion\":1,\"definition\":{\"id\":\"process-1\",\"name\":\"Processo de exemplo\",\"createdAt\":\"2026-11-26T12:00:00.000Z\",\"updatedAt\":\"2026-11-26T12:00:00.000Z\",\"draftText\":\"{\\\"version\\\":2,\\\"lanes\\\":[],\\\"graph\\\":{\\\"nodes\\\":[{\\\"id\\\":\\\"start\\\",\\\"type\\\":\\\"start\\\",\\\"position\\\":{\\\"x\\\":40,\\\"y\\\":0},\\\"data\\\":{\\\"label\\\":\\\"Início\\\",\\\"trigger\\\":\\\"manual\\\"}},{\\\"id\\\":\\\"task-1\\\",\\\"type\\\":\\\"task\\\",\\\"position\\\":{\\\"x\\\":0,\\\"y\\\":120},\\\"data\\\":{\\\"label\\\":\\\"Primeira etapa\\\",\\\"description\\\":\\\"Descreva a atividade.\\\"}},{\\\"id\\\":\\\"end\\\",\\\"type\\\":\\\"end\\\",\\\"position\\\":{\\\"x\\\":40,\\\"y\\\":280},\\\"data\\\":{\\\"label\\\":\\\"Fim\\\",\\\"outcome\\\":\\\"completed\\\"}}],\\\"edges\\\":[{\\\"id\\\":\\\"start-task-1\\\",\\\"source\\\":\\\"start\\\",\\\"target\\\":\\\"task-1\\\",\\\"sourceHandle\\\":\\\"out\\\",\\\"targetHandle\\\":\\\"in\\\"},{\\\"id\\\":\\\"task-1-end\\\",\\\"source\\\":\\\"task-1\\\",\\\"target\\\":\\\"end\\\",\\\"sourceHandle\\\":\\\"out\\\",\\\"targetHandle\\\":\\\"in\\\"}]}}\",\"versions\":[{\"version\":1,\"publishedAt\":\"2026-11-26T12:00:00.000Z\",\"documentText\":\"{\\\"version\\\":2,\\\"lanes\\\":[],\\\"graph\\\":{\\\"nodes\\\":[{\\\"id\\\":\\\"start\\\",\\\"type\\\":\\\"start\\\",\\\"position\\\":{\\\"x\\\":40,\\\"y\\\":0},\\\"data\\\":{\\\"label\\\":\\\"Início\\\",\\\"trigger\\\":\\\"manual\\\"}},{\\\"id\\\":\\\"task-1\\\",\\\"type\\\":\\\"task\\\",\\\"position\\\":{\\\"x\\\":0,\\\"y\\\":120},\\\"data\\\":{\\\"label\\\":\\\"Primeira etapa\\\",\\\"description\\\":\\\"Descreva a atividade.\\\"}},{\\\"id\\\":\\\"end\\\",\\\"type\\\":\\\"end\\\",\\\"position\\\":{\\\"x\\\":40,\\\"y\\\":280},\\\"data\\\":{\\\"label\\\":\\\"Fim\\\",\\\"outcome\\\":\\\"completed\\\"}}],\\\"edges\\\":[{\\\"id\\\":\\\"start-task-1\\\",\\\"source\\\":\\\"start\\\",\\\"target\\\":\\\"task-1\\\",\\\"sourceHandle\\\":\\\"out\\\",\\\"targetHandle\\\":\\\"in\\\"},{\\\"id\\\":\\\"task-1-end\\\",\\\"source\\\":\\\"task-1\\\",\\\"target\\\":\\\"end\\\",\\\"sourceHandle\\\":\\\"out\\\",\\\"targetHandle\\\":\\\"in\\\"}]}}\",\"plan\":{\"startId\":\"start\",\"steps\":[{\"id\":\"start\",\"kind\":\"start\",\"label\":\"Início\",\"exits\":[{\"id\":\"out\",\"meaning\":\"next\",\"to\":\"task-1\"}],\"details\":[{\"label\":\"Gatilho\",\"value\":\"Manual\"}]},{\"id\":\"task-1\",\"kind\":\"task\",\"label\":\"Primeira etapa\",\"exits\":[{\"id\":\"out\",\"meaning\":\"next\",\"to\":\"end\"}],\"description\":\"Descreva a atividade.\"},{\"id\":\"end\",\"kind\":\"end\",\"label\":\"Fim\",\"exits\":[],\"outcome\":{\"kind\":\"completed\",\"label\":\"Concluído\"}}]}}]}}]"
+    },
+    {
+      "uuid": "22230c15-c4f7-5929-adc8-5b4e49e8bc3c",
+      "id": "envelopes",
+      "name": "envelopes",
+      "documentation": "Schemas do nível de cima dos documentos, usados pelas regras de 422.",
+      "value": "{\"JsonContainer\":{\"anyOf\":[{\"type\":\"object\"},{\"type\":\"array\"}]},\"BoardDocument\":{\"type\":\"object\",\"required\":[\"id\",\"name\",\"revision\",\"schemaVersion\",\"board\"],\"properties\":{\"id\":{\"type\":\"string\",\"minLength\":1},\"name\":{\"type\":\"string\",\"minLength\":1},\"revision\":{\"type\":\"integer\",\"minimum\":1},\"schemaVersion\":{\"type\":\"integer\",\"minimum\":1},\"board\":{\"type\":\"object\"}}},\"BoardDocumentList\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"id\",\"name\",\"revision\",\"schemaVersion\",\"board\"],\"properties\":{\"id\":{\"type\":\"string\",\"minLength\":1},\"name\":{\"type\":\"string\",\"minLength\":1},\"revision\":{\"type\":\"integer\",\"minimum\":1},\"schemaVersion\":{\"type\":\"integer\",\"minimum\":1},\"board\":{\"type\":\"object\"}}}},\"ProcessDefinitionDocument\":{\"type\":\"object\",\"required\":[\"id\",\"revision\",\"schemaVersion\",\"definition\"],\"properties\":{\"id\":{\"type\":\"string\",\"minLength\":1},\"revision\":{\"type\":\"integer\",\"minimum\":1},\"schemaVersion\":{\"type\":\"integer\",\"minimum\":1},\"definition\":{\"type\":\"object\"}}},\"ProcessDefinitionDocumentList\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"id\",\"revision\",\"schemaVersion\",\"definition\"],\"properties\":{\"id\":{\"type\":\"string\",\"minLength\":1},\"revision\":{\"type\":\"integer\",\"minimum\":1},\"schemaVersion\":{\"type\":\"integer\",\"minimum\":1},\"definition\":{\"type\":\"object\"}}}}}"
+    }
+  ],
+  "callbacks": []
+}

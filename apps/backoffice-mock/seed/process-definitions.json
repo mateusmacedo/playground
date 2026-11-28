@@ -1,0 +1,67 @@
+[
+  {
+    "id": "process-1",
+    "revision": 1,
+    "schemaVersion": 1,
+    "definition": {
+      "id": "process-1",
+      "name": "Processo de exemplo",
+      "createdAt": "2026-11-26T12:00:00.000Z",
+      "updatedAt": "2026-11-26T12:00:00.000Z",
+      "draftText": "{\"version\":2,\"lanes\":[],\"graph\":{\"nodes\":[{\"id\":\"start\",\"type\":\"start\",\"position\":{\"x\":40,\"y\":0},\"data\":{\"label\":\"Início\",\"trigger\":\"manual\"}},{\"id\":\"task-1\",\"type\":\"task\",\"position\":{\"x\":0,\"y\":120},\"data\":{\"label\":\"Primeira etapa\",\"description\":\"Descreva a atividade.\"}},{\"id\":\"end\",\"type\":\"end\",\"position\":{\"x\":40,\"y\":280},\"data\":{\"label\":\"Fim\",\"outcome\":\"completed\"}}],\"edges\":[{\"id\":\"start-task-1\",\"source\":\"start\",\"target\":\"task-1\",\"sourceHandle\":\"out\",\"targetHandle\":\"in\"},{\"id\":\"task-1-end\",\"source\":\"task-1\",\"target\":\"end\",\"sourceHandle\":\"out\",\"targetHandle\":\"in\"}]}}",
+      "versions": [
+        {
+          "version": 1,
+          "publishedAt": "2026-11-26T12:00:00.000Z",
+          "documentText": "{\"version\":2,\"lanes\":[],\"graph\":{\"nodes\":[{\"id\":\"start\",\"type\":\"start\",\"position\":{\"x\":40,\"y\":0},\"data\":{\"label\":\"Início\",\"trigger\":\"manual\"}},{\"id\":\"task-1\",\"type\":\"task\",\"position\":{\"x\":0,\"y\":120},\"data\":{\"label\":\"Primeira etapa\",\"description\":\"Descreva a atividade.\"}},{\"id\":\"end\",\"type\":\"end\",\"position\":{\"x\":40,\"y\":280},\"data\":{\"label\":\"Fim\",\"outcome\":\"completed\"}}],\"edges\":[{\"id\":\"start-task-1\",\"source\":\"start\",\"target\":\"task-1\",\"sourceHandle\":\"out\",\"targetHandle\":\"in\"},{\"id\":\"task-1-end\",\"source\":\"task-1\",\"target\":\"end\",\"sourceHandle\":\"out\",\"targetHandle\":\"in\"}]}}",
+          "plan": {
+            "startId": "start",
+            "steps": [
+              {
+                "id": "start",
+                "kind": "start",
+                "label": "Início",
+                "exits": [
+                  {
+                    "id": "out",
+                    "meaning": "next",
+                    "to": "task-1"
+                  }
+                ],
+                "details": [
+                  {
+                    "label": "Gatilho",
+                    "value": "Manual"
+                  }
+                ]
+              },
+              {
+                "id": "task-1",
+                "kind": "task",
+                "label": "Primeira etapa",
+                "exits": [
+                  {
+                    "id": "out",
+                    "meaning": "next",
+                    "to": "end"
+                  }
+                ],
+                "description": "Descreva a atividade."
+              },
+              {
+                "id": "end",
+                "kind": "end",
+                "label": "Fim",
+                "exits": [],
+                "outcome": {
+                  "kind": "completed",
+                  "label": "Concluído"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+]

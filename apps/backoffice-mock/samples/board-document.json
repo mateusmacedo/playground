@@ -1,0 +1,459 @@
+{
+  "id": "board-sample",
+  "name": "Quadro de amostra",
+  "schemaVersion": 3,
+  "board": {
+    "lanes": [
+      {
+        "id": "todo",
+        "title": "A fazer",
+        "cards": [
+          {
+            "id": "item-1",
+            "title": "Item 1",
+            "description": "Card de exemplo, sem tipo definido.",
+            "labelIds": ["label-2"],
+            "checklist": [
+              {
+                "id": "item-1",
+                "text": "Primeiro passo",
+                "done": true
+              }
+            ],
+            "number": 1,
+            "assigneeId": "person-1",
+            "activity": [
+              {
+                "at": "2026-11-26T12:02:00.000Z",
+                "kind": "assignee",
+                "to": "Ana"
+              },
+              {
+                "at": "2026-11-26T12:04:00.000Z",
+                "kind": "process-started",
+                "name": "Atendimento de pedido"
+              },
+              {
+                "at": "2026-11-26T12:05:00.000Z",
+                "kind": "process-step",
+                "step": "Triar o pedido"
+              },
+              {
+                "at": "2026-11-26T12:12:00.000Z",
+                "kind": "checklist-converted",
+                "item": "Segundo passo"
+              }
+            ],
+            "process": {
+              "definitionId": "process-1",
+              "version": 2,
+              "name": "Atendimento de pedido",
+              "status": "running",
+              "startedAt": "2026-11-26T12:04:00.000Z",
+              "tokens": [
+                {
+                  "id": "token-2",
+                  "stepRef": "analysis",
+                  "since": "2026-11-26T12:05:00.000Z",
+                  "delegateId": "card-6"
+                }
+              ],
+              "log": [
+                {
+                  "at": "2026-11-26T12:04:00.000Z",
+                  "kind": "started",
+                  "label": "Atendimento de pedido",
+                  "by": "Ana"
+                },
+                {
+                  "at": "2026-11-26T12:05:00.000Z",
+                  "kind": "step",
+                  "stepRef": "triage",
+                  "label": "Triar o pedido",
+                  "note": "Pedido completo.",
+                  "by": "Ana",
+                  "values": [
+                    {
+                      "label": "Resumo",
+                      "value": "Troca de titularidade"
+                    },
+                    {
+                      "label": "Valor",
+                      "value": "1250"
+                    },
+                    {
+                      "label": "Recebido em",
+                      "value": "25/11/2026"
+                    },
+                    {
+                      "label": "Prioridade",
+                      "value": "Alta"
+                    },
+                    {
+                      "label": "Completo",
+                      "value": "Sim"
+                    }
+                  ]
+                },
+                {
+                  "at": "2026-11-26T12:06:00.000Z",
+                  "kind": "delegated",
+                  "stepRef": "analysis",
+                  "label": "Analisar o pedido",
+                  "by": "Ana"
+                }
+              ],
+              "nextToken": 3,
+              "takenExits": ["start:out", "triage:out"]
+            }
+          },
+          {
+            "id": "item-2",
+            "title": "Item 2",
+            "parentId": "item-1",
+            "number": 2
+          },
+          {
+            "id": "card-5",
+            "title": "Preparar o contrato",
+            "number": 5,
+            "activity": [
+              {
+                "at": "2026-11-26T12:03:00.000Z",
+                "kind": "created",
+                "lane": "A fazer"
+              }
+            ]
+          },
+          {
+            "id": "card-6",
+            "title": "Analisar o pedido",
+            "parentId": "item-1",
+            "number": 6,
+            "assigneeId": "person-1",
+            "labelIds": ["label-2"],
+            "stepOf": {
+              "cardId": "item-1",
+              "tokenId": "token-2"
+            },
+            "activity": [
+              {
+                "at": "2026-11-26T12:06:00.000Z",
+                "kind": "created",
+                "lane": "A fazer"
+              }
+            ]
+          },
+          {
+            "id": "card-7",
+            "title": "Segundo passo",
+            "parentId": "item-1",
+            "number": 7,
+            "assigneeId": "person-1",
+            "labelIds": ["label-2"],
+            "activity": [
+              {
+                "at": "2026-11-26T12:12:00.000Z",
+                "kind": "from-checklist",
+                "lane": "A fazer",
+                "parent": "Item 1"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "doing",
+        "title": "Em andamento",
+        "cards": [
+          {
+            "id": "item-4",
+            "title": "Item 4",
+            "labelIds": ["label-1", "label-3"],
+            "number": 4,
+            "blockedBy": ["card-5"],
+            "activity": [
+              {
+                "at": "2026-11-26T12:07:00.000Z",
+                "kind": "blocker-added",
+                "blocker": "Preparar o contrato"
+              },
+              {
+                "at": "2026-11-26T12:08:00.000Z",
+                "kind": "attachment",
+                "added": "nota.txt"
+              },
+              {
+                "at": "2026-11-26T12:09:00.000Z",
+                "kind": "attachment",
+                "added": "Guia"
+              },
+              {
+                "at": "2026-11-26T12:10:00.000Z",
+                "kind": "labels",
+                "added": ["Revisar"],
+                "removed": []
+              }
+            ],
+            "attachments": [
+              {
+                "name": "nota.txt",
+                "url": "data:text/plain;base64,T2zDoQ==",
+                "at": "2026-11-26T12:08:00.000Z",
+                "size": 4,
+                "id": "attachment-1"
+              },
+              {
+                "name": "Guia",
+                "url": "https://example.com/guia",
+                "at": "2026-11-26T12:09:00.000Z",
+                "id": "attachment-2"
+              }
+            ],
+            "comments": [
+              {
+                "at": "2026-11-26T12:11:00.000Z",
+                "author": "Bruno",
+                "text": "Aguardando o contrato.",
+                "id": "comment-1"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "done",
+        "title": "Concluído",
+        "cards": []
+      }
+    ],
+    "archive": [
+      {
+        "id": "item-3",
+        "archivedAt": "2026-11-26T12:13:00.000Z",
+        "cards": [
+          {
+            "card": {
+              "id": "item-3",
+              "title": "Item 3",
+              "parentId": "item-1",
+              "number": 3,
+              "activity": [
+                {
+                  "at": "2026-11-26T12:13:00.000Z",
+                  "kind": "archived"
+                }
+              ]
+            },
+            "laneId": "todo"
+          }
+        ]
+      }
+    ],
+    "labels": [
+      {
+        "id": "label-1",
+        "name": "Urgente",
+        "color": "danger"
+      },
+      {
+        "id": "label-2",
+        "name": "Ideia",
+        "color": "info"
+      },
+      {
+        "id": "label-3",
+        "name": "Revisar",
+        "color": "warning"
+      }
+    ],
+    "nextNumber": 8,
+    "config": {
+      "keyPrefix": "QD",
+      "doneLaneId": "done",
+      "rules": {
+        "parentWaitsChildren": true,
+        "parentFollowsChildren": true,
+        "doneWaitsProcess": true,
+        "processEndMovesCard": true,
+        "doneWaitsBlockers": true,
+        "childInherits": true
+      },
+      "people": [
+        {
+          "id": "person-1",
+          "name": "Ana"
+        },
+        {
+          "id": "person-2",
+          "name": "Bruno"
+        }
+      ]
+    },
+    "processes": [
+      {
+        "definitionId": "process-1",
+        "version": 2,
+        "name": "Atendimento de pedido",
+        "plan": {
+          "startId": "start",
+          "steps": [
+            {
+              "id": "start",
+              "kind": "start",
+              "label": "Início",
+              "exits": [
+                {
+                  "id": "out",
+                  "meaning": "next",
+                  "to": "triage"
+                }
+              ]
+            },
+            {
+              "id": "triage",
+              "kind": "human-task",
+              "label": "Triar o pedido",
+              "description": "Confere se o pedido tem o que precisa para seguir.",
+              "role": "Atendimento",
+              "instructions": "Leia o pedido e anote o que falta.",
+              "expectedResult": "Pedido pronto para a análise.",
+              "dueIn": {
+                "amount": 2,
+                "unit": "days"
+              },
+              "details": [
+                {
+                  "label": "Canal",
+                  "value": "Portal"
+                }
+              ],
+              "fields": [
+                {
+                  "id": "summary",
+                  "label": "Resumo",
+                  "type": "text",
+                  "required": true
+                },
+                {
+                  "id": "notes",
+                  "label": "Observações",
+                  "type": "long-text",
+                  "required": false
+                },
+                {
+                  "id": "amount",
+                  "label": "Valor",
+                  "type": "number",
+                  "required": false
+                },
+                {
+                  "id": "received",
+                  "label": "Recebido em",
+                  "type": "date",
+                  "required": false
+                },
+                {
+                  "id": "priority",
+                  "label": "Prioridade",
+                  "type": "choice",
+                  "required": true,
+                  "options": ["Normal", "Alta"]
+                },
+                {
+                  "id": "complete",
+                  "label": "Completo",
+                  "type": "checkbox",
+                  "required": true
+                }
+              ],
+              "exits": [
+                {
+                  "id": "out",
+                  "meaning": "next",
+                  "to": "analysis"
+                }
+              ],
+              "events": [
+                {
+                  "id": "late",
+                  "label": "Triagem atrasada",
+                  "trigger": "timeout",
+                  "interrupting": false,
+                  "timeout": {
+                    "amount": 3,
+                    "unit": "days"
+                  },
+                  "to": "end-expired"
+                }
+              ]
+            },
+            {
+              "id": "analysis",
+              "kind": "task",
+              "label": "Analisar o pedido",
+              "exits": [
+                {
+                  "id": "out",
+                  "meaning": "next",
+                  "to": "approval"
+                }
+              ]
+            },
+            {
+              "id": "approval",
+              "kind": "approval",
+              "label": "Aprovar o pedido",
+              "role": "Gestão",
+              "exits": [
+                {
+                  "id": "approved",
+                  "meaning": "approved",
+                  "label": "Aprovado",
+                  "to": "end"
+                },
+                {
+                  "id": "rejected",
+                  "meaning": "rejected",
+                  "label": "Recusado",
+                  "to": "end-rejected"
+                }
+              ]
+            },
+            {
+              "id": "end",
+              "kind": "end",
+              "label": "Atendido",
+              "exits": [],
+              "outcome": {
+                "kind": "completed",
+                "label": "Pedido atendido"
+              }
+            },
+            {
+              "id": "end-rejected",
+              "kind": "end",
+              "label": "Recusado",
+              "exits": [],
+              "outcome": {
+                "kind": "rejected",
+                "label": "Pedido recusado"
+              }
+            },
+            {
+              "id": "end-expired",
+              "kind": "end",
+              "label": "Fora do prazo",
+              "exits": [],
+              "outcome": {
+                "kind": "expired",
+                "label": "Pedido fora do prazo"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "revision": 4
+}

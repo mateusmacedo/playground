@@ -40,6 +40,7 @@ catalog:
   '@nx/playwright': 24.0.0
   '@nx/vitest': 24.0.0
   '@playwright/test': ^1.37.0
+  '@seriousme/openapi-schema-validator': 2.12.0
   '@swc-node/register': 1.11.1
   '@swc/cli': ~0.8.1
   '@swc/core': 1.15.8
@@ -54,6 +55,7 @@ catalog:
   '@vitest/coverage-v8': ~5.0.1
   '@vitest/ui': ~5.0.1
   '@xyflow/react': 13.0.2
+  ajv: 8.20.0
   eslint: ^9.8.0
   jsdom: ^27.1.0
   lefthook: 2.2.2

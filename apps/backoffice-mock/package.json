@@ -1,0 +1,11 @@
+{
+  "name": "@org/backoffice-mock",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@seriousme/openapi-schema-validator": "catalog:",
+    "ajv": "catalog:",
+    "yaml": "catalog:"
+  }
+}

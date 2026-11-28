@@ -1,0 +1,1510 @@
+openapi: 3.1.0
+info:
+  title: API do backoffice
+  version: 0.1.0
+  summary: Quadros e definições de processo do painel, por documento inteiro.
+  description: |
+    Contrato entre o painel `apps/backoffice` e a API dele. Cada recurso é um
+    documento inteiro, com `id` e `revision`: o painel lê o documento, altera
+    no navegador e grava o documento inteiro de volta. O motor de processos
+    roda no painel; a API só guarda e devolve os documentos.
+
+    **Identidade.** O painel gera os ids (`board-N`, `process-N`).
+
+    **Concorrência otimista.** A leitura de um documento e toda resposta de
+    gravação trazem `ETag: "<revision>"`. O `PUT` exige
+    `If-Match: "<revisão lida>"` e leva no corpo `revision` igual à revisão
+    lida mais 1. As checagens do `PUT` acontecem nesta ordem: sem `If-Match`,
+    428; documento inexistente, 404; revisão diferente da gravada, 412; corpo
+    inválido, 400 ou 422.
+
+    **Erros.** Toda recusa vem em `application/problem+json` (RFC 9457).
+
+    **Para o backend real.** O servidor deve conferir e atribuir a revisão em
+    vez de confiar na que o cliente envia, e validar o corpo inteiro contra os
+    schemas deste contrato.
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: http://127.0.0.1:4010
+    description: Servidor de mock local (`apps/backoffice-mock`).
+tags:
+  - name: boards
+    description: Quadros do painel.
+  - name: process-definitions
+    description: Definições de processo do catálogo.
+paths:
+  /boards:
+    get:
+      operationId: listBoards
+      tags: [boards]
+      summary: Lista os quadros.
+      description: |
+        O painel usa só o resumo de cada quadro (`id`, `name` e `revision`). O
+        servidor pode devolver o documento inteiro em cada item.
+      responses:
+        '200':
+          description: Quadros existentes, na ordem em que foram criados.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BoardSummary'
+              examples:
+                summaries:
+                  $ref: '#/components/examples/BoardSummaries'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      operationId: createBoard
+      tags: [boards]
+      summary: Cria um quadro.
+      description: |
+        O corpo é o documento inteiro, com o `id` gerado pelo painel e
+        `revision` 1. Id que já existe é recusado com 422.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BoardDocument'
+            examples:
+              board:
+                $ref: '#/components/examples/NewBoardDocument'
+      responses:
+        '201':
+          description: Quadro criado.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardDocument'
+              examples:
+                board:
+                  $ref: '#/components/examples/NewBoardDocument'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /boards/{id}:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      operationId: getBoard
+      tags: [boards]
+      summary: Lê um quadro.
+      responses:
+        '200':
+          description: O quadro, com a revisão gravada no `ETag`.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardDocument'
+              examples:
+                board:
+                  $ref: '#/components/examples/BoardDocument'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    put:
+      operationId: replaceBoard
+      tags: [boards]
+      summary: Grava o quadro inteiro.
+      description: |
+        Substitui o documento. Renomear o quadro é gravar o documento com o
+        `name` novo. O corpo leva `revision` igual à revisão lida mais 1.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BoardDocument'
+            examples:
+              board:
+                $ref: '#/components/examples/BoardDocument'
+      responses:
+        '200':
+          description: Quadro gravado, com a revisão nova no `ETag`.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardDocument'
+              examples:
+                board:
+                  $ref: '#/components/examples/BoardDocument'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    delete:
+      operationId: deleteBoard
+      tags: [boards]
+      summary: Remove um quadro.
+      responses:
+        '204':
+          description: Quadro removido.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /process-definitions:
+    get:
+      operationId: listProcessDefinitions
+      tags: [process-definitions]
+      summary: Lista as definições de processo.
+      description: Devolve os documentos inteiros, inclusive os arquivados.
+      responses:
+        '200':
+          description: Definições existentes, na ordem em que foram criadas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProcessDefinitionDocument'
+              examples:
+                definitions:
+                  $ref: '#/components/examples/ProcessDefinitionDocuments'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      operationId: createProcessDefinition
+      tags: [process-definitions]
+      summary: Cria uma definição de processo.
+      description: |
+        O corpo é o documento inteiro, com o `id` gerado pelo painel e
+        `revision` 1. Id que já existe é recusado com 422.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessDefinitionDocument'
+            examples:
+              definition:
+                $ref: '#/components/examples/ProcessDefinitionDocument'
+      responses:
+        '201':
+          description: Definição criada.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessDefinitionDocument'
+              examples:
+                definition:
+                  $ref: '#/components/examples/ProcessDefinitionDocument'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /process-definitions/{id}:
+    parameters:
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      operationId: getProcessDefinition
+      tags: [process-definitions]
+      summary: Lê uma definição de processo.
+      responses:
+        '200':
+          description: A definição, com a revisão gravada no `ETag`.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessDefinitionDocument'
+              examples:
+                definition:
+                  $ref: '#/components/examples/ProcessDefinitionDocument'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    put:
+      operationId: replaceProcessDefinition
+      tags: [process-definitions]
+      summary: Grava a definição inteira.
+      description: |
+        Substitui o documento: rascunho salvo, versão publicada, nome,
+        descrição e arquivamento entram todos por aqui. O catálogo não remove
+        definição, só arquiva; por isso não existe `DELETE`. O corpo leva
+        `revision` igual à revisão lida mais 1.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessDefinitionDocument'
+            examples:
+              definition:
+                $ref: '#/components/examples/ProcessDefinitionDocument'
+      responses:
+        '200':
+          description: Definição gravada, com a revisão nova no `ETag`.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessDefinitionDocument'
+              examples:
+                definition:
+                  $ref: '#/components/examples/ProcessDefinitionDocument'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+components:
+  parameters:
+    DocumentId:
+      name: id
+      in: path
+      required: true
+      description: Id do documento, gerado pelo painel (`board-N`, `process-N`).
+      schema:
+        type: string
+        minLength: 1
+      example: board-1
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: |
+        Revisão que o painel leu, entre aspas duplas, como veio no `ETag`. Sem
+        o cabeçalho, 428; com revisão diferente da gravada, 412.
+      schema:
+        type: string
+      example: '"3"'
+  headers:
+    ETag:
+      description: Revisão gravada do documento, entre aspas duplas.
+      schema:
+        type: string
+      example: '"4"'
+  responses:
+    BadRequest:
+      description: O corpo não é um JSON legível.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            malformed:
+              $ref: '#/components/examples/BadRequestProblem'
+    NotFound:
+      description: Não existe documento com este id.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            missing:
+              $ref: '#/components/examples/NotFoundProblem'
+    PreconditionFailed:
+      description: |
+        A revisão do `If-Match` não é a gravada: outra gravação chegou antes.
+        O painel relê o documento antes de gravar de novo.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            stale:
+              $ref: '#/components/examples/PreconditionFailedProblem'
+    UnprocessableContent:
+      description: |
+        O corpo é um JSON legível, mas não é um documento válido: falta campo
+        obrigatório, o `id` não é o do endereço, o id já existe (na criação)
+        ou a `revision` não é a esperada (1 na criação, a lida mais 1 na
+        gravação).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            invalid:
+              $ref: '#/components/examples/UnprocessableContentProblem'
+    PreconditionRequired:
+      description: A gravação veio sem o cabeçalho `If-Match`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            missing:
+              $ref: '#/components/examples/PreconditionRequiredProblem'
+    InternalError:
+      description: Falha inesperada do servidor.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            failure:
+              $ref: '#/components/examples/InternalErrorProblem'
+    ServiceUnavailable:
+      description: O servidor está indisponível no momento.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            unavailable:
+              $ref: '#/components/examples/ServiceUnavailableProblem'
+  schemas:
+    Problem:
+      description: Recusa ou falha, no formato Problem Details (RFC 9457).
+      type: object
+      additionalProperties: true
+      required: [type, title, status]
+      properties:
+        type:
+          description: Identificador do tipo de problema, como URI.
+          type: string
+        title:
+          description: Resumo curto do problema, em PT-BR.
+          type: string
+        status:
+          description: O mesmo código HTTP da resposta.
+          type: integer
+        detail:
+          description: Explicação deste caso, em PT-BR, sem dado interno.
+          type: string
+        instance:
+          description: Endereço da requisição que deu o problema.
+          type: string
+    Revision:
+      description: |
+        Contador de gravações do documento: 1 na criação e mais 1 a cada
+        gravação. É o valor do `ETag`.
+      type: integer
+      minimum: 1
+    BoardSummary:
+      description: |
+        O que o painel lê de cada item da lista de quadros. O item pode trazer
+        o documento inteiro; o que passar disto é ignorado.
+      type: object
+      additionalProperties: true
+      required: [id, name, revision]
+      properties:
+        id:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          minLength: 1
+        revision:
+          $ref: '#/components/schemas/Revision'
+    BoardDocument:
+      description: Um quadro inteiro, com identidade e revisão.
+      type: object
+      required: [id, name, revision, schemaVersion, board]
+      properties:
+        id:
+          description: Id do quadro, gerado pelo painel (`board-N`).
+          type: string
+          minLength: 1
+        name:
+          description: |
+            Nome do quadro. O painel não aceita dois quadros com o mesmo nome,
+            sem contar maiúsculas e acentos.
+          type: string
+          minLength: 1
+        revision:
+          $ref: '#/components/schemas/Revision'
+        schemaVersion:
+          description: |
+            Versão do formato de `board`. Hoje é 3; o painel também lê a 2,
+            que não tem `config`.
+          type: integer
+          minimum: 1
+        board:
+          $ref: '#/components/schemas/Board'
+    Board:
+      description: |
+        O quadro: colunas com os cards, arquivados, etiquetas, configuração,
+        o próximo número de card e os roteiros que os cards executam.
+      type: object
+      required: [lanes, archive, labels, nextNumber, config]
+      properties:
+        lanes:
+          description: |
+            Colunas, na ordem da tela; o quadro tem pelo menos uma. Os ids das
+            colunas são únicos, e os ids e números dos cards são únicos no
+            quadro inteiro, contando os arquivados.
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/BoardLane'
+        archive:
+          description: Arquivamentos, do mais recente para o mais antigo.
+          type: array
+          items:
+            $ref: '#/components/schemas/ArchiveEntry'
+        labels:
+          description: Catálogo de etiquetas; os cards guardam só o id.
+          type: array
+          items:
+            $ref: '#/components/schemas/BoardLabel'
+        nextNumber:
+          description: |
+            Número do próximo card. Fica sempre acima de todos os que já
+            existem e nunca volta atrás.
+          type: integer
+          minimum: 1
+        config:
+          $ref: '#/components/schemas/BoardConfig'
+        processes:
+          description: |
+            Roteiros congelados das execuções dos cards, um por versão de
+            processo. O roteiro que nenhum card usa sai do quadro.
+          type: array
+          items:
+            $ref: '#/components/schemas/BoardProcess'
+    BoardLane:
+      description: Coluna do quadro; a ordem de `cards` é a ordem na tela.
+      type: object
+      required: [id, title, cards]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        cards:
+          type: array
+          items:
+            $ref: '#/components/schemas/BoardCard'
+        wipLimit:
+          description: |
+            Máximo de cards esperado na coluna. Passar dele só gera destaque,
+            não bloqueia.
+          type: integer
+          minimum: 1
+        hidden:
+          description: Fora da tela; os cards continuam no quadro.
+          type: boolean
+        locked:
+          description: Não recebe nem solta cards, e a ordem deles não muda.
+          type: boolean
+    BoardCard:
+      description: |
+        Card do quadro. Uma tarefa tem zero ou mais filhas (`parentId`), e
+        cada tarefa, pai ou filha, pode seguir um processo (`process`).
+      type: object
+      required: [id, title]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        parentId:
+          description: |
+            Card pai, que precisa estar nas colunas do quadro; pai e filho
+            podem estar em colunas diferentes, e a hierarquia não tem ciclo.
+          type: string
+        number:
+          description: Número sequencial no quadro, que forma o código (`QD-12`).
+          type: integer
+          minimum: 1
+        labelIds:
+          description: Ids de etiquetas do catálogo do quadro.
+          type: array
+          items:
+            type: string
+        dueDate:
+          description: Data do prazo, no formato `AAAA-MM-DD`.
+          type: string
+          format: date
+        dueDone:
+          description: O prazo foi cumprido; só vale com `dueDate`.
+          type: boolean
+        checklist:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChecklistItem'
+        activity:
+          description: Histórico do card, do mais antigo para o mais recente.
+          type: array
+          items:
+            $ref: '#/components/schemas/CardActivity'
+        assigneeId:
+          description: Id de uma pessoa de `config.people`.
+          type: string
+        comments:
+          description: Comentários, do mais antigo para o mais recente.
+          type: array
+          items:
+            $ref: '#/components/schemas/CardComment'
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/CardAttachment'
+        process:
+          $ref: '#/components/schemas/ProcessRun'
+        blockedBy:
+          description: Ids dos cards que bloqueiam este, sem repetição.
+          type: array
+          items:
+            type: string
+            minLength: 1
+        stepOf:
+          $ref: '#/components/schemas/CardStepLink'
+    ChecklistItem:
+      description: Item do checklist; o id só precisa ser único dentro do card.
+      type: object
+      required: [id, text, done]
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+        done:
+          type: boolean
+    CardActivity:
+      description: |
+        Registro do histórico do card. O painel só exige `at` e `kind`; os
+        outros campos dependem do tipo e são lidos só para exibir, por isso o
+        tipo é aberto. Tipos que o painel grava hoje: `created` (`lane`),
+        `moved` (`from`, `to`), `renamed` (`from`, `to`), `description`,
+        `parent` (`from`, `to`), `labels` (`added`, `removed`), `due` (`to`),
+        `due-done` (`done`), `checklist` (`done`, `total`), `archived`,
+        `restored` (`lane`), `duplicated` (`from`), `assignee` (`to`),
+        `attachment` (`added`, `removed`), `process-started` (`name`),
+        `process-step` (`step`, `detail`), `process-finished` (`name`,
+        `outcome`), `process-cancelled` (`name`), `process-removed` (`name`),
+        `blocker-added` (`blocker`), `blocker-removed` (`blocker`),
+        `checklist-converted` (`item`) e `from-checklist` (`lane`, `parent`).
+      type: object
+      additionalProperties: true
+      required: [at, kind]
+      properties:
+        at:
+          description: Quando aconteceu (ISO 8601).
+          type: string
+          format: date-time
+        kind:
+          description: Tipo do registro; valor desconhecido é aceito.
+          type: string
+    CardComment:
+      description: Comentário do card; o id só precisa ser único dentro do card.
+      type: object
+      required: [id, at, author, text]
+      properties:
+        id:
+          type: string
+        at:
+          description: Data e hora (ISO 8601).
+          type: string
+          format: date-time
+        author:
+          type: string
+        text:
+          type: string
+    CardAttachment:
+      description: |
+        Anexo do card: um link `http` ou `https`, ou um arquivo pequeno (até
+        500 KB) guardado como `data:` URL.
+      type: object
+      required: [id, name, url, at]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        url:
+          description: Endereço `http`, `https` ou `data:`; outro esquema é recusado.
+          type: string
+        at:
+          description: Data e hora (ISO 8601).
+          type: string
+          format: date-time
+        size:
+          description: Tamanho do arquivo, em bytes; link não tem.
+          type: integer
+          minimum: 1
+    CardStepLink:
+      description: Etapa do processo de outro card que este card executa.
+      type: object
+      required: [cardId, tokenId]
+      properties:
+        cardId:
+          description: Card dono do processo.
+          type: string
+          minLength: 1
+        tokenId:
+          description: Ficha parada na etapa; a ligação só vale enquanto ela existe.
+          type: string
+          minLength: 1
+    LabelColor:
+      type: string
+      enum: [danger, warning, success, info, primary, secondary]
+    BoardLabel:
+      description: Etiqueta do catálogo do quadro.
+      type: object
+      required: [id, name, color]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        color:
+          $ref: '#/components/schemas/LabelColor'
+    ArchivedCard:
+      description: Card arquivado, com a coluna de onde saiu para voltar a ela.
+      type: object
+      required: [card, laneId]
+      properties:
+        card:
+          $ref: '#/components/schemas/BoardCard'
+        laneId:
+          type: string
+    ArchiveEntry:
+      description: |
+        Um arquivamento: o card escolhido, que é o primeiro da lista, e os
+        descendentes dele, que saem e voltam juntos.
+      type: object
+      required: [id, archivedAt, cards]
+      properties:
+        id:
+          description: Id do card escolhido.
+          type: string
+        archivedAt:
+          description: Quando foi arquivado (ISO 8601).
+          type: string
+          format: date-time
+        cards:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ArchivedCard'
+    BoardProcess:
+      description: |
+        Roteiro congelado de uma versão de processo, guardado uma vez por
+        quadro para os cards que a executam.
+      type: object
+      required: [definitionId, version, name, plan]
+      properties:
+        definitionId:
+          type: string
+          minLength: 1
+        version:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+        plan:
+          $ref: '#/components/schemas/ProcessPlan'
+    BoardPerson:
+      description: Pessoa que pode ser responsável pelos cards do quadro.
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          minLength: 1
+    BoardRules:
+      description: |
+        Regras opcionais do quadro. O painel grava só as ligadas (`true`); a
+        ausente vale desligada. Todas, menos `childInherits`, dependem da
+        coluna de conclusão.
+      type: object
+      properties:
+        parentWaitsChildren:
+          description: O pai não entra na coluna de conclusão com filha fora dela.
+          type: boolean
+        parentFollowsChildren:
+          description: A última filha concluída leva o pai para a coluna de conclusão.
+          type: boolean
+        doneWaitsProcess:
+          description: O card com processo em andamento não entra na coluna de conclusão.
+          type: boolean
+        processEndMovesCard:
+          description: O processo concluído leva o card para a coluna de conclusão.
+          type: boolean
+        doneWaitsBlockers:
+          description: O card com bloqueador pendente não entra na coluna de conclusão.
+          type: boolean
+        childInherits:
+          description: O card filho novo herda o responsável e as etiquetas do pai.
+          type: boolean
+    BoardConfig:
+      description: Configuração própria de cada quadro.
+      type: object
+      required: [keyPrefix]
+      properties:
+        keyPrefix:
+          description: |
+            Prefixo do código dos cards (`QD` em `QD-12`): de 1 a 6 letras
+            maiúsculas ou dígitos, começando por letra.
+          type: string
+        archiveLaneHidden:
+          description: A coluna automática dos arquivados está oculta.
+          type: boolean
+        people:
+          description: Pessoas que podem ser responsáveis pelos cards, sem id repetido.
+          type: array
+          items:
+            $ref: '#/components/schemas/BoardPerson'
+        doneLaneId:
+          description: Coluna que conta como concluída.
+          type: string
+        rules:
+          $ref: '#/components/schemas/BoardRules'
+    PlanDuration:
+      description: Intervalo de tempo.
+      type: object
+      required: [amount, unit]
+      properties:
+        amount:
+          type: integer
+          minimum: 1
+        unit:
+          type: string
+          enum: [minutes, hours, days, weeks]
+    PlanExit:
+      description: Saída de uma etapa.
+      type: object
+      required: [id, meaning]
+      properties:
+        id:
+          description: Id do ponto de saída do bloco, único na etapa.
+          type: string
+          minLength: 1
+        meaning:
+          type: string
+          enum: [next, branch, received, expired, approved, rejected]
+        label:
+          type: string
+        condition:
+          type: string
+        description:
+          type: string
+        to:
+          description: |
+            Id da etapa de destino, no mesmo nível; sem destino, o caminho
+            termina ali.
+          type: string
+    PlanEvent:
+      description: |
+        Exceção presa a uma etapa: um desvio que só pode ser acionado enquanto
+        a etapa está ativa.
+      type: object
+      required: [id, label, trigger, interrupting]
+      properties:
+        id:
+          description: Id do bloco de exceção.
+          type: string
+          minLength: 1
+        label:
+          type: string
+        trigger:
+          type: string
+          enum: [error, timeout]
+        interrupting:
+          description: Quando não interrompe a etapa, a exceção abre um caminho a mais.
+          type: boolean
+        timeout:
+          $ref: '#/components/schemas/PlanDuration'
+        to:
+          description: Id da etapa de destino, no nível da etapa da exceção.
+          type: string
+    PlanDetail:
+      description: Dado só de leitura do bloco, com o rótulo em PT-BR.
+      type: object
+      required: [label, value]
+      properties:
+        label:
+          type: string
+          minLength: 1
+        value:
+          type: string
+          minLength: 1
+    PlanOutcome:
+      description: Desfecho de um Fim e, na execução, o do último Fim alcançado.
+      type: object
+      required: [kind, label]
+      properties:
+        kind:
+          type: string
+          enum: [completed, rejected, cancelled, expired, other]
+        label:
+          type: string
+    StepField:
+      description: Campo que a pessoa preenche ao resolver uma etapa.
+      type: object
+      required: [id, label, type, required]
+      properties:
+        id:
+          description: Id do campo, único na etapa.
+          type: string
+          minLength: 1
+        label:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum: [text, long-text, number, date, choice, checkbox]
+        required:
+          type: boolean
+        options:
+          description: Opções da lista; só o tipo `choice` tem, e com pelo menos uma.
+          type: array
+          items:
+            type: string
+            minLength: 1
+    StepKind:
+      description: Tipo da etapa, o mesmo do bloco do desenho que a originou.
+      type: string
+      enum:
+        - start
+        - task
+        - human-task
+        - automated-task
+        - send-message
+        - wait-event
+        - timer
+        - decision
+        - merge
+        - inclusive-split
+        - inclusive-join
+        - parallel-split
+        - parallel-join
+        - approval
+        - subprocess
+        - end
+    PlanStep:
+      description: Etapa do roteiro.
+      type: object
+      required: [id, kind, label, exits]
+      properties:
+        id:
+          description: Id do bloco do desenho, único no nível e sem `/`.
+          type: string
+          minLength: 1
+          pattern: '^[^/]+$'
+        kind:
+          $ref: '#/components/schemas/StepKind'
+        label:
+          type: string
+        description:
+          type: string
+        role:
+          description: Papel do bloco ou, sem ele, o nome da raia.
+          type: string
+        instructions:
+          type: string
+        expectedResult:
+          type: string
+        dueIn:
+          $ref: '#/components/schemas/PlanDuration'
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanDetail'
+        fields:
+          description: Campos a preencher na etapa, sem id repetido.
+          type: array
+          items:
+            $ref: '#/components/schemas/StepField'
+        exits:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanExit'
+        defaultExitId:
+          description: Id de uma das saídas da etapa.
+          type: string
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanEvent'
+        deadline:
+          description: |
+            Prazo da espera por evento; sem ele, não existe a saída de prazo
+            expirado.
+          $ref: '#/components/schemas/PlanDuration'
+        duration:
+          $ref: '#/components/schemas/PlanDuration'
+        until:
+          description: |
+            Data e horário locais (`AAAA-MM-DDTHH:MM`) até quando o
+            temporizador espera.
+          type: string
+        inner:
+          description: |
+            Processo interno do subprocesso; sem ele, o subprocesso vale como
+            tarefa simples.
+          $ref: '#/components/schemas/ProcessPlan'
+        outcome:
+          $ref: '#/components/schemas/PlanOutcome'
+    ProcessPlan:
+      description: |
+        Roteiro de um nível (o processo ou um subprocesso), compilado do
+        desenho na publicação. As execuções seguem o roteiro, nunca o desenho.
+      type: object
+      required: [startId, steps]
+      properties:
+        startId:
+          description: Id da etapa por onde o nível começa.
+          type: string
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanStep'
+    FieldEntry:
+      description: |
+        Valor aceito de um campo, como fica no histórico: o rótulo do campo e
+        o texto pronto para leitura.
+      type: object
+      required: [label, value]
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+    RunToken:
+      description: Ficha, que marca um ponto em que a execução está parada.
+      type: object
+      required: [id, stepRef, since]
+      properties:
+        id:
+          description: Id da ficha (`token-N`), único na execução.
+          type: string
+          minLength: 1
+        stepRef:
+          description: |
+            Endereço da etapa: os ids do caminho separados por `/`, do
+            subprocesso mais externo até a etapa.
+          type: string
+          minLength: 1
+        since:
+          description: Quando a ficha chegou à etapa (ISO 8601).
+          type: string
+          format: date-time
+        waiting:
+          description: Parada numa junção, esperando os outros caminhos.
+          type: boolean
+        scope:
+          description: Marca o subprocesso em andamento; só recebe exceção.
+          type: boolean
+        delegateId:
+          description: Id de quem executa a etapa; o quadro guarda aqui o card filho.
+          type: string
+    RunEvent:
+      description: Entrada da trilha da execução.
+      type: object
+      required: [at, kind, label]
+      properties:
+        at:
+          description: Quando aconteceu (ISO 8601).
+          type: string
+          format: date-time
+        kind:
+          type: string
+          enum:
+            - started
+            - step
+            - choice
+            - approval
+            - event
+            - path-ended
+            - finished
+            - cancelled
+            - delegated
+        stepRef:
+          type: string
+        label:
+          description: Nome da etapa ou, sem etapa, do que aconteceu.
+          type: string
+        detail:
+          description: Ramo escolhido, desfecho ou observação do motor.
+          type: string
+        note:
+          description: Observação de quem agiu.
+          type: string
+        by:
+          type: string
+        values:
+          description: Campos preenchidos na etapa.
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldEntry'
+    ProcessRun:
+      description: |
+        Execução de uma versão publicada de um processo, guardada no card. Ela
+        fica na versão em que começou; o roteiro está em `Board.processes`.
+      type: object
+      required:
+        - definitionId
+        - version
+        - name
+        - status
+        - startedAt
+        - tokens
+        - log
+        - nextToken
+        - takenExits
+      properties:
+        definitionId:
+          type: string
+          minLength: 1
+        version:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+        status:
+          type: string
+          enum: [running, completed, cancelled]
+        startedAt:
+          description: Quando a execução começou (ISO 8601).
+          type: string
+          format: date-time
+        endedAt:
+          description: Quando a execução terminou (ISO 8601).
+          type: string
+          format: date-time
+        tokens:
+          description: Fichas em aberto, sem id repetido.
+          type: array
+          items:
+            $ref: '#/components/schemas/RunToken'
+        log:
+          description: |
+            Trilha da execução, do mais antigo para o mais recente, com até
+            300 entradas: ao passar, saem as mais antigas depois da primeira.
+          type: array
+          items:
+            $ref: '#/components/schemas/RunEvent'
+        nextToken:
+          description: Número da próxima ficha a criar.
+          type: integer
+          minimum: 0
+        outcome:
+          $ref: '#/components/schemas/PlanOutcome'
+        takenExits:
+          description: |
+            Saídas já percorridas, sem repetição. Cada chave é o endereço da
+            etapa, `:` e o id da saída (ou da exceção).
+          type: array
+          items:
+            type: string
+            minLength: 1
+    ProcessVersion:
+      description: Versão publicada de um processo. Depois de publicada, não muda.
+      type: object
+      required: [version, publishedAt, documentText, plan]
+      properties:
+        version:
+          description: Número da versão, a partir de 1, único na definição.
+          type: integer
+          minimum: 1
+        publishedAt:
+          description: Quando foi publicada (ISO 8601).
+          type: string
+          format: date-time
+        documentText:
+          description: |
+            Texto do documento do editor como foi publicado. A API só o
+            guarda; quem o lê é o editor.
+          type: string
+        plan:
+          $ref: '#/components/schemas/ProcessPlan'
+    ProcessDefinition:
+      description: |
+        Um processo do catálogo: o rascunho em edição e as versões já
+        publicadas.
+      type: object
+      required: [id, name, createdAt, updatedAt, draftText, versions]
+      properties:
+        id:
+          description: Id do processo, gerado pelo painel (`process-N`).
+          type: string
+          minLength: 1
+        name:
+          description: |
+            Nome do processo. O painel não aceita dois processos com o mesmo
+            nome.
+          type: string
+          minLength: 1
+        description:
+          type: string
+        createdAt:
+          description: Quando o processo foi criado (ISO 8601).
+          type: string
+          format: date-time
+        updatedAt:
+          description: Quando o processo mudou pela última vez (ISO 8601).
+          type: string
+          format: date-time
+        draftText:
+          description: |
+            Texto do documento em edição; `null` enquanto nada foi salvo. A
+            API só o guarda.
+          type: [string, 'null']
+        versions:
+          description: Versões publicadas, na ordem em que foram publicadas.
+          type: array
+          items:
+            $ref: '#/components/schemas/ProcessVersion'
+        archived:
+          description: |
+            Processo arquivado fica fora do seletor do quadro e pode ser
+            restaurado.
+          type: boolean
+    ProcessDefinitionDocument:
+      description: Uma definição de processo inteira, com identidade e revisão.
+      type: object
+      required: [id, revision, schemaVersion, definition]
+      properties:
+        id:
+          description: O mesmo id de `definition.id`.
+          type: string
+          minLength: 1
+        revision:
+          $ref: '#/components/schemas/Revision'
+        schemaVersion:
+          description: Versão do formato de `definition`. Hoje é 1.
+          type: integer
+          minimum: 1
+        definition:
+          $ref: '#/components/schemas/ProcessDefinition'
+  examples:
+    BoardSummaries:
+      summary: Lista com um quadro.
+      value:
+        - id: board-1
+          name: Quadro principal
+          revision: 4
+    NewBoardDocument:
+      summary: Quadro novo, com as colunas iniciais e nenhum card.
+      value:
+        id: board-2
+        name: Suporte
+        revision: 1
+        schemaVersion: 3
+        board:
+          lanes:
+            - id: todo
+              title: A fazer
+              cards: []
+            - id: doing
+              title: Em andamento
+              cards: []
+            - id: done
+              title: Concluído
+              cards: []
+          archive: []
+          labels: []
+          nextNumber: 1
+          config:
+            keyPrefix: SUP
+    BoardDocument:
+      summary: Quadro com processo no card, card filho, dependência e arquivado.
+      value:
+        id: board-1
+        name: Quadro principal
+        revision: 4
+        schemaVersion: 3
+        board:
+          lanes:
+            - id: todo
+              title: A fazer
+              wipLimit: 5
+              cards:
+                - id: item-1
+                  title: Preparar a entrega
+                  description: Tarefa que segue o processo de exemplo.
+                  number: 1
+                  labelIds: [label-1]
+                  dueDate: '2026-12-10'
+                  assigneeId: person-1
+                  checklist:
+                    - id: item-1
+                      text: Conferir os dados
+                      done: true
+                    - id: item-2
+                      text: Avisar a equipe
+                      done: false
+                  comments:
+                    - id: comment-1
+                      at: '2026-11-26T12:20:00.000Z'
+                      author: Ana
+                      text: Começando hoje.
+                  attachments:
+                    - id: attachment-1
+                      name: Referência
+                      url: https://example.com/referencia
+                      at: '2026-11-26T12:10:00.000Z'
+                    - id: attachment-2
+                      name: nota.txt
+                      url: data:text/plain;base64,b2zDoQ==
+                      at: '2026-11-26T12:12:00.000Z'
+                      size: 4
+                  activity:
+                    - at: '2026-11-26T12:00:00.000Z'
+                      kind: created
+                      lane: A fazer
+                    - at: '2026-11-26T12:15:00.000Z'
+                      kind: process-started
+                      name: Processo de exemplo
+                    - at: '2026-11-26T12:15:00.000Z'
+                      kind: process-step
+                      step: Primeira etapa
+                  process:
+                    definitionId: process-1
+                    version: 1
+                    name: Processo de exemplo
+                    status: running
+                    startedAt: '2026-11-26T12:15:00.000Z'
+                    tokens:
+                      - id: token-1
+                        stepRef: task-1
+                        since: '2026-11-26T12:15:00.000Z'
+                        delegateId: item-2
+                    log:
+                      - at: '2026-11-26T12:15:00.000Z'
+                        kind: started
+                        label: Processo de exemplo
+                      - at: '2026-11-26T12:15:00.000Z'
+                        kind: delegated
+                        stepRef: task-1
+                        label: Primeira etapa
+                    nextToken: 2
+                    takenExits: ['start:out']
+                - id: item-2
+                  title: Primeira etapa
+                  parentId: item-1
+                  number: 2
+                  blockedBy: [item-3]
+                  stepOf:
+                    cardId: item-1
+                    tokenId: token-1
+            - id: doing
+              title: Em andamento
+              cards:
+                - id: item-3
+                  title: Levantar as pendências
+                  number: 3
+            - id: done
+              title: Concluído
+              cards: []
+          archive:
+            - id: item-4
+              archivedAt: '2026-11-26T12:30:00.000Z'
+              cards:
+                - laneId: done
+                  card:
+                    id: item-4
+                    title: Tarefa antiga
+                    number: 4
+          labels:
+            - id: label-1
+              name: Urgente
+              color: danger
+          nextNumber: 5
+          config:
+            keyPrefix: QD
+            doneLaneId: done
+            people:
+              - id: person-1
+                name: Ana
+            rules:
+              parentWaitsChildren: true
+              doneWaitsProcess: true
+          processes:
+            - definitionId: process-1
+              version: 1
+              name: Processo de exemplo
+              plan:
+                startId: start
+                steps:
+                  - id: start
+                    kind: start
+                    label: Início
+                    exits:
+                      - id: out
+                        meaning: next
+                        to: task-1
+                  - id: task-1
+                    kind: task
+                    label: Primeira etapa
+                    description: Descreva a atividade.
+                    fields:
+                      - id: field-1
+                        label: Resultado
+                        type: choice
+                        required: true
+                        options: [Aprovado, Reprovado]
+                    exits:
+                      - id: out
+                        meaning: next
+                        to: end
+                  - id: end
+                    kind: end
+                    label: Fim
+                    exits: []
+                    outcome:
+                      kind: completed
+                      label: Concluído
+    ProcessDefinitionDocument:
+      summary: Processo com rascunho salvo e uma versão publicada.
+      value:
+        id: process-1
+        revision: 2
+        schemaVersion: 1
+        definition:
+          id: process-1
+          name: Processo de exemplo
+          description: O menor fluxo completo.
+          createdAt: '2026-11-26T12:00:00.000Z'
+          updatedAt: '2026-11-26T12:05:00.000Z'
+          draftText: '{"version":2,"lanes":[],"graph":{"nodes":[],"edges":[]}}'
+          versions:
+            - version: 1
+              publishedAt: '2026-11-26T12:05:00.000Z'
+              documentText: '{"version":2,"lanes":[],"graph":{"nodes":[],"edges":[]}}'
+              plan:
+                startId: start
+                steps:
+                  - id: start
+                    kind: start
+                    label: Início
+                    exits:
+                      - id: out
+                        meaning: next
+                        to: end
+                  - id: end
+                    kind: end
+                    label: Fim
+                    exits: []
+                    outcome:
+                      kind: completed
+                      label: Concluído
+    ProcessDefinitionDocuments:
+      summary: Lista com um processo criado e ainda sem nada salvo.
+      value:
+        - id: process-2
+          revision: 1
+          schemaVersion: 1
+          definition:
+            id: process-2
+            name: Atendimento
+            createdAt: '2026-11-26T12:00:00.000Z'
+            updatedAt: '2026-11-26T12:00:00.000Z'
+            draftText: null
+            versions: []
+    BadRequestProblem:
+      summary: Corpo que não é JSON.
+      value:
+        type: urn:playground:problem:malformed-body
+        title: Corpo ilegível
+        status: 400
+        detail: O corpo da requisição não é um JSON válido.
+    NotFoundProblem:
+      summary: Documento inexistente.
+      value:
+        type: urn:playground:problem:not-found
+        title: Documento não encontrado
+        status: 404
+        detail: Não existe documento com este id.
+        instance: /boards/board-9
+    PreconditionFailedProblem:
+      summary: Outra gravação chegou antes.
+      value:
+        type: urn:playground:problem:revision-mismatch
+        title: Revisão desatualizada
+        status: 412
+        detail: A revisão gravada é 5, diferente da enviada no If-Match.
+        instance: /boards/board-1
+    UnprocessableContentProblem:
+      summary: Documento sem campo obrigatório.
+      value:
+        type: urn:playground:problem:invalid-document
+        title: Documento inválido
+        status: 422
+        detail: O corpo não tem os campos obrigatórios do documento.
+        instance: /boards
+    PreconditionRequiredProblem:
+      summary: Gravação sem `If-Match`.
+      value:
+        type: urn:playground:problem:precondition-required
+        title: Falta o cabeçalho If-Match
+        status: 428
+        detail: Envie no If-Match a revisão lida, entre aspas duplas.
+        instance: /boards/board-1
+    InternalErrorProblem:
+      summary: Falha inesperada.
+      value:
+        type: urn:playground:problem:internal-error
+        title: Falha inesperada
+        status: 500
+        detail: O servidor não conseguiu concluir a requisição.
+    ServiceUnavailableProblem:
+      summary: Servidor indisponível.
+      value:
+        type: urn:playground:problem:unavailable
+        title: Serviço indisponível
+        status: 503
+        detail: O servidor está indisponível no momento. Tente de novo em instantes.

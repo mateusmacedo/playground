@@ -1,0 +1,39 @@
+name: playground-backoffice-mock
+
+services:
+  mockoon:
+    # Tag e digest do índice multi-arch: atualizar os dois juntos.
+    image: docker.io/mockoon/cli:9.10.0@sha256:1d40ef410f57e5698f9c6e42f790648d270a61fdb2b5f9d29f1aac1b3688888f
+    # NOTE: o entrypoint da imagem já é `mockoon-cli start`.
+    command:
+      - --data=/data/environment.json
+      # WHY: o quadro leva anexos de até 500 KB cada como `data:` URL.
+      - --max-request-body-size=20MB
+      # WHY: cada transação guardada mantém os dois corpos em memória.
+      - --max-transaction-logs=10
+    environment:
+      # NOTE: token local e fictício da API administrativa, que volta os
+      # dados ao estado inicial.
+      MOCKOON_ADMIN_API_TOKEN: ${BACKOFFICE_MOCK_ADMIN_TOKEN:-local-mock-token}
+    ports:
+      - '127.0.0.1:${BACKOFFICE_MOCK_PORT:-4010}:4010'
+    volumes:
+      - ./mockoon/environment.json:/data/environment.json:ro,z
+    healthcheck:
+      # WHY: a imagem não tem curl nem wget; o `node` dela faz a checagem.
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:4010/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    mem_limit: 256m
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
