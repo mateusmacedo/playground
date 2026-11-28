@@ -110,7 +110,9 @@ run_syntax() {
 }
 
 validate_renovate() {
-  (cd "${ROOT}" && pnpm dlx --package="renovate@${RENOVATE_PIN_VERSION}" -- renovate-config-validator renovate.json)
+  # WHY: o pnpm 11 bloqueia os scripts de instalação das dependências; sem liberar o `re2`, o módulo nativo não é
+  # compilado e o validador cai para `RegExp`, que confere os padrões de regex do renovate.json com menos precisão.
+  (cd "${ROOT}" && pnpm dlx --allow-build=re2 --package="renovate@${RENOVATE_PIN_VERSION}" -- renovate-config-validator renovate.json)
 }
 
 usage() {
