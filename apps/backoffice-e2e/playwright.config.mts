@@ -1,6 +1,9 @@
+import { join } from 'node:path';
 import { getReadyUrl, workspaceRoot } from '@nx/devkit';
 import { nxE2EPreset } from '@nx/playwright/preset';
 import { defineConfig, devices } from '@playwright/test';
+
+import { MOCK_ADDRESS } from './src/support/mock-address.ts';
 
 const isCI = !!process.env.CI;
 // WHY: por padrão só o Chromium, que é o mais barato; E2E_ALL_BROWSERS=1 liga
@@ -13,6 +16,7 @@ const webServerAddress = getReadyUrl(
 
 // For CI, you may want to set BASE_URL to the deployed application.
 const baseURL = process.env.BASE_URL || webServerAddress;
+const WEB_SERVER_TIMEOUT_MS = 5 * 60 * 1000;
 
 /**
  * Read environment variables from file.
@@ -32,9 +36,11 @@ const baseURL = process.env.BASE_URL || webServerAddress;
  */
 export default defineConfig({
   ...nxE2EPreset(import.meta.dirname, { testDir: './src' }),
-  // WHY: o preset usa 1 worker no CI e todos os núcleos local; 2 no runner de
-  // 4 vCPU e metade das CPUs local deixam espaço para o servidor do Next.
-  workers: isCI ? 2 : '50%',
+  // WHY: o mock da API guarda um estado só, e cada teste o devolve aos dados
+  // iniciais; com dois testes ao mesmo tempo, um apagaria os dados do outro.
+  workers: 1,
+  // WHY: falha uma vez, antes do primeiro teste, quando o mock não está no ar.
+  globalSetup: './src/support/global-setup.ts',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     baseURL,
@@ -42,12 +48,24 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
+    // WHY: localmente o `next dev` sobe direto, sem o Nx no meio. O `nx run`
+    // abre o `next dev` num grupo de processos próprio, e o Playwright, que
+    // encerra só o grupo que ele criou, deixava o painel ocupando a porta 3000
+    // depois da rodada.
     command: isCI
       ? 'pnpm exec nx run backoffice:start'
-      : 'pnpm exec nx run backoffice:dev',
+      : 'node_modules/.bin/next dev',
     url: webServerAddress,
     reuseExistingServer: true,
-    cwd: workspaceRoot,
+    cwd: isCI ? workspaceRoot : join(workspaceRoot, 'apps/backoffice'),
+    // WHY: o painel do e2e fala com a API, servida pelo mock. A variável entra
+    // no bundle no build, então quem sobe o servidor é o próprio Playwright:
+    // com `env` aqui, o Nx não infere o `backoffice:dev` como dependência do
+    // `e2e`, que subiria o painel sem ela.
+    env: { NEXT_PUBLIC_API_URL: MOCK_ADDRESS.apiUrl },
+    // WHY: no CI o `backoffice:start` constrói o painel antes de subir, e o
+    // padrão de 60 s do Playwright não cobre o build.
+    timeout: WEB_SERVER_TIMEOUT_MS,
   },
   projects: [
     {

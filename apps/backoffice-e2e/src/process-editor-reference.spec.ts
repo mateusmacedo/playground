@@ -1,35 +1,25 @@
-import { expect, type Locator, type Page, test } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 import { dragBetween, dragToArea } from './flow-drag';
+import { test } from './support/mock-test';
+import {
+  canvas,
+  issueStatus,
+  nodes,
+  openEditor,
+  port,
+  properties,
+} from './support/process-editor-screen';
 
 // WHY: com dezesseis blocos, uma janela baixa leva o enquadramento ao zoom mínimo, e o minimapa cobre as saídas de baixo.
 test.use({ viewport: { width: 1600, height: 1400 } });
 
-function canvas(page: Page): Locator {
-  return page.getByLabel('Canvas do processo');
-}
-
-function properties(page: Page): Locator {
-  return page.getByRole('region', { name: 'Propriedades' });
-}
-
-function issueStatus(page: Page): Locator {
-  return page
-    .getByRole('toolbar', { name: 'Ações do editor' })
-    .getByRole('status');
-}
-
-function port(page: Page, label: string): Locator {
-  return page.getByLabel(label, { exact: true });
-}
-
 async function openEmptyCanvas(page: Page) {
-  await page.goto('/processos');
-  await expect(canvas(page).getByText('Primeira etapa')).toBeVisible();
+  await openEditor(page);
   await page.getByRole('button', { name: 'Limpar' }).click();
   const confirm = page.getByRole('dialog', { name: 'Limpar o canvas' });
   await confirm.getByRole('button', { name: 'Limpar' }).click();
-  await expect(canvas(page).locator('.react-flow__node')).toHaveCount(0);
+  await expect(nodes(page)).toHaveCount(0);
 }
 
 /** Organiza e afasta a vista, deixando o canto superior esquerdo do canvas livre para soltar uma ligação. */
@@ -217,7 +207,7 @@ test.describe('editor de processos: fluxo de referência', () => {
     });
 
     await expect(issueStatus(page)).toHaveText('Sem problemas');
-    await expect(canvas(page).locator('.react-flow__node')).toHaveCount(16);
+    await expect(nodes(page)).toHaveCount(16);
 
     await page.getByRole('button', { name: 'Layout automático' }).click();
     await expect(issueStatus(page)).toHaveText('Sem problemas');

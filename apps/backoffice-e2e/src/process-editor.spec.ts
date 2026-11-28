@@ -1,20 +1,20 @@
-import { expect, type Locator, type Page, test } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 import { dragBetween } from './flow-drag';
+import { test } from './support/mock-test';
+import {
+  canvas,
+  issueStatus,
+  nodes,
+  openEditor,
+  port,
+  toolbar,
+} from './support/process-editor-screen';
+import { openByMenu } from './support/side-menu';
 import { openThemeMenu } from './theme-menu';
 
 // WHY: com a largura padrão o canvas fica estreito, e o bloco solto cairia em cima dos blocos do exemplo.
 test.use({ viewport: { width: 1600, height: 1000 } });
-
-function canvas(page: Page): Locator {
-  return page.getByLabel('Canvas do processo');
-}
-
-function issueStatus(page: Page): Locator {
-  return page
-    .getByRole('toolbar', { name: 'Ações do editor' })
-    .getByRole('status');
-}
 
 /** Cor de fundo do cartão da página, que usa a mesma variável do tema (`--cui-body-bg`) que o canvas. */
 async function cardBackground(page: Page): Promise<string> {
@@ -22,12 +22,6 @@ async function cardBackground(page: Page): Promise<string> {
   return page.evaluate<string>(
     "getComputedStyle(document.querySelector('.process-editor').closest('.card')).backgroundColor",
   );
-}
-
-/** Abre o editor e espera o React Flow medir os blocos, o que só acontece depois da hidratação. */
-async function openEditor(page: Page) {
-  await page.goto('/processos');
-  await expect(canvas(page).getByText('Primeira etapa')).toBeVisible();
 }
 
 /** Solta um bloco da biblioteca numa área vazia do canvas, à direita do exemplo. */
@@ -44,10 +38,7 @@ test.describe('editor de processos', () => {
     page,
   }) => {
     await page.goto('/');
-    await page
-      .getByRole('navigation', { name: 'Menu lateral', exact: true })
-      .getByRole('link', { name: 'Processos' })
-      .click();
+    await openByMenu({ page, group: 'Processos', item: 'Editor' });
 
     await expect(page).toHaveTitle(/^Processos · .+/);
     await expect(
@@ -70,25 +61,26 @@ test.describe('editor de processos', () => {
     await openEditor(page);
 
     await dropBlock(page, 'Etapa');
-    await expect(
-      page.getByLabel('Entrada de Etapa', { exact: true }),
-    ).toHaveCount(1);
-    await expect(issueStatus(page)).toHaveText('2 problemas');
+    await expect(port(page, 'Entrada de Etapa')).toHaveCount(1);
+    await expect(issueStatus(page)).toHaveText('2 problemas: 2 erros');
+    // WHY: nesta janela o Fim abre abaixo da área visível do canvas; a ligação arrastada até lá faz o canvas rolar
+    // sozinho no meio do gesto, e às vezes a ponta é solta fora da porta e abre a escolha de um bloco novo.
+    await toolbar(page).getByRole('button', { name: 'Ajustar à tela' }).click();
 
     await dragBetween({
       page,
-      from: page.getByLabel('Saída de Etapa', { exact: true }),
-      to: page.getByLabel('Entrada de Fim', { exact: true }),
+      from: port(page, 'Saída de Etapa'),
+      to: port(page, 'Entrada de Fim'),
     });
-    await expect(issueStatus(page)).toHaveText('1 problema');
+    await expect(issueStatus(page)).toHaveText('1 problema: 1 erro');
 
     // NOTE: a Etapa já tem a saída ligada e a Primeira etapa já tem entrada, então o editor recusa a conexão.
     await dragBetween({
       page,
-      from: page.getByLabel('Saída de Etapa', { exact: true }),
-      to: page.getByLabel('Entrada de Primeira etapa', { exact: true }),
+      from: port(page, 'Saída de Etapa'),
+      to: port(page, 'Entrada de Primeira etapa'),
     });
-    await expect(issueStatus(page)).toHaveText('1 problema');
+    await expect(issueStatus(page)).toHaveText('1 problema: 1 erro');
     await expect(canvas(page).locator('.react-flow__edge')).toHaveCount(3);
     await expect(
       page.getByRole('alert').filter({ hasText: 'Conexão recusada' }),
@@ -97,9 +89,9 @@ test.describe('editor de processos', () => {
     );
 
     await page.getByRole('button', { name: 'Desfazer' }).click();
-    await expect(issueStatus(page)).toHaveText('2 problemas');
+    await expect(issueStatus(page)).toHaveText('2 problemas: 2 erros');
     await page.getByRole('button', { name: 'Refazer' }).click();
-    await expect(issueStatus(page)).toHaveText('1 problema');
+    await expect(issueStatus(page)).toHaveText('1 problema: 1 erro');
   });
 
   test('insere pelo botão da biblioteca e edita pelo painel', async ({
@@ -139,15 +131,14 @@ test.describe('editor de processos: canvas', () => {
     page,
   }) => {
     await openEditor(page);
-    const nodes = canvas(page).locator('.react-flow__node');
-    await expect(nodes).toHaveCount(3);
+    await expect(nodes(page)).toHaveCount(3);
 
     await page.getByRole('button', { name: 'Inserir Etapa' }).click();
     await page.getByRole('button', { name: 'Inserir Etapa' }).click();
 
-    await expect(nodes).toHaveCount(5);
-    const first = await nodes.nth(3).boundingBox();
-    const second = await nodes.nth(4).boundingBox();
+    await expect(nodes(page)).toHaveCount(5);
+    const first = await nodes(page).nth(3).boundingBox();
+    const second = await nodes(page).nth(4).boundingBox();
     if (!first || !second) {
       throw new Error('Os blocos inseridos não estão na tela.');
     }
@@ -186,6 +177,11 @@ test.describe('editor de processos: canvas', () => {
   });
 });
 
+/** Folga entre o fim do canvas e o rodapé: só o espaçamento do cartão e da página. */
+const CANVAS_FOOTER_MAX_GAP = 48;
+/** Em 900 px de altura, o canvas fica com pelo menos 40% da janela. */
+const CANVAS_MIN_HEIGHT = 360;
+
 test.describe('editor de processos: tela larga', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -198,13 +194,17 @@ test.describe('editor de processos: tela larga', () => {
     if (!box) {
       throw new Error('O canvas não está na tela.');
     }
-    expect(box.y + box.height).toBeLessThanOrEqual(900);
-    expect(box.height).toBeGreaterThan(450);
     const footer = await page.getByRole('contentinfo').boundingBox();
     if (!footer) {
       throw new Error('O rodapé não está na tela.');
     }
     expect(footer.y + footer.height).toBeLessThanOrEqual(900);
+    // NOTE: a altura do canvas é o que sobra abaixo do seletor de processos, da barra do rascunho e da barra de ações;
+    // o que importa é ele ir até o rodapé, sem sobra de tela embaixo.
+    const gapToFooter = footer.y - (box.y + box.height);
+    expect(gapToFooter).toBeGreaterThanOrEqual(0);
+    expect(gapToFooter).toBeLessThanOrEqual(CANVAS_FOOTER_MAX_GAP);
+    expect(box.height).toBeGreaterThan(CANVAS_MIN_HEIGHT);
   });
 });
 
