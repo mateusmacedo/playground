@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 import { EditorToolbar, type EditorToolbarProps } from './editor-toolbar';
 
@@ -35,7 +35,7 @@ function button(name: string) {
 
 describe('EditorToolbar', () => {
   it('chama cada ação pelo botão', () => {
-    const handlers = renderToolbar();
+    const handlers = renderToolbar({ selectedNodes: 1 });
 
     for (const name of [
       'Desfazer',
@@ -86,14 +86,49 @@ describe('EditorToolbar', () => {
 
   it('conta os problemas no singular e no plural', () => {
     renderToolbar({ issueCount: { errors: 0, warnings: 1 } });
-    expect(screen.getByRole('status').textContent).toBe('1 problema');
+    expect(screen.getByRole('status').textContent).toBe('1 problema: 1 aviso');
   });
 
-  it('conta vários problemas', () => {
+  it('lê o detalhe de erros e avisos no próprio selo', () => {
     renderToolbar({ issueCount: { errors: 2, warnings: 1 } });
     const badge = screen.getByRole('status');
-    expect(badge.textContent).toBe('3 problemas');
+    expect(badge.textContent).toBe('3 problemas: 2 erros e 1 aviso');
     expect(badge.getAttribute('title')).toBe('2 erros e 1 aviso');
+  });
+
+  it('cita só a severidade que existe', () => {
+    renderToolbar({ issueCount: { errors: 1, warnings: 0 } });
+    expect(screen.getByRole('status').textContent).toBe('1 problema: 1 erro');
+  });
+
+  it('conta vários avisos sem erro', () => {
+    renderToolbar({ issueCount: { errors: 0, warnings: 3 } });
+    expect(screen.getByRole('status').textContent).toBe(
+      '3 problemas: 3 avisos',
+    );
+  });
+
+  it('marca cada severidade com um ícone, além da cor', () => {
+    renderToolbar({ issueCount: { errors: 1, warnings: 0 } });
+    const errorIcon = screen
+      .getByRole('status')
+      .querySelector('svg')?.innerHTML;
+    cleanup();
+    renderToolbar({ issueCount: { errors: 0, warnings: 1 } });
+    const warningIcon = screen
+      .getByRole('status')
+      .querySelector('svg')?.innerHTML;
+
+    expect(errorIcon).toBeTruthy();
+    expect(warningIcon).toBeTruthy();
+    expect(errorIcon).not.toBe(warningIcon);
+  });
+
+  it('só deixa duplicar com bloco selecionado e excluir também com conexão', () => {
+    renderToolbar({ hasSelection: true, selectedNodes: 0 });
+
+    expect(button('Duplicar').disabled).toBe(true);
+    expect(button('Excluir').disabled).toBe(false);
   });
 
   it('organiza a seleção e aplica o layout automático', () => {

@@ -9,6 +9,7 @@ import { createEditorDocument } from './editor-document';
 import type { Graph } from './model/blocks';
 import { type Lane, laneIssues } from './model/document';
 import { findIssues } from './model/validation';
+import { createStepFieldCommands } from './step-field-commands';
 import { createStructureCommands } from './structure-commands';
 import { useConnectionCommands } from './use-connection-commands';
 import { useDocumentHistory } from './use-document-history';
@@ -40,6 +41,7 @@ export function useProcessEditor(params: UseProcessEditorParams) {
   const connections = useConnectionCommands({ graph, change, createId });
   const commands = createEditCommands({ change, createId, graph, clipboard });
   const branches = createBranchCommands({ change, createId });
+  const stepFields = createStepFieldCommands({ change, createId });
   const structure = createStructureCommands({
     change,
     changeDocument,
@@ -53,6 +55,7 @@ export function useProcessEditor(params: UseProcessEditorParams) {
     ...connections,
     ...commands,
     ...branches,
+    ...stepFields,
     ...structure,
   };
 }

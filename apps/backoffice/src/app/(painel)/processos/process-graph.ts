@@ -99,8 +99,8 @@ export interface EdgeLabelParams {
 }
 
 /**
- * Rótulo da conexão: o nome da saída quando ela tem um (ramo, evento recebido, prazo expirado, exceção), senão o
- * rótulo próprio da conexão.
+ * Rótulo da conexão: o nome da saída quando ela tem um (ramo, evento recebido, prazo expirado, parecer da aprovação,
+ * exceção), senão o rótulo próprio da conexão.
  */
 export function edgeLabel(params: EdgeLabelParams): string {
   const { graph, edge } = params;
@@ -116,7 +116,20 @@ export interface DisplayEdgesParams {
   readonly issuesById: ReadonlyMap<string, readonly ProcessIssue[]>;
 }
 
-/** Conexões como aparecem no canvas: em degraus, com seta, nome em PT-BR e o traço vermelho das que quebram as regras. */
+/** Os problemas da conexão em texto, para quem não vê o traço vermelho; vazio quando ela não tem nenhum. */
+function problemsText(issues: readonly ProcessIssue[]): string {
+  if (issues.length === 0) {
+    return '';
+  }
+  const noun = issues.length === 1 ? 'Problema' : 'Problemas';
+  const messages = issues.map((issue) => issue.message).join(' ');
+  return `. ${noun}: ${messages}`;
+}
+
+/**
+ * Conexões como aparecem no canvas: em degraus, com seta e o traço vermelho das que quebram as regras. O nome em
+ * PT-BR diz a origem, o destino, o rótulo e, na conexão com problema, qual é o problema.
+ */
 export function displayEdges(params: DisplayEdgesParams): ProcessEdge[] {
   const { graph, issuesById } = params;
   const displays = edgeDisplays(graph);
@@ -126,12 +139,14 @@ export function displayEdges(params: DisplayEdgesParams): ProcessEdge[] {
     const label = display?.text
       ? `${description}, ${display.text}`
       : description;
+    const issues = issuesById.get(edge.id) ?? [];
+    const name = label.charAt(0).toUpperCase() + label.slice(1);
     return {
       ...edge,
       type: 'process',
       markerEnd: { type: MarkerType.ArrowClosed },
-      className: issuesById.has(edge.id) ? 'process-edge--invalid' : undefined,
-      ariaLabel: label.charAt(0).toUpperCase() + label.slice(1),
+      className: issues.length > 0 ? 'process-edge--invalid' : undefined,
+      ariaLabel: `${name}${problemsText(issues)}`,
       domAttributes: { 'aria-roledescription': 'conexão' },
     };
   });

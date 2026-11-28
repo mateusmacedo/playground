@@ -11,6 +11,7 @@ import type { ProcessIssue } from './issues';
 import { outputPorts } from './ports';
 import { branchNameRules, fieldRules } from './validation-fields';
 import type { NewIssue, NodeRulesParams } from './validation-rule';
+import { stepFieldRules } from './validation-step-fields';
 
 /** Tipos que reúnem caminhos e por isso precisam de pelo menos duas entradas. */
 const GATHERING_KINDS = new Set(['merge', 'inclusive-join', 'parallel-join']);
@@ -93,7 +94,7 @@ function exceptionRules(params: NodeRulesParams): NewIssue[] {
   if (!parent || !acceptsExceptions(kindOf(parent))) {
     issues.push({
       code: 'detached-exception',
-      message: `${blockName(node)} precisa estar preso a uma tarefa humana, automatizada ou subprocesso.`,
+      message: `${blockName(node)} precisa estar preso a uma tarefa humana, aprovação, tarefa automatizada ou subprocesso.`,
     });
   }
   return issues;
@@ -118,6 +119,13 @@ const OPERATIONAL_FIELDS: Readonly<
       field: 'role',
       missing: (node) => isBlank(node.data.role),
       text: 'não tem papel responsável',
+    },
+  ],
+  approval: [
+    {
+      field: 'role',
+      missing: (node) => isBlank(node.data.role),
+      text: 'não tem papel aprovador',
     },
   ],
   'automated-task': [
@@ -177,6 +185,7 @@ const RULES = [
   branchNameRules,
   exceptionRules,
   fieldRules,
+  stepFieldRules,
   operationalRules,
 ];
 

@@ -57,6 +57,9 @@ function commandsMock() {
     addBranch: vi.fn(),
     renameBranch: vi.fn(),
     removeBranch: vi.fn(),
+    addStepField: vi.fn(),
+    updateStepField: vi.fn(),
+    removeStepField: vi.fn(),
     updateEdgeLabel: vi.fn(),
     duplicateSelected: vi.fn(),
     deleteSelected: vi.fn(),
@@ -134,12 +137,33 @@ describe('PropertiesPanel', () => {
     expect(commands.deleteSelected).toHaveBeenCalledTimes(1);
   });
 
-  it('não oferece duplicar quando só há conexões selecionadas', () => {
-    renderPanel({
+  it('mantém Duplicar à vista, desabilitado e com o motivo, quando só há conexões selecionadas', () => {
+    const commands = renderPanel({
       graph: selecting({ ids: ['start-out-task', 'task-out-decision'] }),
     });
+    const duplicate = screen.getByRole('button', { name: 'Duplicar' });
 
-    expect(screen.queryByRole('button', { name: 'Duplicar' })).toBeNull();
+    fireEvent.click(duplicate);
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir' }));
+
+    expect(duplicate).toHaveProperty('disabled', true);
+    expect(duplicate.getAttribute('aria-describedby')).toBe(
+      screen.getByText(
+        'Para duplicar, a seleção precisa ter ao menos um bloco.',
+      ).id,
+    );
+    expect(commands.duplicateSelected).not.toHaveBeenCalled();
+    expect(commands.deleteSelected).toHaveBeenCalledTimes(1);
+  });
+
+  it('não explica nada quando a seleção múltipla tem bloco para duplicar', () => {
+    renderPanel({ graph: selecting({ ids: ['task', 'start-out-task'] }) });
+
+    expect(screen.getByRole('button', { name: 'Duplicar' })).toHaveProperty(
+      'disabled',
+      false,
+    );
+    expect(screen.queryByText(/Para duplicar/)).toBeNull();
   });
 
   it('edita título e descrição da Etapa e mostra os problemas dela', () => {

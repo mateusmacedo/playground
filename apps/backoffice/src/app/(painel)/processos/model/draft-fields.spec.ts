@@ -1,4 +1,8 @@
-import { legacyDuration, sanitizeBlockData } from './draft-fields';
+import {
+  LEGACY_MESSAGING_APP_CHANNEL,
+  legacyDuration,
+  sanitizeBlockData,
+} from './draft-fields';
 
 describe('legacyDuration', () => {
   it('converte o texto livre reconhecível da versão 1', () => {
@@ -111,7 +115,7 @@ describe('sanitizeBlockData nos tipos errados', () => {
       label: 'X',
       raw: {
         label: 'X',
-        channel: 'whatsapp',
+        channel: 'messaging-app',
         outcome: 'other',
         outcomeLabel: 'Arquivado',
         trigger: 'schedule',
@@ -125,10 +129,74 @@ describe('sanitizeBlockData nos tipos errados', () => {
 
     expect(result.adjusted).toBe(0);
     expect(result.data).toMatchObject({
-      channel: 'whatsapp',
+      channel: 'messaging-app',
       outcome: 'other',
       outcomeLabel: 'Arquivado',
       interrupting: false,
     });
+  });
+
+  it('converte o canal antigo, que levava nome de produto, para o aplicativo de mensagens', () => {
+    const result = sanitizeBlockData({
+      label: 'Avisar',
+      raw: { label: 'Avisar', channel: LEGACY_MESSAGING_APP_CHANNEL },
+    });
+
+    expect(result.data.channel).toBe('messaging-app');
+    expect(result.adjusted).toBe(1);
+  });
+
+  it('reconhece o canal escrito por extenso, sem diferença de maiúsculas', () => {
+    const result = sanitizeBlockData({
+      label: 'Avisar',
+      raw: { label: 'Avisar', channel: 'Aplicativo de Mensagens' },
+    });
+
+    expect(result.data.channel).toBe('messaging-app');
+  });
+
+  it('mantém os campos a preencher, inclusive o que ainda está incompleto', () => {
+    const fields = [
+      { id: 'amount', label: 'Valor', type: 'number', required: true },
+      { id: 'draft', label: '', type: 'choice', required: false, options: [] },
+    ];
+
+    const result = sanitizeBlockData({
+      label: 'Conferir',
+      raw: { label: 'Conferir', fields },
+    });
+
+    expect(result.data.fields).toEqual(fields);
+    expect(result.adjusted).toBe(0);
+  });
+
+  it('tira o campo a preencher que não dá para editar e conta o ajuste', () => {
+    const result = sanitizeBlockData({
+      label: 'Conferir',
+      raw: {
+        label: 'Conferir',
+        fields: [
+          { id: 'amount', label: 'Valor', type: 'number', required: true },
+          { id: 'amount', label: 'Repetido', type: 'text', required: false },
+          { id: 'odd', label: 'Estranho', type: 'color', required: false },
+          'solto',
+        ],
+      },
+    });
+
+    expect(result.data.fields).toEqual([
+      { id: 'amount', label: 'Valor', type: 'number', required: true },
+    ]);
+    expect(result.adjusted).toBe(1);
+  });
+
+  it('descarta campos a preencher que não são uma lista', () => {
+    const result = sanitizeBlockData({
+      label: 'Conferir',
+      raw: { label: 'Conferir', fields: 'Valor, Data' },
+    });
+
+    expect(result.data.fields).toBeUndefined();
+    expect(result.adjusted).toBe(1);
   });
 });

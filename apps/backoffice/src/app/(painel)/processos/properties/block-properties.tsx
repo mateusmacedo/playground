@@ -1,7 +1,7 @@
 import { CFormInput, CFormTextarea } from '@coreui/react';
 import { useId } from 'react';
 
-import { hasBranches, kindOf, specOf } from '../model/blocks';
+import { hasBranches, hasStepFields, kindOf, specOf } from '../model/blocks';
 import type { Lane } from '../model/document';
 import type { ProcessIssue } from '../model/issues';
 import type { ProcessGraph, ProcessNode } from '../process-graph';
@@ -11,6 +11,7 @@ import { BranchEditor } from './branch-editor';
 import { IssueList } from './issue-list';
 import type { PanelCommands } from './panel-commands';
 import { SelectionActions } from './selection-actions';
+import { StepFieldsEditor } from './step-fields-editor';
 
 export interface BlockPropertiesProps {
   readonly node: ProcessNode;
@@ -20,7 +21,10 @@ export interface BlockPropertiesProps {
   readonly commands: PanelCommands;
 }
 
-/** Propriedades do bloco selecionado: tipo, título, campos do tipo, ramos, ações, problemas, duplicar e excluir. */
+/**
+ * Propriedades do bloco selecionado: tipo, título, campos do tipo, campos a preencher, ramos, ações, problemas,
+ * duplicar e excluir.
+ */
 export function BlockProperties({
   node,
   graph,
@@ -63,6 +67,9 @@ export function BlockProperties({
         lanes={lanes}
         commands={commands}
       />
+      {hasStepFields(kind) ? (
+        <StepFieldsEditor node={node} commands={commands} />
+      ) : null}
       {hasBranches(kind) ? (
         <BranchEditor node={node} commands={commands} />
       ) : null}
@@ -73,7 +80,7 @@ export function BlockProperties({
         commands={commands}
       />
       <IssueList issues={issues} onSelect={commands.focusIssue} />
-      <SelectionActions commands={commands} canDuplicate />
+      <SelectionActions commands={commands} duplication="available" />
     </>
   );
 }

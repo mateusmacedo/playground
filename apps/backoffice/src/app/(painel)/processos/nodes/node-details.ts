@@ -19,6 +19,8 @@ export function nodeDetail(node: Pick<GraphNode, 'type' | 'data'>): string {
       return startDetail(data);
     case 'human-task':
       return filled(data.role) ? `Papel: ${data.role}` : '';
+    case 'approval':
+      return filled(data.role) ? `Aprovador: ${data.role}` : '';
     case 'automated-task':
       return filled(data.system) ? `Sistema: ${data.system}` : '';
     case 'send-message':

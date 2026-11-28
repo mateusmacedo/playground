@@ -1,4 +1,8 @@
-import { createBlock } from './block-factory';
+import {
+  createBlock,
+  nextBranchLabel,
+  suggestedBranchLabel,
+} from './block-factory';
 import { sequentialIds } from './test-graph';
 
 describe('createBlock', () => {
@@ -42,6 +46,19 @@ describe('createBlock', () => {
       'Caminho 1',
       'Caminho 2',
     ]);
+  });
+
+  it('cria a Aprovação só com o nome do tipo', () => {
+    const node = createBlock({
+      kind: 'approval',
+      position: { x: 0, y: 0 },
+      createId: sequentialIds('id'),
+    });
+
+    expect(node).toMatchObject({
+      type: 'approval',
+      data: { label: 'Aprovação' },
+    });
   });
 
   it('dá os padrões de início, fim, temporizador e exceção', () => {
@@ -89,5 +106,35 @@ describe('createBlock', () => {
         targetHandle: 'in',
       },
     ]);
+  });
+});
+
+describe('nextBranchLabel', () => {
+  it('numera o ramo novo pela quantidade de ramos mais um', () => {
+    const branches = [
+      { id: 'a', label: suggestedBranchLabel(1) },
+      { id: 'b', label: suggestedBranchLabel(2) },
+    ];
+
+    expect(nextBranchLabel(branches)).toBe('Caminho 3');
+    expect(nextBranchLabel([])).toBe('Caminho 1');
+  });
+
+  it('pula o número que outro ramo já usa depois de uma remoção', () => {
+    const branches = [
+      { id: 'a', label: 'Caminho 1' },
+      { id: 'c', label: 'Caminho 3' },
+    ];
+
+    expect(nextBranchLabel(branches)).toBe('Caminho 4');
+  });
+
+  it('compara o nome como a validação: sem espaços nas pontas e sem diferença de maiúsculas', () => {
+    const branches = [
+      { id: 'a', label: 'Sim' },
+      { id: 'b', label: '  caminho 3 ' },
+    ];
+
+    expect(nextBranchLabel(branches)).toBe('Caminho 4');
   });
 });

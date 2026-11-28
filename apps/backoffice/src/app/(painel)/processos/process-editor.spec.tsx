@@ -64,7 +64,7 @@ describe('ProcessEditor', () => {
     expect(within(canvas()).getByText('Sim')).toBeTruthy();
     expect(within(canvas()).getByText('Não')).toBeTruthy();
     expect(screen.getByRole('group', { name: 'Ramos' })).toBeTruthy();
-    expect(issueStatus()).toBe('3 problemas');
+    expect(issueStatus()).toBe('3 problemas: 3 erros');
     expect(
       within(canvas()).getAllByText(
         /Problemas: Decisão exclusiva não tem conexão/,
@@ -181,7 +181,7 @@ describe('ProcessEditor', () => {
     fireEvent.click(within(confirm).getByRole('button', { name: 'Limpar' }));
 
     expect(within(canvas()).queryByText('Primeira etapa')).toBeNull();
-    expect(issueStatus()).toBe('1 problema');
+    expect(issueStatus()).toBe('1 problema: 1 erro');
     expect(
       screen.getByText('O processo não tem um bloco Início.'),
     ).toBeTruthy();

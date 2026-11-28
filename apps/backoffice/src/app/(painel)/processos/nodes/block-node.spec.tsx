@@ -10,12 +10,13 @@ mockReactFlow();
 
 type BlockNodeProps = Parameters<typeof BlockNode>[0];
 
-function renderSubprocess(data: BlockNodeProps['data']) {
-  const props = {
-    id: 'sub',
-    type: 'subprocess',
-    data,
-  } as unknown as BlockNodeProps;
+interface RenderBlockParams {
+  readonly type: string;
+  readonly data: BlockNodeProps['data'];
+}
+
+function renderBlock({ type, data }: RenderBlockParams) {
+  const props = { id: 'block', type, data } as unknown as BlockNodeProps;
   render(
     <ReactFlowProvider>
       <CanvasActionsProvider
@@ -31,6 +32,10 @@ function renderSubprocess(data: BlockNodeProps['data']) {
       </CanvasActionsProvider>
     </ReactFlowProvider>,
   );
+}
+
+function renderSubprocess(data: BlockNodeProps['data']) {
+  renderBlock({ type: 'subprocess', data });
 }
 
 describe('BlockNode do subprocesso', () => {
@@ -55,5 +60,24 @@ describe('BlockNode do subprocesso', () => {
     renderSubprocess({ label: 'Cobrança', inputs: ' ' });
 
     expect(screen.queryByText('Entradas')).toBeNull();
+  });
+});
+
+describe('BlockNode da aprovação', () => {
+  it('mostra o aprovador, a entrada e as duas saídas com o nome do parecer', () => {
+    renderBlock({
+      type: 'approval',
+      data: { label: 'Aprovar compra', role: 'Diretoria' },
+    });
+
+    expect(screen.getByText('Aprovador: Diretoria')).toBeTruthy();
+    expect(screen.getByLabelText('Entrada de Aprovar compra')).toBeTruthy();
+    expect(
+      screen.getByLabelText('Saída Aprovado de Aprovar compra'),
+    ).toBeTruthy();
+    expect(
+      screen.getByLabelText('Saída Rejeitado de Aprovar compra'),
+    ).toBeTruthy();
+    expect(screen.queryByLabelText('Saída de Aprovar compra')).toBeNull();
   });
 });

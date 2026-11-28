@@ -74,7 +74,10 @@ function PanelContent({
     return (
       <>
         <p className="small">{items}.</p>
-        <SelectionActions commands={commands} canDuplicate={nodes.length > 0} />
+        <SelectionActions
+          commands={commands}
+          duplication={nodes.length > 0 ? 'available' : 'unavailable'}
+        />
       </>
     );
   }

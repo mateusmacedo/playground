@@ -1,5 +1,6 @@
-import { CFormCheck, CFormInput } from '@coreui/react';
+import { CFormInput } from '@coreui/react';
 import { useId } from 'react';
+import { CheckField } from '@/shared/ui/check-field';
 
 import type {
   BlockData,
@@ -114,12 +115,12 @@ function UntilField({ node, update }: Readonly<FieldProps>) {
 function InterruptingField({ node, update }: Readonly<FieldProps>) {
   const id = useId();
   return (
-    <CFormCheck
+    <CheckField
       id={id}
       className="mb-3"
       label="Interrompe a atividade (sem marcar, abre um caminho a mais)"
       checked={node.data.interrupting !== false}
-      onChange={(event) => update({ interrupting: event.target.checked })}
+      onChange={(checked) => update({ interrupting: checked })}
     />
   );
 }

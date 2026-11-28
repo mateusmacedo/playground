@@ -33,7 +33,7 @@ export const DEFAULT_DURATION: Duration = { amount: 1, unit: 'hours' };
 export const CHANNELS: readonly Option<MessageChannel>[] = [
   { value: 'email', label: 'E-mail' },
   { value: 'sms', label: 'SMS' },
-  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'messaging-app', label: 'Aplicativo de mensagens' },
   { value: 'in-app', label: 'Notificação no sistema' },
 ];
 

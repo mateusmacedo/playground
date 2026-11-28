@@ -1,6 +1,7 @@
 import { blockName, type Duration, type GraphNode, kindOf } from './blocks';
 import { FIELD_LABEL } from './conversion';
 import { isDateTime, isDuration, isSchedule } from './fields';
+import { nameKey } from './names';
 import type { NewIssue, NodeRulesParams } from './validation-rule';
 
 type DurationField = 'dueIn' | 'deadline' | 'duration' | 'timeout';
@@ -101,10 +102,6 @@ export function fieldRules(params: NodeRulesParams): NewIssue[] {
   return [...invalidDurations(node), ...modeIssues(node)];
 }
 
-function normalized(text: string): string {
-  return text.trim().toLocaleLowerCase('pt-BR');
-}
-
 /**
  * Ramos precisam de nome, de nomes distintos (o nome vira o rótulo da conexão e o da porta) e de um caminho padrão
  * sem condição, porque ele é justamente o que segue quando nenhuma condição é atendida.
@@ -115,7 +112,7 @@ export function branchNameRules(params: NodeRulesParams): NewIssue[] {
   const issues: NewIssue[] = [];
   const seen = new Set<string>();
   for (const branch of node.data.branches ?? []) {
-    const key = normalized(branch.label);
+    const key = nameKey(branch.label);
     if (key === '') {
       issues.push({
         code: 'unnamed-branch',

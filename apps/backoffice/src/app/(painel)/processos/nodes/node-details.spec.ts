@@ -10,6 +10,12 @@ describe('nodeDetail', () => {
     ).toBe('Papel: Jurídico');
     expect(
       nodeDetail({
+        type: 'approval',
+        data: { label: 'A', role: 'Diretoria' },
+      }),
+    ).toBe('Aprovador: Diretoria');
+    expect(
+      nodeDetail({
         type: 'wait-event',
         data: { label: 'A', deadline: { amount: 48, unit: 'hours' } },
       }),
@@ -33,5 +39,6 @@ describe('nodeDetail', () => {
       '',
     );
     expect(nodeDetail({ type: 'timer', data: { label: 'A' } })).toBe('');
+    expect(nodeDetail({ type: 'approval', data: { label: 'A' } })).toBe('');
   });
 });

@@ -7,6 +7,7 @@ import {
   type BlockField,
   FIELD_LABEL,
   FIELDS_BY_KIND,
+  fieldLabel,
 } from '../model/conversion';
 import type { Lane } from '../model/document';
 import { CHANNELS, isChannel, OUTCOMES } from '../model/fields';
@@ -22,11 +23,15 @@ import {
 import type { PanelCommands } from './panel-commands';
 import { OptionalDuration } from './time-inputs';
 
-/** Campos que o painel desenha à parte: os ramos no editor de ramos e o canvas interno pela navegação. */
+/**
+ * Campos que o painel desenha à parte: os ramos no editor de ramos, os campos a preencher no editor deles e o canvas
+ * interno pela navegação.
+ */
 const SEPARATE_FIELDS = new Set<BlockField>([
   'branches',
   'defaultBranchId',
   'process',
+  'fields',
 ]);
 
 /** Campos que são de fato texto: nomes de sistema, operação, destinatário, evento e objetivo. */
@@ -48,19 +53,22 @@ export function outcomePatch(outcome: EndOutcome): Partial<BlockData> {
 /** Com raias, o papel é o da raia e muda pela raia; sem raias, é o nome digitado. */
 function RoleField({ node, lanes, update }: Readonly<FieldProps>) {
   const id = useId();
+  const kind = kindOf(node);
+  const label = fieldLabel({ kind, field: 'role' });
   if (lanes.length > 0) {
     const role = node.data.role?.trim();
+    const owner = kind === 'approval' ? 'aprovação' : 'tarefa';
     return (
       <p className="small mb-3">
-        <span className="fw-semibold">{FIELD_LABEL.role}:</span>{' '}
-        {role ? role : 'escolha a raia da tarefa abaixo'}
+        <span className="fw-semibold">{label}:</span>{' '}
+        {role ? role : `escolha a raia da ${owner} abaixo`}
       </p>
     );
   }
   return (
     <CFormInput
       id={id}
-      label={FIELD_LABEL.role}
+      label={label}
       className="mb-3"
       value={node.data.role ?? ''}
       onChange={(event) => update({ role: event.target.value })}

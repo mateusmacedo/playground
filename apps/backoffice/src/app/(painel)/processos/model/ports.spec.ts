@@ -1,9 +1,13 @@
 import {
+  APPROVED_HANDLE,
   findOutputPort,
+  inputLimit,
   inputPortLabel,
   outputHandles,
   outputPortLabel,
   outputPorts,
+  REJECTED_HANDLE,
+  TRANSITION_TEXT,
 } from './ports';
 import { block, decisionBranches } from './test-graph';
 
@@ -37,6 +41,13 @@ describe('outputHandles', () => {
       ),
     ).toEqual(['received', 'expired']);
   });
+
+  it('dá à Aprovação as duas saídas fixas, com a favorável primeiro', () => {
+    const approval = block({ id: 'a', type: 'approval' });
+
+    expect(outputHandles(approval)).toEqual([APPROVED_HANDLE, REJECTED_HANDLE]);
+    expect(inputLimit(approval)).toBe('one');
+  });
 });
 
 describe('outputPorts', () => {
@@ -69,6 +80,17 @@ describe('outputPorts', () => {
     );
     expect(findOutputPort({ node: wait, handle: 'expired' })).toBeUndefined();
   });
+
+  it('nomeia os pareceres da Aprovação e o significado de cada um', () => {
+    const approval = block({ id: 'a', type: 'approval' });
+
+    expect(outputPorts(approval)).toEqual([
+      { id: 'approved', meaning: 'approved', label: 'Aprovado' },
+      { id: 'rejected', meaning: 'rejected', label: 'Rejeitado' },
+    ]);
+    expect(TRANSITION_TEXT.approved).toBe('Aprovação');
+    expect(TRANSITION_TEXT.rejected).toBe('Rejeição');
+  });
 });
 
 describe('nomes acessíveis das portas', () => {
@@ -100,6 +122,22 @@ describe('nomes acessíveis das portas', () => {
     );
     expect(outputPortLabel({ node: wait, port: received })).toBe(
       'Saída Evento recebido de Resposta',
+    );
+  });
+
+  it('nomeia a saída da Aprovação pelo parecer', () => {
+    const approval = block({
+      id: 'a',
+      type: 'approval',
+      data: { label: 'Aprovar compra' },
+    });
+    const rejected = findOutputPort({ node: approval, handle: 'rejected' });
+    if (!rejected) {
+      throw new Error('porta ausente');
+    }
+
+    expect(outputPortLabel({ node: approval, port: rejected })).toBe(
+      'Saída Rejeitado de Aprovar compra',
     );
   });
 });

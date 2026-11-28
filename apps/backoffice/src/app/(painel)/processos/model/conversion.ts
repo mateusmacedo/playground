@@ -19,14 +19,16 @@ export const FIELDS_BY_KIND: Readonly<
   Record<BlockKind, readonly BlockField[]>
 > = {
   start: ['trigger', 'schedule', 'triggerMessage'],
-  task: ['description'],
+  task: ['description', 'fields'],
   'human-task': [
     'description',
     'role',
     'instructions',
     'expectedResult',
     'dueIn',
+    'fields',
   ],
+  approval: ['description', 'role', 'instructions', 'dueIn', 'fields'],
   'automated-task': ['description', 'system', 'operation', 'inputs', 'outputs'],
   'send-message': ['description', 'recipient', 'channel', 'content'],
   'wait-event': ['description', 'eventName', 'deadline'],
@@ -74,7 +76,26 @@ export const FIELD_LABEL: Readonly<Record<BlockField, string>> = {
   process: 'Canvas interno',
   outcome: 'Desfecho',
   outcomeLabel: 'Nome do desfecho',
+  fields: 'Campos a preencher',
 };
+
+/** Nome que o campo ganha num tipo específico, quando o nome geral não descreve o papel dele ali. */
+const KIND_FIELD_LABEL: Readonly<
+  Partial<Record<BlockKind, Partial<Record<BlockField, string>>>>
+> = {
+  approval: { role: 'Papel aprovador' },
+};
+
+export interface FieldLabelParams {
+  readonly kind: BlockKind;
+  readonly field: BlockField;
+}
+
+/** Nome do campo na tela para o tipo do bloco. */
+export function fieldLabel(params: FieldLabelParams): string {
+  const { kind, field } = params;
+  return KIND_FIELD_LABEL[kind]?.[field] ?? FIELD_LABEL[field];
+}
 
 /** Conversões oferecidas no painel de cada tipo. */
 export const CONVERSIONS: Readonly<
@@ -145,8 +166,9 @@ export function conversionReport<N extends GraphNode, E extends GraphEdge>(
   if (!node) {
     return { lostFields: [], lostEdgeIds: [], lostNodeIds: [] };
   }
-  const lostFields = droppedFields({ node, to }).map(
-    (field) => FIELD_LABEL[field],
+  const kind = kindOf(node);
+  const lostFields = droppedFields({ node, to }).map((field) =>
+    fieldLabel({ kind, field }),
   );
   const handles = outputHandles({ ...node, type: to });
   const acceptsInput = specOf(to).input !== 'none';

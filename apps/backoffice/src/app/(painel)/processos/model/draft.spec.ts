@@ -85,6 +85,90 @@ describe('serializeDocument e parseDocument', () => {
   });
 });
 
+describe('ciclo salvar e reabrir das atividades feitas por uma pessoa', () => {
+  const fields = [
+    { id: 'amount', label: 'Valor', type: 'number', required: true },
+    {
+      id: 'origin',
+      label: 'Origem',
+      type: 'choice',
+      required: false,
+      options: ['Loja', 'Site'],
+    },
+  ] as const;
+
+  const people: ProcessDocument = {
+    version: 2,
+    lanes: [{ id: 'sales', name: 'Vendas', width: 256 }],
+    graph: {
+      nodes: [
+        block({
+          id: 'review',
+          type: 'human-task',
+          data: { laneId: 'sales', role: 'Vendas', fields },
+        }),
+        block({
+          id: 'free',
+          type: 'human-task',
+          data: { role: 'Analista de crédito' },
+        }),
+        block({
+          id: 'ok',
+          type: 'approval',
+          data: {
+            role: 'Diretoria',
+            instructions: 'Confira o orçamento.',
+            dueIn: { amount: 2, unit: 'days' },
+            fields: [
+              {
+                id: 'draft',
+                label: '',
+                type: 'choice',
+                required: false,
+                options: [],
+              },
+            ],
+          },
+        }),
+      ],
+      edges: [
+        link({ source: 'review', target: 'ok' }),
+        link({ source: 'ok', target: 'free', sourceHandle: 'approved' }),
+      ],
+    },
+  };
+
+  it('devolve igual o responsável da Tarefa humana, na raia ou digitado', () => {
+    const reopened = parseDocument(serializeDocument(people));
+    const [review, free] = reopened?.document.graph.nodes ?? [];
+
+    expect(review?.data).toMatchObject({ laneId: 'sales', role: 'Vendas' });
+    expect(free?.data.role).toBe('Analista de crédito');
+    expect(reopened?.adjusted).toBe(0);
+  });
+
+  it('devolve igual a Aprovação: tipo, papel aprovador, instruções, prazo e conexões dos pareceres', () => {
+    const reopened = parseDocument(serializeDocument(people));
+
+    expect(reopened?.document.graph.nodes[2]).toEqual(people.graph.nodes[2]);
+    expect(reopened?.document.graph.edges[1]).toMatchObject({
+      source: 'ok',
+      sourceHandle: 'approved',
+      target: 'free',
+    });
+  });
+
+  it('devolve iguais os campos a preencher, inclusive o que ficou pela metade', () => {
+    const reopened = parseDocument(serializeDocument(people));
+    const [review, , approval] = reopened?.document.graph.nodes ?? [];
+
+    expect(review?.data.fields).toEqual(fields);
+    expect(approval?.data.fields).toEqual([
+      { id: 'draft', label: '', type: 'choice', required: false, options: [] },
+    ]);
+  });
+});
+
 describe('parseDocument com rascunho da versão 1', () => {
   it('converte os valores em texto e informa quantos foram ajustados', () => {
     const legacy = JSON.stringify({

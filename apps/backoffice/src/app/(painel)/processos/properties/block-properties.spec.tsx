@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 
 import type { Graph } from '../model/blocks';
-import { LANE_WIDTH } from '../model/document';
+import { LANE_WIDTH, type Lane } from '../model/document';
 import type { ProcessIssue } from '../model/issues';
 import { block, decisionBranches } from '../model/test-graph';
 import { type ProcessNode, toProcessGraph } from '../process-graph';
@@ -15,6 +15,9 @@ function commandsMock() {
     renameBranch: vi.fn(),
     updateBranch: vi.fn(),
     removeBranch: vi.fn(),
+    addStepField: vi.fn(),
+    updateStepField: vi.fn(),
+    removeStepField: vi.fn(),
     updateEdgeLabel: vi.fn(),
     duplicateSelected: vi.fn(),
     deleteSelected: vi.fn(),
@@ -28,15 +31,20 @@ function commandsMock() {
   } satisfies PanelCommands;
 }
 
-const lanes = [{ id: 'legal', name: 'Jurídico', width: LANE_WIDTH }];
+const defaultLanes: readonly Lane[] = [
+  { id: 'legal', name: 'Jurídico', width: LANE_WIDTH },
+];
 
 interface RenderParams {
   readonly graph: Graph;
   readonly nodeId: string;
   readonly issues?: readonly ProcessIssue[];
+  /** Raias do processo; o padrão tem uma, e a lista vazia mostra o painel de um processo sem raias. */
+  readonly lanes?: readonly Lane[];
 }
 
-function renderBlock({ graph, nodeId, issues = [] }: RenderParams) {
+function renderBlock(params: RenderParams) {
+  const { graph, nodeId, issues = [], lanes = defaultLanes } = params;
   const processGraph = toProcessGraph(graph);
   const node = processGraph.nodes.find(
     (candidate) => candidate.id === nodeId,
@@ -284,7 +292,7 @@ describe('BlockProperties nos campos de relógio e de lista', () => {
       'Escolha o canal',
       'E-mail',
       'SMS',
-      'WhatsApp',
+      'Aplicativo de mensagens',
       'Notificação no sistema',
     ]);
     fireEvent.change(channel, { target: { value: 'sms' } });
@@ -387,5 +395,83 @@ describe('BlockProperties nos campos que dependem do modo', () => {
     expect(
       (screen.getByLabelText('Tempo limite') as HTMLInputElement).value,
     ).toBe('30');
+  });
+
+  it('edita papel aprovador, instruções e prazo da Aprovação e prende exceção', () => {
+    const commands = renderBlock({
+      graph: { nodes: [block({ id: 'ok', type: 'approval' })], edges: [] },
+      nodeId: 'ok',
+      lanes: [],
+    });
+
+    fireEvent.change(screen.getByLabelText('Papel aprovador'), {
+      target: { value: 'Diretoria' },
+    });
+    fireEvent.change(screen.getByLabelText('Instruções'), {
+      target: { value: 'Confira o orçamento.' },
+    });
+    fireEvent.click(screen.getByLabelText('Tem prazo de atendimento'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Adicionar evento de exceção' }),
+    );
+
+    expect(commands.updateBlock).toHaveBeenCalledWith({
+      nodeId: 'ok',
+      patch: { role: 'Diretoria' },
+    });
+    expect(commands.updateBlock).toHaveBeenCalledWith({
+      nodeId: 'ok',
+      patch: { instructions: 'Confira o orçamento.' },
+    });
+    expect(commands.updateBlock).toHaveBeenCalledWith({
+      nodeId: 'ok',
+      patch: { dueIn: { amount: 1, unit: 'hours' } },
+    });
+    expect(commands.addException).toHaveBeenCalledWith('ok');
+    expect(screen.queryByLabelText('Resultado esperado')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Converter em/ })).toBeNull();
+  });
+
+  it('mostra o papel aprovador pela raia quando o processo tem raias', () => {
+    renderBlock({
+      graph: { nodes: [block({ id: 'ok', type: 'approval' })], edges: [] },
+      nodeId: 'ok',
+    });
+
+    expect(screen.queryByLabelText('Papel aprovador')).toBeNull();
+    expect(screen.getByText(/Papel aprovador/).closest('p')?.textContent).toBe(
+      'Papel aprovador: escolha a raia da aprovação abaixo',
+    );
+  });
+
+  it.each(['task', 'human-task', 'approval'])(
+    'oferece os campos a preencher no bloco %s',
+    (type) => {
+      const commands = renderBlock({
+        graph: { nodes: [block({ id: 'step', type })], edges: [] },
+        nodeId: 'step',
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Adicionar campo' }));
+
+      expect(
+        screen.getByRole('group', { name: 'Campos a preencher' }),
+      ).toBeTruthy();
+      expect(commands.addStepField).toHaveBeenCalledWith('step');
+    },
+  );
+
+  it('não oferece campos a preencher no bloco que ninguém resolve à mão', () => {
+    renderBlock({
+      graph: {
+        nodes: [block({ id: 'bot', type: 'automated-task' })],
+        edges: [],
+      },
+      nodeId: 'bot',
+    });
+
+    expect(
+      screen.queryByRole('button', { name: 'Adicionar campo' }),
+    ).toBeNull();
   });
 });

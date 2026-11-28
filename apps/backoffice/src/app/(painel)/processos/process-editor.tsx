@@ -4,20 +4,21 @@ import '@xyflow/react/dist/style.css';
 
 import { CAlert } from '@coreui/react';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
-import { useRef, useState } from 'react';
+import { type Ref, useImperativeHandle, useRef, useState } from 'react';
 
 import { useIsClient } from '@/shared/hooks/use-is-client';
 
 import { BlockPalette } from './block-palette';
-import { DraftBar } from './draft-bar';
 import { createBrowserDraftStore, type DraftStore } from './draft-store';
 import {
   EditorDialogs,
   type EditorDialogsState,
   useEditorDialogs,
 } from './editor-dialogs';
+import { EditorDraftBar } from './editor-draft-bar';
 import { type EditorOpening, openEditor } from './editor-opening';
 import { EditorToolbar } from './editor-toolbar';
+import { cascadeOffset } from './insert-cascade';
 import type { BlockKind, Graph, Point } from './model/blocks';
 import { countIssues } from './model/issues';
 import { ProcessCanvas } from './process-canvas';
@@ -25,6 +26,7 @@ import { blockOrigin, type ProcessGraph } from './process-graph';
 import { ProcessSearch } from './process-search';
 import { LanesEditor } from './properties/lanes-editor';
 import { PropertiesPanel } from './properties/properties-panel';
+import type { EditorPublication } from './publication';
 import { SubprocessBreadcrumb } from './subprocess-breadcrumb';
 import { useDraft } from './use-draft';
 import { useEditorFocus } from './use-editor-focus';
@@ -34,15 +36,22 @@ import {
   useProcessEditor,
 } from './use-process-editor';
 
-/** Deslocamento entre inserções seguidas pelo botão, para os blocos novos não caírem um em cima do outro. */
-const CASCADE_STEP = 24;
-const CASCADE_LENGTH = 5;
+/** O que a tela em volta do editor precisa saber antes de trocar de processo. */
+export interface EditorGuard {
+  readonly hasChanges: boolean;
+  /** Grava o rascunho; devolve `true` quando a gravação deu certo. */
+  readonly save: () => Promise<boolean>;
+}
 
 export interface ProcessEditorProps {
   /** Processo de exemplo, aberto quando não há rascunho salvo. */
   readonly initial: Graph;
   /** Onde o rascunho é guardado; por padrão, o `localStorage` do navegador. */
   readonly store?: DraftStore;
+  /** Publicação do processo do catálogo; sem ela, o editor só salva o rascunho. */
+  readonly publication?: EditorPublication;
+  /** Recebe o estado do rascunho, para a tela confirmar a troca de processo com alteração não salva. */
+  readonly guardRef?: Ref<EditorGuard>;
 }
 
 interface CanvasCenterParams {
@@ -118,12 +127,18 @@ function EditorTop({ editor, dialogs, onFitView }: Readonly<EditorTopProps>) {
   );
 }
 
-interface EditorLayoutProps {
+interface EditorLayoutProps
+  extends Pick<ProcessEditorProps, 'publication' | 'guardRef'> {
   readonly opening: EditorOpening;
   readonly store: DraftStore;
 }
 
-function EditorLayout({ opening, store }: Readonly<EditorLayoutProps>) {
+function EditorLayout({
+  opening,
+  store,
+  publication,
+  guardRef,
+}: Readonly<EditorLayoutProps>) {
   const editor = useProcessEditor({
     initial: opening.graph,
     lanes: opening.lanes,
@@ -133,8 +148,15 @@ function EditorLayout({ opening, store }: Readonly<EditorLayoutProps>) {
     store,
     restored: opening.restored,
   });
+  useImperativeHandle(
+    guardRef,
+    () => ({ hasChanges: draft.hasChanges, save: draft.save }),
+    [draft.hasChanges, draft.save],
+  );
   const { screenToFlowPosition, fitView } = useReactFlow();
   const canvasRef = useRef<HTMLDivElement>(null);
+  /** Inserções pelo `+` desde que o editor abriu, para a cascata não depender de quantos blocos existem. */
+  const insertions = useRef(0);
   const dialogs = useEditorDialogs();
   const { graph } = editor;
   const focus = useEditorFocus({ graph, selectOnly: editor.selectOnly });
@@ -152,7 +174,8 @@ function EditorLayout({ opening, store }: Readonly<EditorLayoutProps>) {
       return;
     }
     const center = canvasCenter({ canvas, toFlow: screenToFlowPosition });
-    const offset = (graph.nodes.length % CASCADE_LENGTH) * CASCADE_STEP;
+    const offset = cascadeOffset(insertions.current);
+    insertions.current += 1;
     const point = { x: center.x + offset, y: center.y + offset };
     editor.addBlock({ kind, position: blockOrigin(point) });
   }
@@ -169,12 +192,10 @@ function EditorLayout({ opening, store }: Readonly<EditorLayoutProps>) {
           {`O rascunho tinha ${opening.adjusted} valor(es) fora do formato atual, que foram convertidos ou removidos. Confira os blocos e salve de novo.`}
         </CAlert>
       ) : null}
-      <DraftBar
-        status={draft.status}
-        everSaved={draft.everSaved}
-        onSave={() => {
-          void draft.save();
-        }}
+      <EditorDraftBar
+        document={editor.document}
+        draft={draft}
+        publication={publication}
       />
       <EditorTop
         editor={editor}
@@ -225,16 +246,27 @@ function EditorLayout({ opening, store }: Readonly<EditorLayoutProps>) {
   );
 }
 
+interface OpenedEditorProps extends Omit<ProcessEditorProps, 'store'> {
+  readonly store: DraftStore;
+}
+
 /** Editor visual de processos: biblioteca, canvas, propriedades e barra de ações sobre o mesmo estado. */
 function OpenedEditor({
   initial,
   store,
-}: Readonly<Required<ProcessEditorProps>>) {
+  publication,
+  guardRef,
+}: Readonly<OpenedEditorProps>) {
   // NOTE: lido uma vez, na montagem; depois disso o rascunho só muda quando o usuário salva.
   const [opening] = useState(() => openEditor({ store, sample: initial }));
   return (
     <ReactFlowProvider>
-      <EditorLayout opening={opening} store={store} />
+      <EditorLayout
+        opening={opening}
+        store={store}
+        publication={publication}
+        guardRef={guardRef}
+      />
     </ReactFlowProvider>
   );
 }
@@ -244,8 +276,8 @@ function OpenedEditor({
  * hidratação mostram o aviso de carregamento, e o HTML dos dois lados é o mesmo.
  */
 export function ProcessEditor({
-  initial,
   store,
+  ...props
 }: Readonly<ProcessEditorProps>) {
   const isClient = useIsClient();
   const [browserStore] = useState(() => store ?? createBrowserDraftStore());
@@ -256,5 +288,5 @@ export function ProcessEditor({
       </p>
     );
   }
-  return <OpenedEditor initial={initial} store={browserStore} />;
+  return <OpenedEditor store={browserStore} {...props} />;
 }

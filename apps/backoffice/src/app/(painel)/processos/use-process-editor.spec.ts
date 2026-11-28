@@ -6,6 +6,7 @@ import {
 } from '@xyflow/react';
 
 import type { Graph } from './model/blocks';
+import { LANE_WIDTH, type Lane } from './model/document';
 import { sampleProcess } from './model/sample-process';
 import type { ProcessEdge, ProcessNode } from './process-graph';
 import { useProcessEditor } from './use-process-editor';
@@ -407,6 +408,86 @@ describe('useProcessEditor nas operações compostas', () => {
     expect(result.current.lanes).toHaveLength(1);
   });
 
+  it('desfaz a duplicação em um passo, com os blocos e a conexão copiados', () => {
+    const { result } = setup();
+    selectNode({ result, id: 'start' });
+    selectNode({ result, id: 'task-1' });
+
+    act(() => result.current.duplicateSelected());
+
+    const copies = result.current.graph.nodes.slice(3);
+    expect(copies.map((node) => node.type)).toEqual(['start', 'task']);
+    expect(copies.every((node) => node.selected === true)).toBe(true);
+    expect(copies[1]?.position).toEqual({ x: 40, y: 160 });
+    expect(result.current.graph.edges).toHaveLength(3);
+
+    undoOnce(result);
+
+    expect(nodeIds(result)).toEqual(['start', 'task-1', 'end']);
+    expect(result.current.graph.edges).toHaveLength(2);
+    expect(result.current.canUndo).toBe(false);
+
+    act(() => result.current.redo());
+    expect(result.current.graph.nodes).toHaveLength(5);
+    expect(result.current.graph.edges).toHaveLength(3);
+  });
+
+  it('arrasta a Tarefa humana para outra raia e desfaz posição, raia e responsável em um passo', () => {
+    const lanes: Lane[] = [
+      { id: 'sales', name: 'Vendas', width: LANE_WIDTH },
+      { id: 'finance', name: 'Financeiro', width: LANE_WIDTH },
+    ];
+    const initial: Graph = {
+      nodes: [
+        {
+          id: 'review',
+          type: 'human-task',
+          position: { x: 64, y: 100 },
+          data: { label: 'Analisar', laneId: 'sales', role: 'Vendas' },
+        },
+      ],
+      edges: [],
+    };
+    const createId = sequentialIds();
+    const { result } = renderHook(() =>
+      useProcessEditor({ initial, lanes, createId }),
+    );
+
+    act(() => result.current.onDragStart());
+    moveNode({
+      result,
+      id: 'review',
+      position: { x: 200, y: 100 },
+      dragging: true,
+    });
+    moveNode({
+      result,
+      id: 'review',
+      position: { x: 320, y: 140 },
+      dragging: false,
+    });
+    act(() => result.current.onDragStop());
+
+    expect(result.current.graph.nodes[0]).toMatchObject({
+      position: { x: 320, y: 140 },
+      data: { laneId: 'finance', role: 'Financeiro' },
+    });
+
+    undoOnce(result);
+
+    expect(result.current.graph.nodes[0]).toMatchObject({
+      position: { x: 64, y: 100 },
+      data: { laneId: 'sales', role: 'Vendas' },
+    });
+    expect(result.current.canUndo).toBe(false);
+
+    act(() => result.current.redo());
+    expect(result.current.graph.nodes[0]?.data).toMatchObject({
+      laneId: 'finance',
+      role: 'Financeiro',
+    });
+  });
+
   it('copia e cola a seleção com ids novos e desfaz a colagem', () => {
     const { result } = setup();
     selectNode({ result, id: 'task-1' });
@@ -618,5 +699,101 @@ describe('useProcessEditor nas recusas de conexão', () => {
     );
 
     expect(result.current.refusal).toBeNull();
+  });
+});
+
+describe('useProcessEditor nos campos a preencher', () => {
+  function fieldsOfTask(result: Editor) {
+    return result.current.graph.nodes[1]?.data.fields;
+  }
+
+  it('cria, edita e remove campo da etapa, cada ação num passo', () => {
+    const { result } = setup();
+
+    act(() => result.current.addStepField('task-1'));
+    act(() =>
+      result.current.updateStepField({
+        nodeId: 'task-1',
+        fieldId: 'new-1',
+        patch: { type: 'choice' },
+      }),
+    );
+    act(() => result.current.addStepField('task-1'));
+
+    expect(fieldsOfTask(result)).toEqual([
+      {
+        id: 'new-1',
+        label: 'Campo 1',
+        type: 'choice',
+        required: false,
+        options: [],
+      },
+      { id: 'new-2', label: 'Campo 2', type: 'text', required: false },
+    ]);
+
+    act(() =>
+      result.current.removeStepField({ nodeId: 'task-1', fieldId: 'new-1' }),
+    );
+    expect(fieldsOfTask(result)?.map((field) => field.id)).toEqual(['new-2']);
+
+    act(() => result.current.undo());
+    expect(fieldsOfTask(result)).toHaveLength(2);
+    act(() => result.current.undo());
+    act(() => result.current.undo());
+    act(() => result.current.undo());
+    expect(fieldsOfTask(result)).toBeUndefined();
+    expect(result.current.canUndo).toBe(false);
+  });
+
+  it('junta a digitação seguida no nome do mesmo campo num passo', () => {
+    const { result } = setup();
+    act(() => result.current.addStepField('task-1'));
+    const rename = (label: string) =>
+      act(() =>
+        result.current.updateStepField({
+          nodeId: 'task-1',
+          fieldId: 'new-1',
+          patch: { label },
+        }),
+      );
+
+    rename('V');
+    rename('Valor');
+    act(() =>
+      result.current.updateStepField({
+        nodeId: 'task-1',
+        fieldId: 'new-1',
+        patch: { required: true },
+      }),
+    );
+
+    expect(fieldsOfTask(result)?.[0]).toMatchObject({
+      label: 'Valor',
+      required: true,
+    });
+    act(() => result.current.undo());
+    expect(fieldsOfTask(result)?.[0]).toMatchObject({
+      label: 'Valor',
+      required: false,
+    });
+    act(() => result.current.undo());
+    expect(fieldsOfTask(result)?.[0]?.label).toBe('Campo 1');
+  });
+
+  it('aponta o campo sem nome entre os problemas do processo', () => {
+    const { result } = setup();
+    act(() => result.current.addStepField('task-1'));
+
+    act(() =>
+      result.current.updateStepField({
+        nodeId: 'task-1',
+        fieldId: 'new-1',
+        patch: { label: '' },
+      }),
+    );
+
+    expect(result.current.issues.map((issue) => issue.key)).toEqual([
+      'unnamed-field:new-1:task-1',
+    ]);
   });
 });

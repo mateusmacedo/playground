@@ -131,6 +131,51 @@ describe('assignLane', () => {
   });
 });
 
+describe('papel da raia na Aprovação', () => {
+  const withApproval: ProcessDocument = {
+    ...document,
+    graph: {
+      ...document.graph,
+      nodes: [
+        ...document.graph.nodes,
+        at(
+          block({ id: 'ok', type: 'approval', data: { laneId: 'sales' } }),
+          64,
+        ),
+      ],
+    },
+  };
+
+  it('dá o papel da raia à Aprovação que entra nela, e não ao bloco sem papel', () => {
+    const result = assignLane({
+      document: withApproval,
+      nodeId: 'ok',
+      laneId: 'finance',
+    });
+    const charge = assignLane({
+      document: withApproval,
+      nodeId: 'charge',
+      laneId: 'sales',
+    });
+
+    expect(nodeOf(result, 'ok')?.data).toMatchObject({
+      laneId: 'finance',
+      role: 'Financeiro',
+    });
+    expect(nodeOf(charge, 'charge')?.data.role).toBeUndefined();
+  });
+
+  it('atualiza o papel aprovador quando a raia muda de nome', () => {
+    const result = renameLane({
+      document: withApproval,
+      laneId: 'sales',
+      name: 'Comercial',
+    });
+
+    expect(nodeOf(result, 'ok')?.data.role).toBe('Comercial');
+  });
+});
+
 describe('syncLanesFromPosition', () => {
   it('atualiza a raia dos blocos movidos pela posição em que caíram', () => {
     const moved: ProcessDocument = {

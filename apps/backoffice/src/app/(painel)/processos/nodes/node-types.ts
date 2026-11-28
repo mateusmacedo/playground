@@ -11,6 +11,7 @@ export const nodeTypes: NodeTypes = {
   start: EventNode,
   task: BlockNode,
   'human-task': BlockNode,
+  approval: BlockNode,
   'automated-task': BlockNode,
   'send-message': BlockNode,
   'wait-event': BlockNode,

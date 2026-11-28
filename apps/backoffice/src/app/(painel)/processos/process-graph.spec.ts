@@ -132,6 +132,17 @@ describe('taskAtPoint', () => {
       taskAtPoint({ graph: withTasks, point: { x: 10, y: 10 } }),
     ).toBeUndefined();
   });
+
+  it('acha a Aprovação, que também aceita exceção', () => {
+    const withApproval: ProcessGraph = toProcessGraph({
+      nodes: [block({ id: 'ok', type: 'approval' })],
+      edges: [],
+    });
+
+    expect(
+      taskAtPoint({ graph: withApproval, point: { x: 10, y: 10 } })?.id,
+    ).toBe('ok');
+  });
 });
 
 describe('blockOrigin', () => {
@@ -155,6 +166,71 @@ describe('nomes para o leitor de tela', () => {
     expect(branchEdge).toMatchObject({
       ariaLabel: 'Conexão de decision para task, Sim',
       domAttributes: { 'aria-roledescription': 'conexão' },
+    });
+  });
+
+  it('diz o problema no nome da conexão que quebra uma regra', () => {
+    const [branchEdge, plainEdge] = displayEdges({
+      graph,
+      issuesById: issuesByElement([
+        {
+          key: 'x',
+          severity: 'error',
+          message: 'A saída de task já tem uma conexão.',
+          edgeId: 'task-out-end',
+        },
+      ]),
+    });
+
+    expect(plainEdge?.ariaLabel).toBe(
+      'Conexão de task para end. Problema: A saída de task já tem uma conexão.',
+    );
+    expect(branchEdge?.ariaLabel).toBe('Conexão de decision para task, Sim');
+  });
+
+  it('junta os problemas quando a conexão tem mais de um', () => {
+    const [branchEdge] = displayEdges({
+      graph,
+      issuesById: issuesByElement([
+        {
+          key: 'a',
+          severity: 'error',
+          message: 'Primeiro problema.',
+          edgeId: 'decision-yes-task',
+        },
+        {
+          key: 'b',
+          severity: 'error',
+          message: 'Segundo problema.',
+          edgeId: 'decision-yes-task',
+        },
+      ]),
+    });
+
+    expect(branchEdge?.ariaLabel).toBe(
+      'Conexão de decision para task, Sim. Problemas: Primeiro problema. Segundo problema.',
+    );
+  });
+
+  it('nomeia a conexão que sai da Aprovação pelo parecer', () => {
+    const approvalGraph: ProcessGraph = toProcessGraph({
+      nodes: [
+        block({ id: 'ok', type: 'approval' }),
+        block({ id: 'end', type: 'end' }),
+      ],
+      edges: [link({ source: 'ok', target: 'end', sourceHandle: 'rejected' })],
+    });
+
+    const [edge] = displayEdges({
+      graph: approvalGraph,
+      issuesById: new Map(),
+    });
+
+    expect(edge?.ariaLabel).toBe('Conexão de ok para end, Rejeitado');
+    expect(edgeDisplays(approvalGraph).get('ok-rejected-end')).toMatchObject({
+      text: 'Rejeitado',
+      meaning: 'rejected',
+      meaningText: 'Rejeição',
     });
   });
 });

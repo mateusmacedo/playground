@@ -4,13 +4,15 @@ import {
   BLOCK_SPECS,
   blockName,
   hasBranches,
+  hasRole,
+  hasStepFields,
   isBlockKind,
   kindOf,
   specOf,
 } from './blocks';
 
 describe('catálogo de blocos', () => {
-  it('lista os dezessete blocos na ordem da biblioteca', () => {
+  it('lista os dezoito blocos na ordem da biblioteca', () => {
     expect(BLOCK_SPECS.map((spec) => spec.label)).toEqual([
       'Início',
       'Aguardar evento',
@@ -19,6 +21,7 @@ describe('catálogo de blocos', () => {
       'Fim',
       'Etapa',
       'Tarefa humana',
+      'Aprovação',
       'Tarefa automatizada',
       'Enviar mensagem',
       'Subprocesso',
@@ -62,6 +65,11 @@ describe('catálogo de blocos', () => {
       input: 'one',
       output: 'events',
     });
+    expect(specOf('approval')).toMatchObject({
+      category: 'activities',
+      input: 'one',
+      output: 'verdicts',
+    });
     expect(specOf('parallel-join')).toMatchObject({
       input: 'many',
       output: 'single',
@@ -82,6 +90,18 @@ describe('catálogo de blocos', () => {
     expect(hasBranches('merge')).toBe(false);
     expect(acceptsExceptions('automated-task')).toBe(true);
     expect(acceptsExceptions('task')).toBe(false);
+  });
+
+  it('trata a Aprovação como a Tarefa humana: tem papel, aceita exceção e tem campos', () => {
+    expect(isBlockKind('approval')).toBe(true);
+    expect(hasRole('approval')).toBe(true);
+    expect(hasRole('human-task')).toBe(true);
+    expect(hasRole('automated-task')).toBe(false);
+    expect(acceptsExceptions('approval')).toBe(true);
+    expect(acceptsExceptions('subprocess')).toBe(true);
+    expect(hasStepFields('approval')).toBe(true);
+    expect(hasStepFields('task')).toBe(true);
+    expect(hasStepFields('automated-task')).toBe(false);
   });
 
   it('usa o nome do tipo quando o título está vazio', () => {

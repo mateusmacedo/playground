@@ -11,6 +11,10 @@ import {
 export const RECEIVED_HANDLE = 'received';
 /** Id da saída de Aguardar evento quando o prazo termina antes do evento. */
 export const EXPIRED_HANDLE = 'expired';
+/** Id da saída de Aprovação quando a pessoa aprova. */
+export const APPROVED_HANDLE = 'approved';
+/** Id da saída de Aprovação quando a pessoa rejeita. */
+export const REJECTED_HANDLE = 'rejected';
 
 /** O que a passagem por uma saída significa, para o rótulo da conexão. */
 export type TransitionMeaning =
@@ -19,6 +23,8 @@ export type TransitionMeaning =
   | 'parallel'
   | 'received'
   | 'expired'
+  | 'approved'
+  | 'rejected'
   | 'exception';
 
 export interface OutputPort {
@@ -60,6 +66,12 @@ function eventPorts(node: PortNode): OutputPort[] {
   return ports;
 }
 
+/** As duas saídas fixas da Aprovação; a favorável vem primeiro, e é por ela que segue o bloco inserido numa conexão. */
+const VERDICT_PORTS: readonly OutputPort[] = [
+  { id: APPROVED_HANDLE, meaning: 'approved', label: 'Aprovado' },
+  { id: REJECTED_HANDLE, meaning: 'rejected', label: 'Rejeitado' },
+];
+
 function singlePort(node: PortNode): OutputPort {
   if (kindOf(node) !== 'exception') {
     return { id: OUTPUT_HANDLE, meaning: 'next' };
@@ -83,6 +95,9 @@ export function outputPorts(node: PortNode): readonly OutputPort[] {
   }
   if (output === 'events') {
     return eventPorts(node);
+  }
+  if (output === 'verdicts') {
+    return VERDICT_PORTS;
   }
   return [];
 }
@@ -118,7 +133,7 @@ export interface OutputPortLabelParams {
   readonly port: OutputPort;
 }
 
-/** Nome acessível de uma saída: "Saída de X", "Ramo Y de X" ou o desfecho da espera ou da exceção. */
+/** Nome acessível de uma saída: "Saída de X", "Ramo Y de X" ou o desfecho da espera, da aprovação ou da exceção. */
 export function outputPortLabel(params: OutputPortLabelParams): string {
   const { node, port } = params;
   const name = blockName(node);
@@ -138,5 +153,7 @@ export const TRANSITION_TEXT: Readonly<Record<TransitionMeaning, string>> = {
   parallel: 'Ramo paralelo',
   received: 'Evento recebido',
   expired: 'Expiração',
+  approved: 'Aprovação',
+  rejected: 'Rejeição',
   exception: 'Exceção',
 };

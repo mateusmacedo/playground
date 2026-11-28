@@ -133,4 +133,35 @@ describe('autoLayout', () => {
     expect(a.y).toBe(b.y);
     expect(Math.abs(a.x - b.x)).toBeGreaterThanOrEqual(BLOCK_SIZE.width);
   });
+
+  it('põe os destinos dos dois pareceres da Aprovação lado a lado, abaixo dela', () => {
+    const review: Graph = {
+      nodes: [
+        block({ id: 'start', type: 'start' }),
+        block({ id: 'sign-off', type: 'approval' }),
+        block({ id: 'done', type: 'end' }),
+        block({ id: 'refused', type: 'end' }),
+      ],
+      edges: [
+        link({ source: 'start', target: 'sign-off' }),
+        link({ source: 'sign-off', target: 'done', sourceHandle: 'approved' }),
+        link({
+          source: 'sign-off',
+          target: 'refused',
+          sourceHandle: 'rejected',
+        }),
+      ],
+    };
+
+    const laidOut = autoLayout({ graph: review, lanes: [] }).graph;
+    const approval = nodeOf(laidOut, 'sign-off').position;
+    const done = nodeOf(laidOut, 'done').position;
+    const refused = nodeOf(laidOut, 'refused').position;
+
+    expect(done.y).toBeGreaterThan(approval.y);
+    expect(refused.y).toBe(done.y);
+    expect(Math.abs(done.x - refused.x)).toBeGreaterThanOrEqual(
+      BLOCK_SIZE.width,
+    );
+  });
 });

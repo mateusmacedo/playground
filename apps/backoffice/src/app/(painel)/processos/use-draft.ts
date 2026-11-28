@@ -13,12 +13,28 @@ export interface UseDraftParams {
   readonly restored: boolean;
 }
 
+export interface DraftState {
+  readonly status: DraftStatus;
+  readonly hasChanges: boolean;
+  readonly everSaved: boolean;
+  /** Texto do documento como está na tela, no formato gravado. */
+  readonly text: string;
+  /** Grava o rascunho; devolve `true` quando a gravação deu certo. */
+  readonly save: () => Promise<boolean>;
+  /** Registra que `text` foi gravado por outro caminho (a publicação grava o rascunho junto com a versão). */
+  readonly markSaved: (text: string) => void;
+}
+
 /**
  * Estado do rascunho: salvo, com alterações pendentes, gravando ou com falha. A comparação é pelo texto salvo, então
  * seleção e medidas da tela não contam como alteração. Depois de uma falha a edição continua intacta e dá para tentar
  * de novo.
  */
-export function useDraft({ document, store, restored }: UseDraftParams) {
+export function useDraft({
+  document,
+  store,
+  restored,
+}: UseDraftParams): DraftState {
   const text = useMemo(() => serializeDocument(document), [document]);
   const [savedText, setSavedText] = useState<string | null>(() =>
     restored ? text : null,
@@ -27,9 +43,9 @@ export function useDraft({ document, store, restored }: UseDraftParams) {
   const [failed, setFailed] = useState(false);
   const hasChanges = text !== savedText;
 
-  async function save() {
+  async function save(): Promise<boolean> {
     if (saving) {
-      return;
+      return false;
     }
     const snapshot = text;
     setSaving(true);
@@ -37,12 +53,19 @@ export function useDraft({ document, store, restored }: UseDraftParams) {
     try {
       await store.save(snapshot);
       setSavedText(snapshot);
+      return true;
     } catch {
       // WHY: a falha vira estado na tela, com nova tentativa; o erro do navegador não tem o que dizer ao usuário.
       setFailed(true);
+      return false;
     } finally {
       setSaving(false);
     }
+  }
+
+  function markSaved(published: string) {
+    setSavedText(published);
+    setFailed(false);
   }
 
   let status: DraftStatus = hasChanges ? 'unsaved' : 'saved';
@@ -51,5 +74,12 @@ export function useDraft({ document, store, restored }: UseDraftParams) {
   } else if (failed) {
     status = 'failed';
   }
-  return { status, hasChanges, everSaved: savedText !== null, save };
+  return {
+    status,
+    hasChanges,
+    everSaved: savedText !== null,
+    text,
+    save,
+    markSaved,
+  };
 }

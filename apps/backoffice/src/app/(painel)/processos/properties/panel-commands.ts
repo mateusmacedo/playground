@@ -1,5 +1,6 @@
 import type { BlockData, Branch } from '../model/blocks';
 import type { ProcessIssue } from '../model/issues';
+import type { StepFieldPatch } from '../model/step-fields';
 import type {
   ConvertChange,
   MoveLaneChange,
@@ -34,6 +35,17 @@ export interface RemoveBranchChange {
   readonly branchId: string;
 }
 
+export interface UpdateStepFieldChange {
+  readonly nodeId: string;
+  readonly fieldId: string;
+  readonly patch: StepFieldPatch;
+}
+
+export interface RemoveStepFieldChange {
+  readonly nodeId: string;
+  readonly fieldId: string;
+}
+
 export interface UpdateEdgeLabelChange {
   readonly edgeId: string;
   readonly label: string;
@@ -53,6 +65,10 @@ export interface PanelCommands {
   readonly updateBranch: (change: UpdateBranchChange) => void;
   readonly setDefaultBranch: (change: SetDefaultBranchChange) => void;
   readonly removeBranch: (change: RemoveBranchChange) => void;
+  /** Campo a preencher novo no fim da lista do bloco. */
+  readonly addStepField: (nodeId: string) => void;
+  readonly updateStepField: (change: UpdateStepFieldChange) => void;
+  readonly removeStepField: (change: RemoveStepFieldChange) => void;
   readonly updateEdgeLabel: (change: UpdateEdgeLabelChange) => void;
   readonly duplicateSelected: () => void;
   readonly deleteSelected: () => void;
@@ -64,3 +80,9 @@ export interface PanelCommands {
   /** Seleciona e enquadra o elemento do problema. */
   readonly focusIssue: (issue: ProcessIssue) => void;
 }
+
+/** A parte dos comandos que o editor de campos a preencher usa. */
+export type StepFieldCommands = Pick<
+  PanelCommands,
+  'addStepField' | 'updateStepField' | 'removeStepField'
+>;

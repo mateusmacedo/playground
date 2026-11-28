@@ -1,4 +1,4 @@
-import { suggestedBranchLabel } from './block-factory';
+import { nextBranchLabel } from './block-factory';
 import type {
   BlockData,
   Branch,
@@ -169,7 +169,7 @@ export interface AddBranchParams<N extends GraphNode, E extends GraphEdge> {
   readonly createId: () => string;
 }
 
-/** Ramo novo no fim da Decisão, com nome provisório. */
+/** Ramo novo no fim da Decisão, com um nome provisório que nenhum outro ramo dela usa. */
 export function addBranch<N extends GraphNode, E extends GraphEdge>(
   params: AddBranchParams<N, E>,
 ): Graph<N, E> {
@@ -178,10 +178,7 @@ export function addBranch<N extends GraphNode, E extends GraphEdge>(
     ...params,
     change: (data) => {
       const branches = data.branches ?? [];
-      const branch = {
-        id: createId(),
-        label: suggestedBranchLabel(branches.length + 1),
-      };
+      const branch = { id: createId(), label: nextBranchLabel(branches) };
       return { ...data, branches: [...branches, branch] };
     },
   });

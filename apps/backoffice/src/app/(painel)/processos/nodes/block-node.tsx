@@ -27,7 +27,10 @@ export interface PortsProps {
   readonly ports: readonly OutputPort[];
 }
 
-/** Saídas com nome (ramos, desfechos da espera), distribuídas na base do bloco, cada uma sob o próprio nome. */
+/**
+ * Saídas com nome (ramos, desfechos da espera, pareceres da aprovação), distribuídas na base do bloco, cada uma sob o
+ * próprio nome.
+ */
 export function NamedOutputs({ node, ports }: Readonly<PortsProps>) {
   return (
     <div className="process-branches">

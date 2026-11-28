@@ -9,6 +9,7 @@ import {
   specOf,
 } from './blocks';
 import { DEFAULT_DURATION } from './fields';
+import { suggestedName } from './names';
 
 /** Distância vertical entre o Início e o Fim do canvas interno de um subprocesso novo. */
 const INNER_GAP = 160;
@@ -17,9 +18,18 @@ interface IdSource {
   readonly createId: () => string;
 }
 
+/** Palavra do nome provisório de um ramo: "Caminho 1", "Caminho 2" e assim por diante. */
+const BRANCH_PREFIX = 'Caminho';
+
 /** Nome sugerido para o ramo de número `position` (a partir de 1). */
 export function suggestedBranchLabel(position: number): string {
-  return `Caminho ${position}`;
+  return `${BRANCH_PREFIX} ${position}`;
+}
+
+/** Nome sugerido para um ramo novo: o primeiro "Caminho N" que nenhum ramo do bloco usa. */
+export function nextBranchLabel(branches: readonly Branch[]): string {
+  const taken = branches.map((branch) => branch.label);
+  return suggestedName({ prefix: BRANCH_PREFIX, taken });
 }
 
 function numberedBranches({ createId }: IdSource): Branch[] {

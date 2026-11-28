@@ -82,7 +82,7 @@ export function EdgeProperties({
         Inserir bloco na conexão
       </CButton>
       <IssueList issues={issues} onSelect={commands.focusIssue} />
-      <SelectionActions commands={commands} canDuplicate={false} />
+      <SelectionActions commands={commands} duplication="absent" />
     </>
   );
 }

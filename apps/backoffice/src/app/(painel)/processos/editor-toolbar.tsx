@@ -1,9 +1,11 @@
 import {
   cilActionRedo,
   cilActionUndo,
+  cilCheckCircle,
   cilClone,
   cilFullscreen,
   cilTrash,
+  cilWarning,
   cilXCircle,
 } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
@@ -41,10 +43,16 @@ function issueSummary(count: number): string {
   return count === 1 ? '1 problema' : `${count} problemas`;
 }
 
+/** "2 erros e 1 aviso", "1 erro", "3 avisos": só as severidades que existem. */
 function issueDetail({ errors, warnings }: IssueCount): string {
-  const errorText = errors === 1 ? '1 erro' : `${errors} erros`;
-  const warningText = warnings === 1 ? '1 aviso' : `${warnings} avisos`;
-  return `${errorText} e ${warningText}`;
+  const parts: string[] = [];
+  if (errors > 0) {
+    parts.push(errors === 1 ? '1 erro' : `${errors} erros`);
+  }
+  if (warnings > 0) {
+    parts.push(warnings === 1 ? '1 aviso' : `${warnings} avisos`);
+  }
+  return parts.join(' e ');
 }
 
 interface ActionGroupProps {
@@ -98,6 +106,7 @@ function historyActions({
 
 function selectionActions({
   hasSelection,
+  selectedNodes,
   onDuplicate,
   onDelete,
 }: Readonly<EditorToolbarProps>): ToolbarAction[] {
@@ -106,7 +115,8 @@ function selectionActions({
       label: 'Duplicar',
       icon: cilClone,
       onClick: onDuplicate,
-      disabled: !hasSelection,
+      // NOTE: a duplicação copia blocos; conexões sozinhas não têm o que duplicar. Excluir vale para as duas.
+      disabled: selectedNodes === 0,
       shortcut: 'Control+D Meta+D',
     },
     {
@@ -144,22 +154,40 @@ interface IssueBadgeProps {
   readonly count: IssueCount;
 }
 
-/** Selo com o total de problemas; a cor separa erro de aviso, e o texto completo vai no `title`. */
+interface BadgeLook {
+  readonly color: string;
+  readonly icon: string[];
+}
+
+function badgeLook({ errors, warnings }: IssueCount): BadgeLook {
+  if (errors > 0) {
+    return { color: 'text-bg-danger', icon: cilXCircle };
+  }
+  if (warnings > 0) {
+    return { color: 'text-bg-warning', icon: cilWarning };
+  }
+  return { color: 'text-bg-success', icon: cilCheckCircle };
+}
+
+/**
+ * Selo com o total de problemas. A severidade aparece na cor, no ícone e no texto: o detalhe de erros e avisos faz
+ * parte do que o leitor de tela anuncia, e fica no `title` para quem passa o mouse.
+ */
 function IssueBadge({ count }: Readonly<IssueBadgeProps>) {
   const total = count.errors + count.warnings;
-  let color = 'text-bg-success';
-  if (count.errors > 0) {
-    color = 'text-bg-danger';
-  } else if (count.warnings > 0) {
-    color = 'text-bg-warning';
-  }
+  const look = badgeLook(count);
+  const detail = total === 0 ? undefined : issueDetail(count);
   return (
     <span
       role="status"
-      className={`badge ms-auto ${color}`}
-      title={total === 0 ? undefined : issueDetail(count)}
+      className={`badge ms-auto d-inline-flex align-items-center gap-1 ${look.color}`}
+      title={detail}
     >
+      <CIcon icon={look.icon} aria-hidden="true" />
       {issueSummary(total)}
+      {detail === undefined ? null : (
+        <span className="visually-hidden">{`: ${detail}`}</span>
+      )}
     </span>
   );
 }

@@ -9,7 +9,7 @@ import {
   updateBlockData,
   updateEdgeLabel,
 } from './editing';
-import { block, decisionBranches, link } from './test-graph';
+import { block, decisionBranches, link, sequentialIds } from './test-graph';
 
 const graph: Graph = {
   nodes: [
@@ -63,6 +63,35 @@ describe('deleteSelection', () => {
       'start-out-decision',
       'decision-no-end',
     ]);
+  });
+
+  it('tira junto as exceções presas ao bloco excluído e as conexões delas', () => {
+    const withExceptions: Graph = {
+      nodes: [
+        block({ id: 'person', type: 'human-task' }),
+        block({ id: 'approval', type: 'approval' }),
+        { ...block({ id: 'late', type: 'exception' }), parentId: 'person' },
+        { ...block({ id: 'failed', type: 'exception' }), parentId: 'person' },
+        { ...block({ id: 'kept', type: 'exception' }), parentId: 'approval' },
+        block({ id: 'end', type: 'end' }),
+      ],
+      edges: [
+        link({ source: 'person', target: 'approval' }),
+        link({ source: 'late', target: 'end' }),
+        link({ source: 'kept', target: 'end' }),
+      ],
+    };
+
+    const result = deleteSelection(
+      select({ source: withExceptions, ids: { nodes: ['person'] } }),
+    );
+
+    expect(result.nodes.map((node) => node.id)).toEqual([
+      'approval',
+      'kept',
+      'end',
+    ]);
+    expect(result.edges.map((edge) => edge.id)).toEqual(['kept-out-end']);
   });
 
   it('tira só a conexão selecionada', () => {
@@ -153,6 +182,23 @@ describe('ramos da Decisão', () => {
     expect(first.nodes[2]?.data.branches).toEqual([
       { id: 'b1', label: 'Caminho 1' },
     ]);
+  });
+
+  it('sugere o primeiro nome livre depois que um ramo é removido', () => {
+    const createId = sequentialIds('branch');
+    const third = addBranch({ graph, nodeId: 'decision', createId });
+    const fourth = addBranch({ graph: third, nodeId: 'decision', createId });
+    const removed = removeBranch({
+      graph: fourth,
+      nodeId: 'decision',
+      branchId: 'branch-1',
+    });
+
+    const result = addBranch({ graph: removed, nodeId: 'decision', createId });
+
+    expect(
+      result.nodes[1]?.data.branches?.map((branch) => branch.label),
+    ).toEqual(['Sim', 'Não', 'Caminho 4', 'Caminho 5']);
   });
 
   it('renomeia o ramo', () => {

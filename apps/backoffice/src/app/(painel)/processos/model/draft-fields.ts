@@ -1,3 +1,5 @@
+import type { StepField } from '@/shared/process/fields';
+
 import type {
   BlockData,
   Branch,
@@ -17,6 +19,7 @@ import {
   isOutcome,
   isSchedule,
 } from './fields';
+import { readStepFields } from './step-fields';
 
 /** Leitura de um campo: o valor aceito (ou convertido) e se ele precisou de ajuste. */
 interface Reading<T> {
@@ -66,11 +69,18 @@ export function legacyDuration(text: string): Duration | undefined {
   return isDuration(duration) ? duration : undefined;
 }
 
+/**
+ * Valor que o canal de aplicativo de mensagens tinha quando levava o nome de um produto. Só a leitura de rascunho
+ * antigo o conhece: a tela e o formato atual usam `messaging-app`.
+ */
+export const LEGACY_MESSAGING_APP_CHANNEL = 'whatsapp';
+
 const LEGACY_CHANNELS: Readonly<Record<string, MessageChannel>> = {
   email: 'email',
   'e-mail': 'email',
   sms: 'sms',
-  whatsapp: 'whatsapp',
+  [LEGACY_MESSAGING_APP_CHANNEL]: 'messaging-app',
+  'aplicativo de mensagens': 'messaging-app',
   notificacao: 'in-app',
   'notificacao no sistema': 'in-app',
 };
@@ -187,6 +197,18 @@ function readBranches(value: unknown): Reading<readonly Branch[]> {
   return { value: branches, adjusted: branches.length !== value.length };
 }
 
+/** Campos a preencher: sai o que não dá para editar, e o campo ainda incompleto fica para a validação apontar. */
+function readFields(value: unknown): Reading<readonly StepField[]> {
+  if (value === undefined) {
+    return ABSENT;
+  }
+  if (!Array.isArray(value)) {
+    return DROPPED;
+  }
+  const fields = readStepFields(value);
+  return { value: fields, adjusted: fields.length !== value.length };
+}
+
 interface DefaultBranchParams {
   readonly value: unknown;
   readonly branches: readonly Branch[] | undefined;
@@ -213,8 +235,8 @@ export interface SanitizedData {
 
 /**
  * Dados do bloco lidos de um rascunho: cada campo passa pela mesma regra da tela, e o que não for válido sai. Valores
- * em texto da versão 1 (prazos, durações, desfecho, canal) são convertidos quando reconhecíveis. Devolve também
- * quantos campos foram ajustados, para a tela avisar.
+ * em texto da versão 1 (prazos, durações, desfecho, canal) e o canal que levava nome de produto são convertidos quando
+ * reconhecíveis. Devolve também quantos campos foram ajustados, para a tela avisar.
  */
 export function sanitizeBlockData({
   raw,
@@ -269,6 +291,7 @@ export function sanitizeBlockData({
     goal: take(readText(raw.goal)),
     outcome: take(outcome.outcome),
     outcomeLabel: take(outcome.outcomeLabel),
+    fields: take(readFields(raw.fields)),
   };
   return { data: withoutEmpty(data), adjusted };
 }

@@ -1,7 +1,10 @@
+import type { StepField } from '@/shared/process/fields';
+
 export type BlockKind =
   | 'start'
   | 'task'
   | 'human-task'
+  | 'approval'
   | 'automated-task'
   | 'send-message'
   | 'wait-event'
@@ -54,7 +57,7 @@ export interface Schedule {
   readonly monthDay?: MonthDay;
 }
 
-export type MessageChannel = 'email' | 'sms' | 'whatsapp' | 'in-app';
+export type MessageChannel = 'email' | 'sms' | 'messaging-app' | 'in-app';
 
 export type EndOutcome =
   | 'completed'
@@ -109,6 +112,8 @@ export type BlockData = {
   readonly outcome?: EndOutcome;
   /** Nome do desfecho quando ele é "Outro". */
   readonly outcomeLabel?: string;
+  /** Campos que a pessoa preenche ao resolver a etapa. */
+  readonly fields?: readonly StepField[];
 };
 
 /** Dados próprios da conexão; o rótulo de um ramo vem do ramo, não daqui. */
@@ -154,10 +159,10 @@ export interface Graph<
 export type InputLimit = 'none' | 'one' | 'many';
 
 /**
- * Como o bloco sai: sem saída, por uma saída única, por um ponto por ramo ou pelos desfechos de uma espera (evento
- * recebido e, com prazo, prazo expirado).
+ * Como o bloco sai: sem saída, por uma saída única, por um ponto por ramo, pelos desfechos de uma espera (evento
+ * recebido e, com prazo, prazo expirado) ou pelos pareceres de uma aprovação (aprovado e rejeitado).
  */
-export type OutputMode = 'none' | 'single' | 'branches' | 'events';
+export type OutputMode = 'none' | 'single' | 'branches' | 'events' | 'verdicts';
 
 export type BlockCategory = 'events' | 'activities' | 'gateways' | 'notes';
 
@@ -199,6 +204,14 @@ const SPEC_BY_KIND: Readonly<Record<BlockKind, BlockSpec>> = {
     category: 'activities',
     input: 'one',
     output: 'single',
+  },
+  approval: {
+    kind: 'approval',
+    label: 'Aprovação',
+    hint: 'Uma pessoa aprova ou rejeita antes de o fluxo seguir.',
+    category: 'activities',
+    input: 'one',
+    output: 'verdicts',
   },
   'automated-task': {
     kind: 'automated-task',
@@ -336,6 +349,7 @@ export const BLOCK_SPECS: readonly BlockSpec[] = [
   SPEC_BY_KIND.end,
   SPEC_BY_KIND.task,
   SPEC_BY_KIND['human-task'],
+  SPEC_BY_KIND.approval,
   SPEC_BY_KIND['automated-task'],
   SPEC_BY_KIND['send-message'],
   SPEC_BY_KIND.subprocess,
@@ -371,11 +385,19 @@ export function hasBranches(kind: BlockKind): boolean {
   return specOf(kind).output === 'branches';
 }
 
+/** Tipos de atividade feitos por uma pessoa com papel definido; com raias, o papel é o da raia do bloco. */
+export function hasRole(kind: BlockKind): boolean {
+  return kind === 'human-task' || kind === 'approval';
+}
+
 /** Tipos de atividade que aceitam um Evento de exceção preso à borda. */
 export function acceptsExceptions(kind: BlockKind): boolean {
-  return (
-    kind === 'human-task' || kind === 'automated-task' || kind === 'subprocess'
-  );
+  return hasRole(kind) || kind === 'automated-task' || kind === 'subprocess';
+}
+
+/** Tipos de atividade em que a pessoa preenche campos ao resolver a etapa. */
+export function hasStepFields(kind: BlockKind): boolean {
+  return hasRole(kind) || kind === 'task';
 }
 
 /** Par de cada tipo que referencia uma abertura: a sincronização aponta a abertura paralela; a junção, a inclusiva. */

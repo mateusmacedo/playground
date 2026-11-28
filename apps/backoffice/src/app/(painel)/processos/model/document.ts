@@ -1,4 +1,10 @@
-import { type Graph, type GraphEdge, type GraphNode, kindOf } from './blocks';
+import {
+  type Graph,
+  type GraphEdge,
+  type GraphNode,
+  hasRole,
+  kindOf,
+} from './blocks';
 import { BLOCK_SIZE, snapToGrid } from './geometry';
 import type { ProcessIssue } from './issues';
 
@@ -84,13 +90,12 @@ interface AssignRoleParams<N extends GraphNode> {
   readonly lane: Lane;
 }
 
-/** O bloco dentro da raia; a Tarefa humana passa a ter o papel da raia como responsável. */
+/** O bloco dentro da raia; a Tarefa humana e a Aprovação passam a ter o papel da raia como responsável. */
 function withLane<N extends GraphNode>(params: AssignRoleParams<N>): N {
   const { node, lane } = params;
-  const data =
-    kindOf(node) === 'human-task'
-      ? { ...node.data, laneId: lane.id, role: lane.name }
-      : { ...node.data, laneId: lane.id };
+  const data = hasRole(kindOf(node))
+    ? { ...node.data, laneId: lane.id, role: lane.name }
+    : { ...node.data, laneId: lane.id };
   return { ...node, data };
 }
 
@@ -100,7 +105,7 @@ export interface RenameLaneParams<N extends GraphNode, E extends GraphEdge>
   readonly name: string;
 }
 
-/** Renomeia a raia e atualiza o papel das Tarefas humanas dentro dela. */
+/** Renomeia a raia e atualiza o papel das Tarefas humanas e das Aprovações dentro dela. */
 export function renameLane<N extends GraphNode, E extends GraphEdge>(
   params: RenameLaneParams<N, E>,
 ): ProcessDocument<N, E> {

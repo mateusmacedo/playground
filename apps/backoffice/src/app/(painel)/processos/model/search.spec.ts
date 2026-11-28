@@ -35,6 +35,28 @@ describe('searchProcess', () => {
     ]);
   });
 
+  it('acha a Aprovação pelo papel aprovador', () => {
+    const withApproval: Graph = {
+      nodes: [
+        ...graph.nodes,
+        block({
+          id: 'sign-off',
+          type: 'approval',
+          data: { label: 'Aprovar compra', role: 'Diretoria' },
+        }),
+      ],
+      edges: [],
+    };
+
+    expect(searchProcess({ graph: withApproval, query: 'diretoria' })).toEqual([
+      {
+        nodeId: 'sign-off',
+        name: 'Aprovar compra',
+        detail: 'Responsável: Diretoria',
+      },
+    ]);
+  });
+
   it('não devolve nada com a busca vazia', () => {
     expect(searchProcess({ graph, query: '   ' })).toEqual([]);
   });
