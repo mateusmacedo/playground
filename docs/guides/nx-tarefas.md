@@ -28,6 +28,7 @@ Quadro atual dos principais targets:
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `backoffice`           | `dev`, `build`, `start`, `serve-static`, `lint`, `test`, `test-ci`                                                                                                                                |
 | `backoffice-e2e`       | `e2e`, `e2e-ci`, `lint`, `typecheck`                                                                                                                                                              |
+| `backoffice-mock`      | `up`, `down`, `reset`, `logs`, `status`, `smoke`, `validate`, `test`, `generate-environment`, `lint`                                                                                              |
 | `infra-local`          | `up`, `down`, `reset`, `logs`, `status`, `validate`                                                                                                                                               |
 | `example-ts`           | `test`, `typecheck`, `lint`, `pre-deploy`, `package`, `deploy`, `pre-remove`, `remove`, `invoke-local`                                                                                            |
 | `example-go`           | `test`, `build`, `pre-deploy`, `package`, `deploy`, `pre-remove`, `remove`, `invoke-local`                                                                                                        |
@@ -36,7 +37,7 @@ Quadro atual dos principais targets:
 | `playground`           | Raiz do build Gradle, sem targets úteis                                                                                                                                                           |
 | `nx-serverless`        | `test`, `typecheck`, `lint`                                                                                                                                                                       |
 
-`build-deps` e `watch-deps` também existem para os projetos com dependências construíveis. O `backoffice` não tem `typecheck`: o `next build` faz a checagem de tipos. Os targets de serviço (`pre-deploy`, `deploy`...) vêm do plugin local `tools/serverless`; veja o [guia de serviço serverless](./servico-serverless.md).
+`build-deps` e `watch-deps` também existem para os projetos com dependências construíveis. O `backoffice` não tem `typecheck`: o `next build` faz a checagem de tipos. Os targets de serviço (`pre-deploy`, `deploy`...) vêm do plugin local `tools/serverless`; veja o [guia de serviço serverless](./servico-serverless.md). Os do `backoffice-mock` (o mock da API do painel) estão no [guia da API do backoffice](./backoffice-api.md); rode-os sempre como `pnpm nx run backoffice-mock:<target>`, porque `nx reset` e `nx generate` são comandos do próprio Nx.
 
 ## Rodar tarefas
 
@@ -73,7 +74,7 @@ pnpm nx build backoffice --skip-nx-cache   # ignora o cache nesta execução
 pnpm nx reset                              # limpa cache local e o daemon
 ```
 
-Targets com efeito colateral (`dev`, `up`, `down`, `e2e`) não são cacheados.
+Targets com efeito colateral (`dev`, `up`, `down`) não são cacheados. O `e2e` é: o resultado é reaproveitado enquanto os specs, o código do painel e do mock e as variáveis `CI` e `E2E_ALL_BROWSERS` não mudam. Para rodar de novo assim mesmo, use `--skip-nx-cache`.
 
 ## targetDefaults
 
@@ -83,6 +84,7 @@ O `nx.json` define padrões por target. Cada entrada pode ter um `filter.plugin`
 | ------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `build`       | sem filtro                                                 | `dependsOn: ["^build"]`, `cache: true`                                                                                          | Antes de construir, constrói as dependências; vale para todos os projetos.                                                                                  |
 | `build`       | `@nx/next/plugin` e `@nx/js/typescript` (uma entrada cada) | `inputs: ["production", "^production"]`                                                                                         | O cache do build do Next e do TypeScript ignora arquivos de teste e de configuração de lint.                                                                |
+| `build`       | `@nx/next/plugin`                                          | as variáveis `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_APP_NAME` e `NEXT_PUBLIC_STAGE` nas entradas                                   | As três entram no bundle no build; mudar qualquer uma gera outro hash, e o cache não devolve o build de outro ambiente nem o build sem a API para o e2e.    |
 | `*` e `build` | `@nx/gradle`                                               | `inputs`: o que já valia, mais `{workspaceRoot}/settings.gradle`, `{workspaceRoot}/build.gradle` e `{projectRoot}/build.gradle` | Mudar o build do Gradle invalida o cache dos targets do Gradle. O `sharedGlobals` **não** alcança esses targets (testado), por isso as entradas ficam aqui. |
 | `test`        | `@nx/vitest`                                               | `dependsOn: ["^build"]` e a variável `VITEST_COVERAGE` nas entradas                                                             | Só os testes do Vitest rodam depois do build das dependências. Com `VITEST_COVERAGE=1` o hash muda e o cache sem coverage não é reaproveitado.              |
 | `e2e`         | sem filtro                                                 | a variável `E2E_ALL_BROWSERS` nas entradas                                                                                      | Rodar com todos os browsers também gera outro hash.                                                                                                         |
@@ -113,6 +115,7 @@ Cada projeto declara tags:
 | Projeto           | Tags                                            | Onde estão                        |
 | ----------------- | ----------------------------------------------- | --------------------------------- |
 | `backoffice`      | `scope:backoffice`, `type:app`                  | campo `nx.tags` do `package.json` |
+| `backoffice-mock` | `scope:backoffice`, `type:tool`                 | `project.json`                    |
 | `infra-local`     | `scope:infra`, `type:tool`                      | `project.json`                    |
 | `example-ts`      | `type:app`, `stack:ts`, `platform:serverless`   | `project.json`                    |
 | `example-go`      | `type:app`, `stack:go`, `platform:serverless`   | `project.json`                    |
@@ -195,12 +198,12 @@ A política é **rápida por padrão, completa só no release**.
 
 O `.github/workflows/ci.yml` (PR e push na `main`) tem três jobs:
 
-| Job      | O que roda                                                                                     |
-| -------- | ---------------------------------------------------------------------------------------------- |
-| `Format` | `biome ci`: só nos arquivos alterados no PR; no repositório inteiro no push para a `main`.     |
-| `Checks` | `nx sync:check`, depois `nx affected -t lint typecheck test build --parallel=3` e `nx fix-ci`. |
-| `E2E`    | `nx affected -t e2e` no Chromium, e só se algum projeto de e2e foi afetado.                    |
+| Job      | O que roda                                                                                                    |
+| -------- | ------------------------------------------------------------------------------------------------------------- |
+| `Format` | `biome ci`: só nos arquivos alterados no PR; no repositório inteiro no push para a `main`.                    |
+| `Checks` | `nx sync:check`, depois `nx affected -t lint typecheck test build --parallel=3` e `nx fix-ci`.                |
+| `E2E`    | Só se algum projeto de e2e foi afetado: sobe o mock da API do painel e roda `nx affected -t e2e` no Chromium. |
 
-O `.github/workflows/release.yml` (só disparo manual, com a opção `dry-run`) roda o nível completo, com `biome ci .`, `nx run-many -t lint typecheck test build spotlessCheck` com coverage e `nx run-many -t e2e` em todos os browsers, e **depois** o `nx release` (veja o [guia de release](./release.md)).
+O `.github/workflows/release.yml` (só disparo manual, com a opção `dry-run`) roda o nível completo, com `biome ci .`, `nx run-many -t lint typecheck test build spotlessCheck` com coverage e `nx run-many -t e2e` em todos os browsers, com o mock da API do painel no ar, e **depois** o `nx release` (veja o [guia de release](./release.md)).
 
 O job `Checks` usa o `nrwl/nx-set-shas`, que define `NX_BASE` e `NX_HEAD` para o `affected` comparar com o último CI verde. O `nx fix-ci` aciona o self-healing do Nx Cloud, que propõe correções para falhas; o acompanhamento de uma execução é feito pela skill `monitor-ci`. O cache de tarefas é o remoto do Nx Cloud: o CI não guarda `.nx/cache` entre execuções.

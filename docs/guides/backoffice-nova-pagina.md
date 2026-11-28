@@ -55,13 +55,55 @@ export const navItems: readonly NavItem[] = [
 
 Os três formatos de `NavItem`:
 
-| `kind`    | Para quê                          | Campos                                           |
-| --------- | --------------------------------- | ------------------------------------------------ |
-| `'link'`  | Um item que leva a uma rota.      | `name`, `href`, `icon?`, `badge?`, `permission?` |
-| `'group'` | Submenu recolhível.               | `name`, `icon?`, `items` (lista de `'link'`)     |
-| `'title'` | Rótulo que separa seções do menu. | `name`                                           |
+| `kind`    | Para quê                          | Campos                                                 |
+| --------- | --------------------------------- | ------------------------------------------------------ |
+| `'link'`  | Um item que leva a uma rota.      | `name`, `href`, `icon?`, `badge?`, `permission?`       |
+| `'group'` | Submenu recolhível.               | `name`, `icon?`, `badge?`, `items` (lista de `'link'`) |
+| `'title'` | Rótulo que separa seções do menu. | `name`                                                 |
 
-O item fica ativo na própria rota e nas rotas abaixo dela (`/clientes/123` mantém "Clientes" marcado). A raiz `/` só fica ativa na raiz.
+### Rota filha: o grupo e os filhos
+
+O menu é hierárquico. A rota nova que é **filha de outra** (`/clientes/segmentos`, abaixo de `/clientes`) entra como **filho do grupo do pai**, e não como link solto:
+
+```ts
+{
+  kind: 'group',
+  name: 'Clientes',
+  icon: cilPeople,
+  items: [
+    {
+      kind: 'link',
+      name: 'Lista',
+      href: '/clientes',
+      permission: 'customers:read',
+    },
+    {
+      kind: 'link',
+      name: 'Segmentos',
+      href: '/clientes/segmentos',
+      permission: 'customers:read',
+    },
+  ],
+},
+```
+
+- Se o pai ainda é um link solto, ele **vira o grupo**: o grupo fica com o nome, o ícone e o selo que o link tinha, e a rota do pai passa a ser o primeiro filho, com um nome que diz o que ela é ("Lista", "Editor").
+- O grupo não tem endereço: o clique nele só abre e fecha o submenu. O ícone fica no grupo, e a permissão, em cada filho.
+- Rota de detalhe com parâmetro (`/clientes/:id`) não entra no menu: ela só ganha o título do breadcrumb.
+- No painel, "Processos" é o exemplo: o grupo tem os filhos "Editor" (`/processos`) e "Execuções" (`/processos/execucao`).
+
+### Qual item fica ativo
+
+Só **um** item fica ativo: entre os links que casam com a rota, o **mais específico**, que é o de endereço mais longo. Quem decide é a função `activeHref`, de `nav.ts`.
+
+| Rota                  | Item ativo  | Por quê                                                             |
+| --------------------- | ----------- | ------------------------------------------------------------------- |
+| `/clientes`           | "Lista"     | É a própria rota do item.                                           |
+| `/clientes/123`       | "Lista"     | É uma rota abaixo de `/clientes`, e nenhum outro item a cobre.      |
+| `/clientes/segmentos` | "Segmentos" | "Lista" também casaria, mas o endereço de "Segmentos" é mais longo. |
+| `/`                   | "Início"    | A raiz só fica ativa na raiz.                                       |
+
+O grupo abre sozinho quando um filho está ativo. Para o leitor de tela, o link ativo sai com `aria-current="page"`, e o botão do grupo diz se ele está aberto com `aria-expanded`.
 
 ## 3. O título do breadcrumb
 
@@ -219,16 +261,17 @@ pnpm format:check
 pnpm nx lint backoffice
 pnpm nx test backoffice
 pnpm nx build backoffice
+pnpm nx run backoffice-mock:up   # o e2e exige o mock da API no ar
 pnpm nx e2e backoffice-e2e
 ```
 
-O `build` roda o `next build`, que também faz a checagem de tipos.
+O `build` roda o `next build`, que também faz a checagem de tipos. O e2e roda o painel ligado à API ([guia](./backoffice-api.md)).
 
 ## Checklist
 
 - [ ] `page.tsx` em `src/app/(painel)/<rota>/`, com `metadata.title`.
 - [ ] Componentes com hooks marcados com `'use client'`.
-- [ ] Item em `navItems`, com `permission` quando a área for restrita.
+- [ ] Item em `navItems`, com `permission` quando a área for restrita. Rota filha de outra: filho do grupo do pai.
 - [ ] Título em `routeTitles` (e das rotas filhas, como `:id`).
 - [ ] Estados de carregando, vazio e erro tratados.
 - [ ] Teste do que for regra de negócio da tela.

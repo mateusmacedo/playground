@@ -9,13 +9,13 @@ Do clone ao painel rodando em `http://localhost:3000`, com o ambiente AWS local 
 | **Node.js**              | 24                    | Runtime de desenvolvimento e do CI.                                                                                                                                                                                                           |
 | **pnpm**                 | 11 (`packageManager`) | Gerenciador de pacotes. A versão exata está no `package.json`.                                                                                                                                                                                |
 | **Git**                  | recente               | Hooks do Lefthook rodam a cada commit e push.                                                                                                                                                                                                 |
-| **Docker**               | com Compose v2        | Sobe o Floci (ambiente AWS local).                                                                                                                                                                                                            |
+| **Docker**               | com Compose v2        | Sobe o Floci (ambiente AWS local) e o mock da API do painel.                                                                                                                                                                                  |
 | **AWS CLI**              | v2                    | Inspeciona e provisiona recursos no Floci e na AWS.                                                                                                                                                                                           |
 | **Go**                   | 1.26 ou superior      | Só para serviços Go (`example-go`): testes e build do binário da Lambda.                                                                                                                                                                      |
 | **JDK**                  | 21                    | Só para serviços Java (`example-quarkus`). O Gradle vem pelo wrapper `./gradlew`. O `@nx/gradle` roda o wrapper para montar o grafo do Nx, e por isso o CI instala o JDK 21 em todo job que chama o `nx`. O build nativo exige também Docker. |
 | **Serverless Framework** | v4, com login         | Deploy de serviços serverless. A v4 exige `serverless login` ou a variável `SERVERLESS_ACCESS_KEY`.                                                                                                                                           |
 
-Só Node, pnpm e Git são necessários para rodar o painel. Docker, AWS CLI e Serverless entram quando você mexer com serviços e com o ambiente AWS local, e o Go só para os serviços escritos em Go.
+Só Node, pnpm e Git são necessários para rodar o painel. Docker entra para o mock da API do painel (que o e2e exige) e para o ambiente AWS local; AWS CLI e Serverless, quando você mexer com serviços; e o Go só para os serviços escritos em Go.
 
 Confira:
 
@@ -44,6 +44,14 @@ cp apps/backoffice/.env.example apps/backoffice/.env.local
 
 Os padrões já servem (`NEXT_PUBLIC_APP_NAME=Backoffice`, `NEXT_PUBLIC_STAGE=local`). Arquivos `.env` e `.env.local` são ignorados pelo git. **Nunca** coloque segredo em variável `NEXT_PUBLIC_*`: elas vão para o bundle do navegador.
 
+Sem `NEXT_PUBLIC_API_URL`, o painel guarda quadros e processos no navegador, e nada mais precisa subir. Para ele falar com a API, servida localmente por um mock em container, suba o mock e descomente a variável no `.env.local`:
+
+```bash
+pnpm nx run backoffice-mock:up     # mock em http://127.0.0.1:4010
+```
+
+Os dois modos, os cenários de falha e o uso no e2e estão no [guia da API do backoffice](../guides/backoffice-api.md).
+
 ## 3. Subir o ambiente AWS local (opcional para o painel)
 
 ```bash
@@ -68,14 +76,15 @@ pnpm nx run-many -t lint test            # lint e testes unitários
 pnpm nx build backoffice                 # build de produção (checa os tipos)
 ```
 
-Para o e2e, instale o navegador uma vez:
+Para o e2e, instale o navegador uma vez e suba o mock da API:
 
 ```bash
 pnpm exec playwright install chromium
+pnpm nx run backoffice-mock:up      # o e2e exige o mock no ar
 pnpm nx e2e backoffice-e2e          # só Chromium por padrão; todos os browsers: pnpm e2e:full
 ```
 
-O e2e sobe o painel sozinho (`nx run backoffice:dev`, ou `backoffice:start` no CI) e reaproveita um servidor que já esteja de pé na porta 3000.
+O e2e sobe o painel sozinho (o `next dev` de `apps/backoffice`, ou `backoffice:start` no CI) e o encerra no fim da rodada, ligado ao mock, e reaproveita um servidor que já esteja de pé na porta 3000. Esse servidor precisa ter sido iniciado com `NEXT_PUBLIC_API_URL`; se não foi, pare-o antes.
 
 ## Editor
 
@@ -113,6 +122,7 @@ Se um hook falhar, corrija a causa. Não use `--no-verify`.
 | `nx sync:check` falha                                                 | `tsconfig` fora de sincronia com as dependências.                    | `pnpm nx sync` e inclua o resultado no commit.                                                                                                           |
 | Hook `commit-msg` rejeita a mensagem                                  | Fora do padrão (idioma, tempo verbal, scope).                        | Leia o erro do commitlint; ajuste e recomite.                                                                                                            |
 | `playwright` pede o navegador                                         | Navegadores não instalados.                                          | `pnpm exec playwright install chromium`.                                                                                                                 |
+| O e2e para no começo com "O mock da API do painel não respondeu"      | O container do mock não está no ar.                                  | `pnpm nx run backoffice-mock:up`.                                                                                                                        |
 
 ## Próximos passos
 

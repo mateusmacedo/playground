@@ -14,8 +14,16 @@ Painel administrativo em Next.js 16 (App Router) com CoreUI React 5 ([ADR 0003](
 - Alias `@/` aponta para `src`.
 - Imports no modo `bundler`: relativo **sem** sufixo, `import type` ou `type` inline. `interface` nos contratos, `function` nos componentes.
 - Texto de interface em PT-BR e acessível: rótulos, `aria-*` e papéis corretos.
+- Caixa de marcação: use o `CheckField` (`src/shared/ui/check-field.tsx`), e não o `CFormCheck` do CoreUI, que recria o `<input>` a cada renderização e tira o foco de quem usa o teclado.
 - **OBRIGATÓRIO**: **nenhum segredo em `NEXT_PUBLIC_*`.** Essas variáveis entram no bundle do navegador no build. Segredos ficam no servidor.
 - Configuração pública passa por `src/core/config/app-config.ts`; não leia `process.env` espalhado pelo código.
+
+## API do painel
+
+- `NEXT_PUBLIC_API_URL` (`appConfig.apiBaseUrl`) liga a API. Sem ela, o painel guarda tudo no `localStorage`, e **os dois modos precisam continuar funcionando**: toda porta de dados tem o adaptador do navegador e o da API.
+- As telas pedem a API por `usePanelApi()` (`src/shared/api/panel-api-context.tsx`), que devolve `null` sem a variável; em teste, troque por `<PanelApiProvider>`. Não chame `fetch` fora de `src/shared/api`.
+- Falha de rede, de servidor e conflito de revisão (412) chegam como **valor** (`ApiResult`), com a mensagem pronta para a tela.
+- O contrato é o `openapi.yaml` de [`apps/backoffice-mock`](../backoffice-mock/AGENTS.md), e mudança de formato começa por ele. Localmente quem responde é o mock ([guia](../../docs/guides/backoffice-api.md), [ADR 0018](../../docs/adr/0018-contrato-openapi-e-mock-da-api-do-backoffice.md)).
 
 ## Estrutura
 
@@ -24,11 +32,16 @@ src/
   app/                       rotas do App Router; (painel)/ é o grupo do shell
   layout/                    shell, nav.ts e routes.ts
   shared/ui, shared/hooks    componentes e hooks reutilizáveis
+  shared/api                 cliente HTTP da API do painel, tipos do contrato e `usePanelApi`
+  shared/board               chaves do `localStorage` do quadro, lidas pelo quadro e pela lista de execuções
+  shared/process             roteiro, execução, motor e catálogo de processos, sem React Flow
   core/                      configuração pública e sessão
 ```
 
 - Página nova mexe em três lugares: `src/app/(painel)/<rota>`, `src/layout/nav.ts` e `src/layout/routes.ts` ([guia](../../docs/guides/backoffice-nova-pagina.md)).
+- O menu é hierárquico: a rota filha de outra entra em `nav.ts` como filho do grupo do pai, e não como link solto. Se o pai ainda é um link, ele vira o grupo, e a rota dele passa a ser o primeiro filho.
 - A dependência aponta para dentro: `app` depende de `layout` e `shared`, que não dependem de `app`.
+- `quadro` e `processos` não se importam, em nenhum sentido, e o React Flow (`@xyflow/react`) só entra em `src/app/(painel)/processos`. O que os dois dividem mora em `src/shared/process` e `src/shared/board`. O diagrama da execução de um card mora em `/processos/execucao` por causa disso (ADRs [0016](../../docs/adr/0016-react-flow-no-editor-de-processos.md) e [0017](../../docs/adr/0017-diagrama-da-execucao-em-processos-execucao.md)).
 
 ## Autorização, sessão e erros
 

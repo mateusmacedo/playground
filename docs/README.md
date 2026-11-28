@@ -11,6 +11,7 @@ Ponto de partida da documentação do monorepo. Tudo aqui é em PT-BR; o código
 | Entender como as peças se encaixam                          | [Visão de arquitetura](./architecture/overview.md)                    |
 | Saber por que uma tecnologia foi escolhida                  | [Decisões de arquitetura (ADRs)](./adr/README.md)                     |
 | Criar uma página no painel                                  | [Guia: nova página no backoffice](./guides/backoffice-nova-pagina.md) |
+| Ligar o painel à API, subir o mock e semear o e2e           | [Guia: API do backoffice e o mock](./guides/backoffice-api.md)        |
 | Criar um serviço serverless                                 | [Guia: serviço serverless](./guides/servico-serverless.md)            |
 | Rodar, cachear e depurar tarefas                            | [Guia: tarefas do Nx](./guides/nx-tarefas.md)                         |
 | Entender a esteira, os limites de recurso e como ajustá-los | [Guia: desempenho e recursos](./guides/desempenho-e-recursos.md)      |
@@ -27,7 +28,7 @@ docs/
 ├── README.md              este índice
 ├── adr/                   decisões de arquitetura (0001, 0002, ...)
 ├── architecture/          visão C4 (contexto e containers) e roadmap
-├── guides/                como fazer: página, serviço serverless, tarefas do Nx, desempenho, ordem de implantação, release, imagens de container
+├── guides/                como fazer: página, API do backoffice e mock, serviço serverless, tarefas do Nx, desempenho, ordem de implantação, release, imagens de container
 ├── onboarding/            setup local e ambiente AWS local
 └── runbooks/              procedimentos operacionais (modelo em TEMPLATE.md)
 ```
@@ -47,4 +48,5 @@ docs/
 - [`README.md`](../README.md) da raiz: visão geral, stack e início rápido.
 - [`AGENTS.md`](../AGENTS.md): convenções e regras críticas para quem trabalha no código, incluindo agentes de IA.
 - [`apps/backoffice/README.md`](../apps/backoffice/README.md): estrutura do painel e como estendê-lo.
+- [`apps/backoffice-mock/README.md`](../apps/backoffice-mock/README.md): contrato da API do painel e o servidor de mock dela.
 - [`.agents/README.md`](../.agents/README.md): instruções de IA por escopo (`AGENTS.md`, rules, agents e skills de cada projeto; o Claude Code as lê por symlinks em `.claude/`), [ADR 0012](./adr/0012-instrucoes-de-ia-por-projeto.md).

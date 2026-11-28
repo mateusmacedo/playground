@@ -45,3 +45,5 @@ Cada ADR registra **uma** decisão que o time precisa entender daqui a seis mese
 | [0014](./0014-meta-de-seguranca-a-antecipa-https-e-logs-do-alb.md) | A meta de segurança A antecipa o HTTPS e os access logs do ALB | Aceito   |
 | [0015](./0015-metas-de-qualidade-e-gate-obrigatorio.md)            | Metas de qualidade e gate obrigatório do SonarQube             | Aceito   |
 | [0016](./0016-react-flow-no-editor-de-processos.md)                | React Flow no editor de processos                              | Aceito   |
+| [0017](./0017-diagrama-da-execucao-em-processos-execucao.md)       | Diagrama da execução em `/processos/execucao`                  | Aceito   |
+| [0018](./0018-contrato-openapi-e-mock-da-api-do-backoffice.md)     | Contrato OpenAPI por documento inteiro e mock Mockoon da API   | Aceito   |

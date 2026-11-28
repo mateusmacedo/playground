@@ -1,6 +1,6 @@
 # Playground: instruções para agentes
 
-Monorepo **Nx 24 + pnpm 11** (setup TypeScript solution, Node 24). Hoje contém o painel `apps/backoffice` (Next.js 16 com CoreUI), o e2e `apps/backoffice-e2e`, o ambiente AWS local `infra/local` (Floci), o plugin Nx `tools/serverless` e três serviços serverless de exemplo em `apps/services` (TypeScript, Go e Java com Quarkus). O mapa completo está em [`docs/README.md`](./docs/README.md).
+Monorepo **Nx 24 + pnpm 11** (setup TypeScript solution, Node 24). Hoje contém o painel `apps/backoffice` (Next.js 16 com CoreUI), o e2e `apps/backoffice-e2e`, o contrato e o mock da API do painel `apps/backoffice-mock` (Mockoon), o ambiente AWS local `infra/local` (Floci), o plugin Nx `tools/serverless` e três serviços serverless de exemplo em `apps/services` (TypeScript, Go e Java com Quarkus). O mapa completo está em [`docs/README.md`](./docs/README.md).
 
 Este arquivo é a fonte de verdade das convenções **gerais** do repositório. Precedência quando as instruções divergem: o arquivo mais específico vence o geral (por exemplo, o [`AGENTS.md`](./apps/backoffice/AGENTS.md) do backoffice, sobre o Next.js), e os arquivos de configuração executável (`package.json`, `nx.json`, `pnpm-workspace.yaml`, `lefthook.yml`, `commitlint.config.mjs`, `.github/workflows/ci.yml`) prevalecem sobre a prosa.
 
@@ -44,6 +44,7 @@ Uma regra sem nível é **RECOMENDADO**.
 apps/
   backoffice/       painel Next.js + CoreUI
   backoffice-e2e/   Playwright
+  backoffice-mock/  contrato OpenAPI e mock da API do painel (Mockoon), projeto Nx `backoffice-mock`
   services/         serviços serverless (example-ts, example-go, example-quarkus)
 infra/
   local/            Floci (ambiente AWS local), projeto Nx `infra-local`
@@ -88,7 +89,8 @@ As instruções são organizadas por escopo ([ADR 0012](./docs/adr/0012-instruco
 | Escopo                                                                                                      | Cobre                                                                                                                                               |
 | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`apps/backoffice`](./apps/backoffice/AGENTS.md)                                                            | Next.js 16 (rule `nextjs-16`, MCP `next-devtools`), código, estrutura, autorização e testes do painel; skills de React                              |
-| [`apps/backoffice-e2e`](./apps/backoffice-e2e/AGENTS.md)                                                    | Playwright e o servidor do e2e                                                                                                                      |
+| [`apps/backoffice-e2e`](./apps/backoffice-e2e/AGENTS.md)                                                    | Playwright, o servidor do e2e e o apoio para semear o mock                                                                                          |
+| [`apps/backoffice-mock`](./apps/backoffice-mock/AGENTS.md)                                                  | O contrato OpenAPI da API do painel e o mock dela (Mockoon)                                                                                         |
 | [`apps/services`](./apps/services/AGENTS.md)                                                                | Todo serviço: serviço novo, `serverless.yml`, núcleo e entrypoints, performance; rules de Go, TypeScript e erros; skills de Go, DDD, erros e NestJS |
 | [`example-ts`](./apps/services/example-ts/AGENTS.md) e [`example-go`](./apps/services/example-go/AGENTS.md) | O que é só de cada serviço                                                                                                                          |
 | [`example-quarkus`](./apps/services/example-quarkus/AGENTS.md)                                              | Java, Quarkus, Gradle (inclusive os arquivos Gradle da raiz) e Spotless; vale também para o `core/`                                                 |
@@ -110,7 +112,7 @@ Tudo pela raiz do repositório:
 | Typecheck e build           | `pnpm nx affected -t typecheck build`                                                                                 |
 | Formatação                  | `pnpm format:check` (corrige com `pnpm format`)                                                                       |
 | Referências do TypeScript   | `pnpm nx sync:check` (corrige com `pnpm nx sync`)                                                                     |
-| E2E                         | `pnpm nx e2e backoffice-e2e` (Chromium por padrão; todos os browsers com `pnpm e2e:full`)                             |
+| E2E                         | `pnpm nx e2e backoffice-e2e`, com o mock no ar (`pnpm nx run backoffice-mock:up`); todos os browsers: `pnpm e2e:full` |
 | Atalho rápido               | `pnpm check` (`nx affected -t lint typecheck test`, o mesmo do `pre-push`)                                            |
 | Atalho completo             | `pnpm check:full` (Biome e todos os projetos, com coverage e `spotlessCheck` do Java)                                 |
 | Workflows do GitHub Actions | `bash tools/lint-actions.sh` (actionlint, pinning por SHA e `renovate.json`)                                          |
@@ -118,13 +120,13 @@ Tudo pela raiz do repositório:
 
 **OBRIGATÓRIO** ao terminar qualquer tarefa que altere código: rodar lint, testes e build/typecheck dos projetos afetados, um depois do outro e nunca ao mesmo tempo (`pnpm nx affected -t lint`, depois `-t test`, depois `-t build`; rule `process-enforcement`), `pnpm format:check` e, se mexeu em Java, o `spotlessCheck` dos projetos Java e, se falhar por causa da sua alteração, corrigir e repetir. Falha que já existia antes da alteração é reportada, não corrigida em silêncio.
 
-A política é **rápida por padrão, completa só no release**. O `ci.yml` (PR e push na `main`) roda `biome ci` (só nos arquivos alterados, no PR), `nx sync:check`, `nx affected -t lint typecheck test build` e o e2e no Chromium quando algum projeto de e2e foi afetado. O `release.yml` (só disparo manual, com a opção `dry-run`) roda tudo, com coverage e e2e em todos os browsers, e depois o `nx release`, que versiona, gera changelog, tagueia e cria as GitHub Releases dos serviços; nenhum grupo publica em registry ainda ([guia](./docs/guides/release.md)). O hook `pre-push` roda `nx affected -t lint typecheck test`. O `test` dos projetos Go e Java entra no `affected`: o `^build` do `targetDefaults.test` vale só para os testes do `@nx/vitest`. O `spotlessCheck`, que só existe nos projetos Java, fica só no nível completo. Rode o equivalente antes de abrir o PR. Os comandos próprios de Java, Go, e2e e Floci estão no `AGENTS.md` ou nas rules de cada escopo.
+A política é **rápida por padrão, completa só no release**. O `ci.yml` (PR e push na `main`) roda `biome ci` (só nos arquivos alterados, no PR), `nx sync:check`, `nx affected -t lint typecheck test build` e o e2e no Chromium quando algum projeto de e2e foi afetado (o job sobe o mock da API antes). O `release.yml` (só disparo manual, com a opção `dry-run`) roda tudo, com coverage e e2e em todos os browsers, e depois o `nx release`, que versiona, gera changelog, tagueia e cria as GitHub Releases dos serviços; nenhum grupo publica em registry ainda ([guia](./docs/guides/release.md)). O hook `pre-push` roda `nx affected -t lint typecheck test`. O `test` dos projetos Go e Java entra no `affected`: o `^build` do `targetDefaults.test` vale só para os testes do `@nx/vitest`. O `spotlessCheck`, que só existe nos projetos Java, fica só no nível completo. Rode o equivalente antes de abrir o PR. Os comandos próprios de Java, Go, e2e e Floci estão no `AGENTS.md` ou nas rules de cada escopo.
 
 ## Regras críticas
 
 ### Ambiente local
 
-- **OBRIGATÓRIO**: o **Floci é o único ambiente AWS virtualizado** do repositório. Não introduza outro emulador (LocalStack, moto, DynamoDB Local, SAM local) nem Docker Compose paralelo para serviços AWS. Endpoint `http://localhost:4566`, credenciais fictícias.
+- **OBRIGATÓRIO**: o **Floci é o único ambiente AWS virtualizado** do repositório. Não introduza outro emulador (LocalStack, moto, DynamoDB Local, SAM local) nem Docker Compose paralelo para serviços AWS. Endpoint `http://localhost:4566`, credenciais fictícias. O mock HTTP da API do painel (`apps/backoffice-mock`) não é emulador de AWS e fica fora do `infra/local` ([ADR 0018](./docs/adr/0018-contrato-openapi-e-mock-da-api-do-backoffice.md)).
 - **OBRIGATÓRIO**: configuração de stage `local` nunca aponta para uma conta AWS real, e credenciais reais nunca entram em arquivo versionado.
 - Parâmetros SSM seguem o caminho canônico `/playground/local/us-east-1/<dominio>/<recurso>/<atributo>`. O que o Floci provisiona no bootstrap é a referência do que existe no ambiente local.
 
@@ -164,21 +166,19 @@ NestJS, Angular, Go via `@nx-go/nx-go`, o generator `service-java`, o entrypoint
 
 ## Referências
 
-- [`docs/README.md`](./docs/README.md): índice da documentação.
-- [`docs/adr/`](./docs/adr/README.md): decisões de arquitetura (numeração de quatro dígitos).
+- [`docs/README.md`](./docs/README.md): índice da documentação; [`docs/adr/`](./docs/adr/README.md): decisões de arquitetura (numeração de quatro dígitos).
 - [`docs/onboarding/`](./docs/onboarding/setup-local.md): ambiente local e Floci.
 - [`docs/architecture/overview.md`](./docs/architecture/overview.md): visão C4 e roadmap.
 - [`docs/guides/ordem-de-implantacao.md`](./docs/guides/ordem-de-implantacao.md) e [`docs/guides/desempenho-e-recursos.md`](./docs/guides/desempenho-e-recursos.md): camadas e promoção; política e limites da esteira.
 - [`docs/guides/release.md`](./docs/guides/release.md): versionamento e publicação com `nx release` ([ADR 0010](./docs/adr/0010-versionamento-e-publicacao-no-github.md)).
-- [`docs/guides/`](./docs/guides/nx-tarefas.md): página no backoffice, serviço serverless, tarefas do Nx.
+- [`docs/guides/`](./docs/guides/nx-tarefas.md): página no backoffice, serviço serverless, tarefas do Nx e a [API do backoffice com o mock](./docs/guides/backoffice-api.md).
 - [`docs/runbooks/TEMPLATE.md`](./docs/runbooks/TEMPLATE.md): modelo de runbook.
-- [`apps/backoffice/README.md`](./apps/backoffice/README.md): estrutura e extensão do painel.
-- [`.agents/README.md`](./.agents/README.md): rules, agents e skills de IA.
+- [`apps/backoffice/README.md`](./apps/backoffice/README.md): estrutura e extensão do painel; [`.agents/README.md`](./.agents/README.md): rules, agents e skills de IA.
 
 <!-- nx configuration start-->
 <!-- Leave the start & end comments to automatically receive updates. -->
 
-# General Guidelines for working with Nx
+## General Guidelines for working with Nx
 
 - For navigating/exploring the workspace, invoke the `nx-workspace` skill first - it has patterns for querying projects, targets, and dependencies
 - When running tasks (for example build, lint, test, e2e, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly

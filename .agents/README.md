@@ -52,7 +52,7 @@ O `CLAUDE.md` existe porque, quando ele está presente, o Claude Code ignora o `
 | `apps/backoffice` | `nextjs-16`                                              | `skill-react-best-practices`, `skill-react-component-structure`                                                                                               |
 | `apps/services`  | `services-go`, `services-typescript`, `services-errors`   | `skill-go`, `skill-go-http-patterns`, `skill-go-db-patterns`, `skill-go-queue-patterns`, `skill-go-testing`, `skill-ddd`, `skill-error-handling`, `skill-nestjs-patterns` |
 
-Os demais escopos (`apps/backoffice-e2e`, `example-ts`, `example-go`, `example-quarkus`, `tools/serverless`, `infra/local`) têm só `AGENTS.md` e `CLAUDE.md`.
+Os demais escopos (`apps/backoffice-e2e`, `apps/backoffice-mock`, `example-ts`, `example-go`, `example-quarkus`, `tools/serverless`, `infra/local`, `infra/terraform`) têm só `AGENTS.md` e `CLAUDE.md`.
 
 ## Regras de anticolisão
 

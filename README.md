@@ -14,15 +14,16 @@ Monorepo [Nx](https://nx.dev) para um painel administrativo em Next.js e serviç
 
 ## Visão geral
 
-| Parte                                                                                     | Pasta                 | Situação                                                                                   |
-| ----------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------ |
-| Painel administrativo                                                                     | `apps/backoffice`     | **Existe.** Next.js 16 com o shell do CoreUI Free 5.x.                                     |
-| E2E do painel                                                                             | `apps/backoffice-e2e` | **Existe.** Playwright.                                                                    |
-| Ambiente AWS local                                                                        | `infra/local`         | **Existe.** Floci, o único ambiente AWS virtualizado.                                      |
-| Plugin Nx de Serverless                                                                   | `tools/serverless`    | **Existe.** Targets, executors e generators para o Serverless Framework v4.                |
-| Serviços de exemplo                                                                       | `apps/services`       | **Existe.** `example-ts`, `example-go` e `example-quarkus` (Java 21 com Quarkus e Gradle). |
-| Terraform do ambiente local                                                               | `infra/terraform`     | **Existe.** 8 módulos e 2 envs (plataforma e serviços), provados no Floci.                 |
-| NestJS, Angular, Go via `@nx-go/nx-go`, imagem de container do TypeScript e deploy na AWS | —                     | **Roadmap.** Ainda não existem.                                                            |
+| Parte                                                                                     | Pasta                  | Situação                                                                                        |
+| ----------------------------------------------------------------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------- |
+| Painel administrativo                                                                     | `apps/backoffice`      | **Existe.** Next.js 16 com o shell do CoreUI Free 5.x: quadro de tarefas e editor de processos. |
+| E2E do painel                                                                             | `apps/backoffice-e2e`  | **Existe.** Playwright, contra o mock da API.                                                   |
+| Contrato e mock da API do painel                                                          | `apps/backoffice-mock` | **Existe.** OpenAPI 3.1 e Mockoon CLI em container. Só HTTP: não emula AWS.                     |
+| Ambiente AWS local                                                                        | `infra/local`          | **Existe.** Floci, o único ambiente AWS virtualizado.                                           |
+| Plugin Nx de Serverless                                                                   | `tools/serverless`     | **Existe.** Targets, executors e generators para o Serverless Framework v4.                     |
+| Serviços de exemplo                                                                       | `apps/services`        | **Existe.** `example-ts`, `example-go` e `example-quarkus` (Java 21 com Quarkus e Gradle).      |
+| Terraform do ambiente local                                                               | `infra/terraform`      | **Existe.** 8 módulos e 2 envs (plataforma e serviços), provados no Floci.                      |
+| NestJS, Angular, Go via `@nx-go/nx-go`, imagem de container do TypeScript e deploy na AWS | —                      | **Roadmap.** Ainda não existem.                                                                 |
 
 A visão completa, com diagramas, está em [`docs/architecture/overview.md`](./docs/architecture/overview.md).
 
@@ -45,6 +46,7 @@ Hoje existem o Floci, o plugin Nx de Serverless, as Lambdas de exemplo, cujos te
 | Testes              | Vitest 5 com jsdom e Testing Library; Playwright (e2e)                                                                                                                                                             |
 | Qualidade           | Biome 2.6 (formata JS, TS, JSON, CSS, SCSS, YAML e Markdown, e linta JS, TS, JSON e CSS), Spotless (formata Java), gofmt (formata Go), ESLint mínimo (só as fronteiras do Nx), Lefthook (hooks do Git), commitlint |
 | AWS local           | Floci 2.4.0 via Docker Compose, compatível com a API do LocalStack                                                                                                                                                 |
+| API do painel       | Contrato OpenAPI 3.1 e mock com o Mockoon CLI 9.10.0 em container, até existir o backend real                                                                                                                      |
 | Serverless          | Serverless Framework v4                                                                                                                                                                                            |
 | Java                | Java 21, Quarkus 3.40.1.2, Gradle 9.7.0 (wrapper, multi-projeto na raiz) e Spotless 8.11.0; build nativo com Mandrel em container                                                                                  |
 | CI e dependências   | GitHub Actions (actions fixadas por SHA, verificadas com actionlint) e Renovate                                                                                                                                    |
@@ -53,7 +55,7 @@ Hoje existem o Floci, o plugin Nx de Serverless, as Lambdas de exemplo, cujos te
 
 - **Node.js 24**.
 - **pnpm 11**: a versão exata está em `packageManager` no `package.json`.
-- **Docker** com Compose v2, para o ambiente AWS local.
+- **Docker** com Compose v2, para o ambiente AWS local e para o mock da API do painel.
 - **AWS CLI v2**.
 - **Serverless Framework v4**, com login (`serverless login` ou `SERVERLESS_ACCESS_KEY`), para fazer deploy de serviços.
 - **Go 1.26 ou superior**, só para os serviços escritos em Go.
@@ -71,6 +73,8 @@ pnpm nx dev backoffice        # painel em http://localhost:3000
 
 O ambiente AWS local fica em `http://localhost:4566`, com console web em `http://localhost:4566/_floci/ui`. Veja [`docs/onboarding/local-aws-floci.md`](./docs/onboarding/local-aws-floci.md).
 
+Sem configuração, o painel guarda quadros e processos no navegador. Para ele falar com a API, suba o mock (`pnpm nx run backoffice-mock:up`) e defina `NEXT_PUBLIC_API_URL`, como mostra o [guia da API do backoffice](./docs/guides/backoffice-api.md).
+
 ## Estrutura de pastas
 
 ```text
@@ -78,6 +82,7 @@ O ambiente AWS local fica em `http://localhost:4566`, com console web em `http:/
 ├── apps/
 │   ├── backoffice/          painel Next.js + CoreUI
 │   ├── backoffice-e2e/      testes de ponta a ponta (Playwright)
+│   ├── backoffice-mock/     contrato OpenAPI e mock da API do painel (Mockoon, projeto Nx `backoffice-mock`)
 │   └── services/            serviços serverless de exemplo (TypeScript, Go e Java)
 ├── infra/
 │   ├── local/               Floci: ambiente AWS local (projeto Nx `infra-local`)
@@ -152,16 +157,28 @@ pnpm nx reset infra-local      # apaga os dados e recria
 pnpm nx validate infra-local   # valida a configuração, sem subir containers
 ```
 
+### Mock da API do painel
+
+```bash
+pnpm nx run backoffice-mock:up       # sobe o mock em http://127.0.0.1:4010 e espera ficar saudável
+pnpm nx run backoffice-mock:smoke    # fumaça contra o container no ar
+pnpm nx run backoffice-mock:reset    # volta os dados ao estado inicial
+pnpm nx run backoffice-mock:down     # para e remove o container
+```
+
+O mock serve a API do painel enquanto o backend real não existe. Ele é só HTTP e não emula serviço da AWS: o Floci segue como o único ambiente AWS virtualizado. Detalhes no [guia da API do backoffice](./docs/guides/backoffice-api.md).
+
 ## Testes
 
 ```bash
 pnpm nx test backoffice                              # Vitest (unitários)
 pnpm exec playwright install chromium                # uma vez
+pnpm nx run backoffice-mock:up                       # o e2e exige o mock da API no ar
 pnpm nx e2e backoffice-e2e                           # Playwright (e2e), só Chromium por padrão
 pnpm e2e:full                                        # Chromium, Firefox e WebKit
 ```
 
-O e2e sobe o painel sozinho e reaproveita um servidor já aberto na porta 3000. No PR o CI roda só o Chromium; o workflow de release roda os três browsers.
+O e2e sobe o painel sozinho, ligado ao mock da API, e reaproveita um servidor já aberto na porta 3000 (que precisa ter sido iniciado com `NEXT_PUBLIC_API_URL`). No PR o CI roda só o Chromium; o workflow de release roda os três browsers.
 
 ## Convenções
 
@@ -182,9 +199,9 @@ O `.github/workflows/ci.yml` roda em pull requests e em push na `main`, cancela 
 
 1. **Format**: `biome ci` (no PR só nos arquivos alterados em relação à `origin/main`; no push para a `main`, no repositório inteiro) e `gofmt -l` nos `*.go`, que falha se listar algum arquivo.
 2. **Checks**: `nx sync:check` e `nx affected -t lint typecheck test build`, com as SHAs de base e head do `nx-set-shas`, e o self-healing do Nx Cloud (`nx fix-ci`).
-3. **E2E**: só roda se algum projeto de e2e foi afetado, e então executa `nx affected -t e2e` no Chromium.
+3. **E2E**: só roda se algum projeto de e2e foi afetado, e então sobe o mock da API do painel, executa `nx affected -t e2e` no Chromium, mostra o log do mock se o e2e falhar e o derruba no fim.
 
-O `.github/workflows/release.yml` é o nível completo e o único que versiona e publica. Dispara **só manualmente** (`workflow_dispatch`, com a opção `dry-run`), valida **todos** os projetos (coverage nos testes e e2e em Chromium, Firefox e WebKit) e, se tudo passar, roda o `nx release`: versão pelos Conventional Commits, changelog por projeto, tag `{projeto}@{versão}`, GitHub Release por projeto e, quando houver libs npm (GitHub Packages) ou imagens (GHCR), a publicação. Hoje só os serviços serverless entram no release e nenhum grupo publica em registry. O release de verdade só roda a partir da `main`; o `dry-run` vale em qualquer branch e não altera nada. Detalhes no [guia de release](./docs/guides/release.md) e no [ADR 0010](./docs/adr/0010-versionamento-e-publicacao-no-github.md).
+O `.github/workflows/release.yml` é o nível completo e o único que versiona e publica. Dispara **só manualmente** (`workflow_dispatch`, com a opção `dry-run`), valida **todos** os projetos (coverage nos testes e e2e em Chromium, Firefox e WebKit, com o mock da API do painel no ar) e, se tudo passar, roda o `nx release`: versão pelos Conventional Commits, changelog por projeto, tag `{projeto}@{versão}`, GitHub Release por projeto e, quando houver libs npm (GitHub Packages) ou imagens (GHCR), a publicação. Hoje só os serviços serverless entram no release e nenhum grupo publica em registry. O release de verdade só roda a partir da `main`; o `dry-run` vale em qualquer branch e não altera nada. Detalhes no [guia de release](./docs/guides/release.md) e no [ADR 0010](./docs/adr/0010-versionamento-e-publicacao-no-github.md).
 
 Todos usam a action local `.github/actions/setup` (pnpm, Node 24 e `pnpm install --frozen-lockfile`). Os jobs que chamam o `nx` pedem também o JDK 21 (`java-version`, Temurin com cache do Gradle), porque o `@nx/gradle` roda o `./gradlew` para montar o grafo; os jobs `format` e `actionlint` não instalam Java. O `format` e o `checks` também instalam o Go da versão do `apps/services/example-go/go.mod` (`go-version-file`, `actions/setup-go` com cache de `**/go.sum`). O `spotlessCheck` do Java fica **só no nível completo** (`release.yml` e `pnpm check:full`); no PR, o `build` do `example-quarkus-core` já roda o `check` do Gradle, que inclui o Spotless e os testes. O Renovate agrupa `nx`, `github-actions`, `quarkus`, `gradle-wrapper` e `aws-lambda-go`, e roda `go mod tidy` depois de atualizar um módulo Go.
 
@@ -213,6 +230,7 @@ O workspace está conectado ao Nx Cloud (`nxCloudId` no `nx.json`): o cache das 
 | Nova página no backoffice     | [`docs/guides/backoffice-nova-pagina.md`](./docs/guides/backoffice-nova-pagina.md) |
 | Serviço serverless            | [`docs/guides/servico-serverless.md`](./docs/guides/servico-serverless.md)         |
 | Tarefas do Nx                 | [`docs/guides/nx-tarefas.md`](./docs/guides/nx-tarefas.md)                         |
+| API do backoffice e mock      | [`docs/guides/backoffice-api.md`](./docs/guides/backoffice-api.md)                 |
 | Desempenho e recursos         | [`docs/guides/desempenho-e-recursos.md`](./docs/guides/desempenho-e-recursos.md)   |
 | Ordem de implantação          | [`docs/guides/ordem-de-implantacao.md`](./docs/guides/ordem-de-implantacao.md)     |
 | Release                       | [`docs/guides/release.md`](./docs/guides/release.md)                               |
