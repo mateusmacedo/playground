@@ -5,8 +5,10 @@ import { cardRenderer } from './card-renderer';
 import type { KanbanCardActions, RenderCard } from './kanban-card';
 import type { NewCard } from './kanban-lane';
 import { laneHeaderActions } from './lane-header-actions';
+import { listTree } from './list-tree';
 import { type CardLookups, cardLookups } from './model/card-lookups';
 import { groupByParent, listRows, sortRows } from './model/views';
+import { PendingStepsView } from './pending-steps-view';
 import { Swimlanes } from './swimlanes';
 import type { BoardScreen } from './use-board-screen';
 
@@ -14,10 +16,22 @@ export interface BoardViewsProps {
   readonly screen: BoardScreen;
 }
 
-/** A visão escolhida na barra: a lista, as linhas por card pai ou as colunas. */
+/** A visão escolhida na barra: as etapas pendentes, a lista, as linhas por card pai ou as colunas. */
 export function BoardViews({ screen }: Readonly<BoardViewsProps>) {
   const { board, shown, view, moves } = screen;
   const { panel } = screen.windows;
+
+  if (view.mode === 'steps') {
+    return (
+      <PendingStepsView
+        board={board}
+        filter={screen.filter}
+        isClient={screen.isClient}
+        onOpen={panel.open}
+      />
+    );
+  }
+
   const lookups = cardLookups({ board, shown });
 
   if (view.mode === 'list') {
@@ -68,21 +82,34 @@ interface ListViewProps {
   readonly lookups: CardLookups;
 }
 
-/** Visão em lista: os cards das colunas visíveis que passam no filtro, na ordem escolhida. */
+/**
+ * Visão em lista: os cards das colunas visíveis que passam no filtro, na ordem escolhida. Em árvore, cada card fica
+ * abaixo do pai, e a ordem vale dentro de cada nível.
+ */
 function ListView({ screen, lookups }: Readonly<ListViewProps>) {
-  const { board, shown, filter, listSort } = screen;
+  const { board, shown, filter, listSort, view, setView } = screen;
   const allRows = listRows({ lanes: shown, people: lookups.people });
   const filteredRows = filter.filtering
     ? allRows.filter((row) => filter.matches(row.card))
     : allRows;
+  const sortedRows = sortRows({ rows: filteredRows, sort: listSort.sort });
+  const tree = view.tree
+    ? listTree({
+        rows: sortedRows,
+        collapsedRows: view.collapsedRows,
+        onChange: (collapsedRows) => setView({ collapsedRows }),
+      })
+    : undefined;
 
   return (
     <BoardList
-      rows={sortRows({ rows: filteredRows, sort: listSort.sort })}
+      rows={tree ? tree.rows : sortedRows}
+      tree={tree}
       keyPrefix={board.config.keyPrefix}
       labels={board.labels}
       today={screen.today}
       progress={lookups.progress}
+      blocked={lookups.blocked}
       sort={listSort.sort}
       onSort={listSort.sortBy}
       onOpen={screen.windows.panel.open}

@@ -9,6 +9,8 @@ export interface BoardFeedback {
   readonly announce: Announce;
   readonly notice: Notice | null;
   readonly notify: Notify;
+  /** Mostra o motivo pelo qual o quadro recusou uma mudança, como aviso acima do quadro. */
+  readonly warn: (text: string) => void;
   readonly dismissNotice: () => void;
 }
 
@@ -21,6 +23,7 @@ export function useBoardFeedback(): BoardFeedback {
     announce: setAnnouncement,
     notice,
     notify: setNotice,
+    warn: (text) => setNotice({ color: 'warning', text }),
     dismissNotice: () => setNotice(null),
   };
 }

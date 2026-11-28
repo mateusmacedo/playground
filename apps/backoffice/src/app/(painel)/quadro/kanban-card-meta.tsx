@@ -1,11 +1,17 @@
 import { cilCheckAlt, cilCommentBubble, cilPaperclip } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
 
+import { BlockedBadge } from './blocked-badge';
 import type { BoardCard, BoardLabel } from './model/board';
 import { checklistProgress } from './model/checklist';
-import { type ChildProgress, progressText } from './model/completion';
+import {
+  type ChildProgress,
+  progressNoun,
+  progressText,
+} from './model/completion';
 import { type DueStatus, dueStatus, formatShortDate } from './model/due';
 import { initials } from './model/people';
+import { ProcessBadge } from './process-badge';
 
 const NEUTRAL_BADGE = 'bg-body-secondary text-body border';
 
@@ -30,8 +36,10 @@ export interface KanbanCardMetaProps {
   readonly today: string | undefined;
   /** Nome do responsável. */
   readonly assignee?: string;
-  /** Filhos na coluna de conclusão, quando o quadro tem uma. */
+  /** Descendentes na coluna de conclusão, quando o quadro tem uma. */
   readonly progress?: ChildProgress;
+  /** O card tem bloqueador fora da coluna de conclusão. */
+  readonly blocked?: boolean;
 }
 
 /**
@@ -45,24 +53,28 @@ export function KanbanCardMeta({
   today,
   assignee,
   progress,
+  blocked = false,
 }: Readonly<KanbanCardMetaProps>) {
   const checklist = checklistProgress(card);
   const status = today ? dueStatus({ card, today }) : undefined;
   const comments = card.comments?.length ?? 0;
   const attachments = card.attachments?.length ?? 0;
   const hasMeta =
+    blocked ||
     labels.length > 0 ||
     card.dueDate !== undefined ||
     checklist.total > 0 ||
     childCount > 0 ||
     comments > 0 ||
     attachments > 0 ||
-    assignee !== undefined;
+    assignee !== undefined ||
+    card.process !== undefined;
   if (!hasMeta) {
     return null;
   }
   return (
     <div className="d-flex flex-wrap gap-1 mt-2">
+      {blocked ? <BlockedBadge /> : null}
       {labels.map((label) => (
         <span key={label.id} className={`badge text-bg-${label.color}`}>
           {label.name}
@@ -75,6 +87,7 @@ export function KanbanCardMeta({
         <ChecklistBadge done={checklist.done} total={checklist.total} />
       ) : null}
       <ChildrenBadge progress={progress} childCount={childCount} />
+      <ProcessBadge card={card} />
       <CountBadge
         icon={cilCommentBubble}
         count={comments}
@@ -133,7 +146,7 @@ interface ChildrenBadgeProps {
   readonly childCount: number;
 }
 
-/** Com coluna de conclusão no quadro, o progresso dos filhos; sem ela, só quantos são. */
+/** Com coluna de conclusão no quadro, o progresso de todos os descendentes; sem ela, só quantos filhos são. */
 function ChildrenBadge({ progress, childCount }: Readonly<ChildrenBadgeProps>) {
   if (progress) {
     return <ProgressBadge progress={progress} />;
@@ -197,7 +210,7 @@ interface ProgressBadgeProps {
   readonly progress: ChildProgress;
 }
 
-/** Filhos concluídos de quantos o card tem, em número e numa barra. */
+/** Descendentes concluídos de quantos o card tem, em número e numa barra. */
 function ProgressBadge({ progress }: Readonly<ProgressBadgeProps>) {
   const complete = progress.done === progress.total;
   const percent = Math.round((progress.done / progress.total) * 100);
@@ -205,7 +218,7 @@ function ProgressBadge({ progress }: Readonly<ProgressBadgeProps>) {
   return (
     <span className={`badge kanban-card__progress ${style}`}>
       <span aria-hidden="true">
-        {progress.done}/{progress.total} filhos
+        {progress.done}/{progress.total} {progressNoun(progress)}
       </span>
       <span className="visually-hidden">{progressText(progress)}</span>
       <span

@@ -1,5 +1,5 @@
-import { CFormCheck } from '@coreui/react';
 import { useId } from 'react';
+import { CheckField } from '@/shared/ui/check-field';
 import type { BoardCommands } from '../board-commands';
 import type { BoardCard, BoardLabel } from '../model/board';
 import { NewLabelForm } from './new-label-form';
@@ -23,7 +23,7 @@ export function LabelsField({
       {labels.length > 0 ? (
         <div className="d-flex flex-wrap gap-3 mb-2">
           {labels.map((label) => (
-            <CFormCheck
+            <CheckField
               key={label.id}
               id={`${id}-${label.id}`}
               label={

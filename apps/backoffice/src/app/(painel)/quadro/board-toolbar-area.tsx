@@ -41,6 +41,7 @@ export function BoardToolbarArea({
         onClear: filter.clearLabels,
         onManage: () => listDialogs.show('labels'),
       }}
+      hierarchy={{ value: filter.hierarchy, onChange: filter.setHierarchy }}
       history={{
         canUndo: screen.canUndo,
         canRedo: screen.canRedo,

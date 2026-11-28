@@ -14,6 +14,7 @@ import type {
 } from './board';
 import { DEFAULT_CONFIG, isValidKeyPrefix } from './config';
 import { isDateOnly } from './due';
+import { processCardData, toRules } from './stored-process';
 
 const LABEL_COLORS: readonly LabelColor[] = [
   'danger',
@@ -132,6 +133,7 @@ function optionalCardData(value: UnknownRecord): Partial<BoardCard> {
       typeof value.assigneeId === 'string' ? value.assigneeId : undefined,
     comments: keepValid({ value: value.comments, parse: toComment }),
     attachments: keepValid({ value: value.attachments, parse: toAttachment }),
+    ...processCardData(value),
   };
 }
 
@@ -242,6 +244,7 @@ export function toConfig(value: unknown): BoardConfig {
     people: uniquePeople(keepValid({ value: value.people, parse: toPerson })),
     doneLaneId:
       typeof value.doneLaneId === 'string' ? value.doneLaneId : undefined,
+    rules: toRules(value.rules),
   };
 }
 

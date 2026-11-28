@@ -6,9 +6,9 @@ import {
   CDropdownDivider,
   CDropdownMenu,
   CDropdownToggle,
-  CFormCheck,
 } from '@coreui/react';
 import { useId } from 'react';
+import { CheckField } from '@/shared/ui/check-field';
 
 import type { BoardLabel } from '../model/board';
 
@@ -53,7 +53,7 @@ export function LabelFilter({
               Mostrar cards com
             </legend>
             {labels.map((label) => (
-              <CFormCheck
+              <CheckField
                 key={label.id}
                 id={`${id}-${label.id}`}
                 label={

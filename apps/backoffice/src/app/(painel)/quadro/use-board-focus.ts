@@ -11,6 +11,9 @@ export type FocusTarget =
   | 'data-archive-lane'
   | 'data-board-undo';
 
+/** Botão da visão aberta, na barra do quadro; cada botão de visão leva a marca `data-board-view`. */
+const OPEN_VIEW_BUTTON = '[data-board-view][aria-pressed="true"]';
+
 /** Elemento marcado com `attribute` igual a `id`. */
 export interface MarkedElement {
   readonly attribute: FocusTarget;
@@ -20,10 +23,14 @@ export interface MarkedElement {
 export interface BoardFocus {
   /** Vai no elemento raiz do quadro; a busca pelos elementos marcados acontece dentro dele. */
   readonly rootRef: RefObject<HTMLDivElement | null>;
-  readonly focusMarked: (target: MarkedElement) => void;
+  /** Foca o elemento marcado e diz se ele estava na tela. */
+  readonly focusMarked: (target: MarkedElement) => boolean;
   /** Foca o elemento depois que a tela se atualiza, porque ele ainda pode não estar nela. */
   readonly focusMarkedLater: (target: MarkedElement) => void;
-  /** Foca o título da coluna depois que a tela se atualiza; sem coluna, não faz nada. */
+  /**
+   * Foca o título da coluna depois que a tela se atualiza; sem coluna, não faz nada. Na visão que não mostra as
+   * colunas, o foco vai para o botão dessa visão.
+   */
   readonly focusLaneLater: (laneId: string | undefined) => void;
 }
 
@@ -31,16 +38,21 @@ export interface BoardFocus {
 export function useBoardFocus(): BoardFocus {
   const rootRef = useRef<HTMLDivElement>(null);
 
-  function focusMarked(target: MarkedElement) {
+  function focusMarked(target: MarkedElement): boolean {
     const marked =
       rootRef.current?.querySelectorAll<HTMLElement>(`[${target.attribute}]`) ??
       [];
     for (const element of marked) {
       if (element.getAttribute(target.attribute) === target.id) {
         element.focus();
-        return;
+        return true;
       }
     }
+    return false;
+  }
+
+  function focusOpenView() {
+    rootRef.current?.querySelector<HTMLElement>(OPEN_VIEW_BUTTON)?.focus();
   }
 
   function focusMarkedLater(target: MarkedElement) {
@@ -48,9 +60,17 @@ export function useBoardFocus(): BoardFocus {
   }
 
   function focusLaneLater(laneId: string | undefined) {
-    if (laneId) {
-      focusMarkedLater({ attribute: 'data-lane-title', id: laneId });
+    if (!laneId) {
+      return;
     }
+    requestAnimationFrame(() => {
+      const found = focusMarked({ attribute: 'data-lane-title', id: laneId });
+      // WHY: a lista e a visão de etapas não mostram as colunas. Nelas o foco vai para o botão da visão aberta, que
+      // está sempre na tela, em vez de se perder.
+      if (!found) {
+        focusOpenView();
+      }
+    });
   }
 
   return { rootRef, focusMarked, focusMarkedLater, focusLaneLater };

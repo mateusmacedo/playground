@@ -1,6 +1,13 @@
 import { CAlert } from '@coreui/react';
 
-/** Aviso visível acima do quadro: link copiado, card do endereço que não pode ser aberto, coluna bloqueada. */
+import { BoardSaveNotice } from './board-save-notice';
+import type { SaveStatus } from './store/board-store';
+import type { SaveActions } from './use-board-storage';
+
+/**
+ * Aviso visível acima do quadro: link copiado, card do endereço que não pode ser aberto, coluna bloqueada e mudança
+ * que as regras do quadro recusaram.
+ */
 export interface Notice {
   readonly color: 'success' | 'warning';
   readonly text: string;
@@ -12,27 +19,24 @@ export type Notify = (notice: Notice) => void;
 export type Announce = (text: string) => void;
 
 export interface BoardNoticesProps {
-  /** A última gravação falhou, quase sempre por falta de espaço no navegador. */
-  readonly storageFull: boolean;
+  /** Situação da gravação do quadro. */
+  readonly save: SaveStatus;
+  /** As saídas da gravação num servidor; sem elas, o quadro fica no navegador. */
+  readonly saveActions?: SaveActions;
   readonly notice: Notice | null;
   readonly onDismiss: () => void;
 }
 
-/** Avisos acima do quadro: a falta de espaço para gravar e o aviso da última ação. */
+/** Avisos acima do quadro: a gravação que não deu certo e o aviso da última ação. */
 export function BoardNotices({
-  storageFull,
+  save,
+  saveActions,
   notice,
   onDismiss,
 }: Readonly<BoardNoticesProps>) {
   return (
     <>
-      {storageFull ? (
-        <CAlert color="danger" className="py-2">
-          O navegador não tem mais espaço para gravar este quadro: as últimas
-          mudanças só valem até fechar a página. Remova anexos grandes ou
-          arquivados para liberar espaço.
-        </CAlert>
-      ) : null}
+      <BoardSaveNotice save={save} actions={saveActions} />
       {notice ? (
         <CAlert
           color={notice.color}

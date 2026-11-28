@@ -1,7 +1,7 @@
-import { CFormCheck, CFormInput } from '@coreui/react';
+import { CFormInput } from '@coreui/react';
 import { useId } from 'react';
-
 import { useIsClient } from '@/shared/hooks/use-is-client';
+import { CheckField } from '@/shared/ui/check-field';
 import type { BoardCommands } from '../board-commands';
 import type { BoardCard } from '../model/board';
 import { type DueStatus, dueStatus, todayIso } from '../model/due';
@@ -48,14 +48,12 @@ export function DueField({ card, commands }: Readonly<DueFieldProps>) {
             })
           }
         />
-        <CFormCheck
+        <CheckField
           id={`${id}-done`}
           label="Prazo cumprido"
           disabled={!card.dueDate}
           checked={card.dueDone ?? false}
-          onChange={(event) =>
-            commands.setDueDone({ cardId: card.id, done: event.target.checked })
-          }
+          onChange={(done) => commands.setDueDone({ cardId: card.id, done })}
         />
         {status && STATUS_TEXT[status] ? (
           <span className={`small fw-semibold ${STATUS_CLASS[status]}`}>

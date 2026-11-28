@@ -51,6 +51,7 @@ export function cardRenderer(params: CardRendererParams): RenderCard {
         childCount={lookups.childCounts.get(card.id) ?? 0}
         progress={lookups.progress.get(card.id)}
         assignee={assignee}
+        blocked={lookups.blocked.has(card.id)}
         labels={cardLabels({ card, labels: params.labels })}
         today={params.today}
         dimmed={outsideFilter}

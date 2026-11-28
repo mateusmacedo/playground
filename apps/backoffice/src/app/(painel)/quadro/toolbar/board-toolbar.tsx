@@ -3,6 +3,7 @@ import CIcon from '@coreui/icons-react';
 import { CButton } from '@coreui/react';
 
 import { HiddenLanes, type HiddenLanesProps } from './hidden-lanes';
+import { HierarchySelect, type HierarchySelectProps } from './hierarchy-select';
 import { HistoryButtons, type HistoryButtonsProps } from './history-buttons';
 import { LabelFilter, type LabelFilterProps } from './label-filter';
 import { SearchBox, type SearchBoxProps } from './search-box';
@@ -12,6 +13,7 @@ export interface BoardToolbarProps {
   readonly instructionsId: string;
   readonly search: SearchBoxProps;
   readonly filter: LabelFilterProps;
+  readonly hierarchy: HierarchySelectProps;
   readonly history: HistoryButtonsProps;
   readonly view: ViewSwitchProps;
   readonly hiddenLanes: HiddenLanesProps;
@@ -23,11 +25,12 @@ export interface BoardToolbarProps {
   readonly onReset?: () => void;
 }
 
-/** Barra do quadro: busca e filtro à esquerda, histórico e ações gerais à direita, e as instruções de uso. */
+/** Barra do quadro: busca, filtros e visão à esquerda, histórico e ações gerais à direita, e as instruções de uso. */
 export function BoardToolbar({
   instructionsId,
   search,
   filter,
+  hierarchy,
   history,
   view,
   hiddenLanes,
@@ -41,6 +44,7 @@ export function BoardToolbar({
       <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
         <SearchBox {...search} />
         <LabelFilter {...filter} />
+        <HierarchySelect {...hierarchy} />
         <ViewSwitch {...view} />
         <div className="d-flex flex-wrap gap-2 ms-auto">
           <HistoryButtons {...history} />

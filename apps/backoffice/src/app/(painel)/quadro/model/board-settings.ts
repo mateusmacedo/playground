@@ -1,6 +1,7 @@
-import type { Board, BoardPerson } from './board';
+import type { Board, BoardPerson, BoardRules } from './board';
 import { setDoneLane, setKeyPrefix } from './config';
 import { setPeople } from './people';
+import { setRules } from './rules';
 
 function samePeople(
   a: readonly BoardPerson[],
@@ -21,6 +22,8 @@ export interface ConfigureBoardParams {
   /** `null` tira a coluna de conclusão. */
   readonly doneLaneId?: string | null;
   readonly people?: readonly BoardPerson[];
+  /** O conjunto inteiro das regras: a que não vier ligada fica desligada. */
+  readonly rules?: BoardRules;
 }
 
 /**
@@ -39,6 +42,9 @@ export function configureBoard(params: ConfigureBoardParams): Board {
       laneIds: board.lanes.map((lane) => lane.id),
       doneLaneId: params.doneLaneId ?? undefined,
     });
+  }
+  if (params.rules !== undefined) {
+    config = setRules({ config, rules: params.rules });
   }
   const next = config === board.config ? board : { ...board, config };
   return params.people && !samePeople(params.people, board.config.people ?? [])

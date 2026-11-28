@@ -1,9 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 
 import BoardPage, { metadata } from './page';
 
 describe('BoardPage', () => {
-  it('mostra o título e o quadro com as colunas de exemplo', () => {
+  it('mostra o título e o quadro com as colunas de exemplo', async () => {
     render(<BoardPage />);
 
     expect(
@@ -18,6 +18,8 @@ describe('BoardPage', () => {
     // NOTE: as 3 colunas de exemplo e a coluna automática dos arquivados.
     expect(screen.getAllByRole('region')).toHaveLength(4);
     expect(screen.getByRole('region', { name: 'A fazer' })).toBeTruthy();
+    // NOTE: o quadro lê o que está gravado logo depois de montar, e a leitura é assíncrona: o teste espera por ela.
+    await act(async () => undefined);
   });
 
   it('define o título da aba', () => {

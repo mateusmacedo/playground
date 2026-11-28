@@ -61,6 +61,7 @@ export function BoardOverlays({
           onArchive: panel.archive,
           onDuplicate: panel.duplicate,
           onCopyLink: screen.isClient && canCopyLinks() ? copyLink : undefined,
+          onAnnounce: feedback.announce,
         }}
         author={author}
         onClose={panel.close}

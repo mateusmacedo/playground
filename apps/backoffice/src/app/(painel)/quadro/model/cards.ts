@@ -16,12 +16,28 @@ export interface NewCardData {
   readonly title: string;
   readonly parentId?: string;
   readonly number?: number;
+  /** Responsável herdado do pai (regra `childInherits`). */
+  readonly assigneeId?: string;
+  /** Etiquetas herdadas do pai (regra `childInherits`). */
+  readonly labelIds?: readonly string[];
 }
 
 export interface AddCardParams {
   readonly lanes: readonly BoardLane[];
   readonly laneId: string;
   readonly card: NewCardData;
+}
+
+/** Responsável e etiquetas que o card novo traz; o que não veio fica de fora do card. */
+function inheritedOf(card: NewCardData): Partial<BoardCard> {
+  const inherited: { assigneeId?: string; labelIds?: readonly string[] } = {};
+  if (card.assigneeId !== undefined) {
+    inherited.assigneeId = card.assigneeId;
+  }
+  if (card.labelIds !== undefined) {
+    inherited.labelIds = card.labelIds;
+  }
+  return inherited;
 }
 
 /** Acrescenta o card no fim da coluna; título vazio ou coluna inexistente não criam nada. */
@@ -36,6 +52,7 @@ export function addCard(params: AddCardParams): readonly BoardLane[] {
     title,
     parentId: card.parentId,
     number: card.number,
+    ...inheritedOf(card),
   };
   return lanes.map((lane) =>
     lane.id === laneId ? { ...lane, cards: [...lane.cards, created] } : lane,
@@ -153,7 +170,8 @@ export interface DuplicateCardParams {
 
 /**
  * Duplica o card logo abaixo do original, com o título marcado como cópia, os mesmos dados e o mesmo pai, mas sem os
- * filhos nem o histórico, que começa registrando de onde a cópia veio.
+ * filhos nem o histórico, que começa registrando de onde a cópia veio. A execução do processo, a etapa que o card
+ * executa e os bloqueadores ficam só no original: são andamento, não dado do card.
  */
 export function duplicateCard(params: DuplicateCardParams): Board {
   const { board, cardId, newId, at } = params;
@@ -167,6 +185,9 @@ export function duplicateCard(params: DuplicateCardParams): Board {
     id: newId,
     title: `${card.title} (cópia)`,
     number: board.nextNumber,
+    process: undefined,
+    stepOf: undefined,
+    blockedBy: undefined,
     activity: [
       {
         at,

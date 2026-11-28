@@ -68,5 +68,27 @@ export function activityText(entry: CardActivity): string {
       return entry.added
         ? `Anexo ${entry.added} adicionado.`
         : `Anexo ${entry.removed ?? ''} removido.`;
+    case 'process-started':
+      return `Processo ${entry.name} iniciado.`;
+    case 'process-step':
+      return entry.detail
+        ? `Etapa ${entry.step} resolvida: ${entry.detail}.`
+        : `Etapa ${entry.step} resolvida.`;
+    case 'process-finished':
+      return entry.outcome
+        ? `Processo ${entry.name} concluído: ${entry.outcome}.`
+        : `Processo ${entry.name} concluído.`;
+    case 'process-cancelled':
+      return `Processo ${entry.name} cancelado.`;
+    case 'process-removed':
+      return `Processo ${entry.name} removido do card.`;
+    case 'blocker-added':
+      return `Passou a ser bloqueado por ${entry.blocker}.`;
+    case 'blocker-removed':
+      return `Deixou de ser bloqueado por ${entry.blocker}.`;
+    case 'checklist-converted':
+      return `Item "${entry.item}" do checklist convertido em card filho.`;
+    case 'from-checklist':
+      return `Criado em ${entry.lane} a partir de um item do checklist de ${entry.parent}.`;
   }
 }

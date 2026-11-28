@@ -23,7 +23,7 @@ export interface BoardSettingsDialogProps {
   readonly onClosed: () => void;
 }
 
-/** Janela "Configurar quadro": nome, prefixo do código, coluna de conclusão e pessoas. */
+/** Janela "Configurar quadro": nome, prefixo do código, coluna de conclusão, regras e pessoas. */
 export function BoardSettingsDialog({
   visible,
   settings,
@@ -39,6 +39,7 @@ export function BoardSettingsDialog({
       keyPrefix: values.keyPrefix,
       doneLaneId: values.doneLaneId ?? null,
       people: values.people,
+      rules: values.rules,
     });
     onClose();
     announce('Configuração do quadro salva.');
@@ -54,6 +55,7 @@ export function BoardSettingsDialog({
         keyPrefix: board.config.keyPrefix,
         doneLaneId: board.config.doneLaneId,
         people: board.config.people,
+        rules: board.config.rules,
       }}
       lanes={board.lanes}
       validateName={settings.validateName}

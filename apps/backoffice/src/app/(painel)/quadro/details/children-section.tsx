@@ -9,13 +9,13 @@ import { childrenOf } from '../model/hierarchy';
 export interface ChildrenSectionProps {
   readonly location: CardLocation;
   readonly lanes: readonly BoardLane[];
-  /** Filhos na coluna de conclusão, quando o quadro tem uma. */
+  /** Descendentes (filhos, netos e assim por diante) na coluna de conclusão, quando o quadro tem uma. */
   readonly progress: ChildProgress | undefined;
   readonly commands: Pick<BoardCommands, 'addCard'>;
   readonly onOpenCard: (cardId: string) => void;
 }
 
-/** Cards filhos do card: a lista, o progresso deles e o campo para criar mais um. */
+/** Cards filhos do card: a lista, o progresso de todos os descendentes e o campo para criar mais um. */
 export function ChildrenSection({
   location,
   lanes,

@@ -3,10 +3,10 @@ import CIcon from '@coreui/icons-react';
 import { CButton, CFormSelect } from '@coreui/react';
 import { type Ref, useId } from 'react';
 
-import type { BoardSummary } from './model/workspace';
+import type { WorkspaceBoard } from './model/workspace';
 
 export interface BoardSwitcherProps {
-  readonly boards: readonly BoardSummary[];
+  readonly boards: readonly WorkspaceBoard[];
   readonly activeId: string;
   /** Vai no seletor, que recebe o foco quando uma janela do quadro fecha. */
   readonly selectRef: Ref<HTMLSelectElement>;

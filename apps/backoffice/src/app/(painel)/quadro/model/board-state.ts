@@ -6,6 +6,7 @@ import {
   type BoardConfig,
   type BoardLabel,
   type BoardLane,
+  type BoardProcess,
 } from './board';
 import { DEFAULT_CONFIG } from './config';
 
@@ -41,6 +42,7 @@ export interface CreateBoardParams {
   readonly archive?: readonly ArchiveEntry[];
   readonly nextNumber?: number;
   readonly config?: BoardConfig;
+  readonly processes?: readonly BoardProcess[];
 }
 
 /**
@@ -79,5 +81,6 @@ export function createBoard(params: CreateBoardParams): Board {
     labels,
     nextNumber,
     config: params.config ?? DEFAULT_CONFIG,
+    processes: params.processes,
   };
 }

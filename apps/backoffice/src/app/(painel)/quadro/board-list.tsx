@@ -1,9 +1,12 @@
+import { BoardListTitle } from './board-list-title';
+import type { ListTree } from './list-tree';
 import type { BoardLabel } from './model/board';
 import { cardKey } from './model/card-key';
 import { type ChildProgress, progressText } from './model/completion';
 import { type DueStatus, dueStatus, formatShortDate } from './model/due';
 import { cardLabels } from './model/labels';
 import type { ListRow, ListSort, ListSortKey } from './model/views';
+import { ProcessBadge } from './process-badge';
 
 const COLUMNS: readonly {
   readonly key: ListSortKey;
@@ -29,14 +32,18 @@ export interface BoardListProps {
   readonly labels: readonly BoardLabel[];
   readonly today: string | undefined;
   readonly progress: ReadonlyMap<string, ChildProgress>;
+  /** Cards com bloqueador fora da coluna de conclusão. */
+  readonly blocked: ReadonlySet<string>;
+  /** A lista em árvore, com o nível e os filhos de cada linha; sem ela, a lista é plana. */
+  readonly tree?: ListTree;
   readonly sort: ListSort;
   readonly onSort: (key: ListSortKey) => void;
   readonly onOpen: (cardId: string) => void;
 }
 
 /**
- * Visão em lista: um card por linha, com código, título, coluna, responsável, prazo, progresso dos filhos e
- * etiquetas. O cabeçalho ordena as linhas; o título abre o card no painel.
+ * Visão em lista: um card por linha, com código, título, coluna, responsável, prazo, progresso dos descendentes,
+ * processo e etiquetas. O cabeçalho ordena as linhas; o título abre o card no painel.
  */
 export function BoardList({
   rows,
@@ -44,6 +51,8 @@ export function BoardList({
   labels,
   today,
   progress,
+  blocked,
+  tree,
   sort,
   onSort,
   onOpen,
@@ -80,13 +89,14 @@ export function BoardList({
               );
             })}
             <th scope="col">Filhos</th>
+            <th scope="col">Processo</th>
             <th scope="col">Etiquetas</th>
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={COLUMNS.length + 2} className="text-body-secondary">
+              <td colSpan={COLUMNS.length + 3} className="text-body-secondary">
                 Nenhum card para mostrar.
               </td>
             </tr>
@@ -100,14 +110,12 @@ export function BoardList({
                     {cardKey({ card, prefix: keyPrefix })}
                   </td>
                   <td>
-                    <button
-                      type="button"
-                      className="btn btn-link p-0 text-start"
-                      data-card-open={card.id}
-                      onClick={() => onOpen(card.id)}
-                    >
-                      {card.title}
-                    </button>
+                    <BoardListTitle
+                      card={card}
+                      blocked={blocked.has(card.id)}
+                      tree={tree}
+                      onOpen={onOpen}
+                    />
                   </td>
                   <td>{lane.title}</td>
                   <td>{assignee ?? '—'}</td>
@@ -115,6 +123,7 @@ export function BoardList({
                     {card.dueDate ? formatShortDate(card.dueDate) : '—'}
                   </td>
                   <td>{childProgress ? progressText(childProgress) : '—'}</td>
+                  <td>{card.process ? <ProcessBadge card={card} /> : '—'}</td>
                   <td>
                     {cardLabels({ card, labels }).map((label) => (
                       <span

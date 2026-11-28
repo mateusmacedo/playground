@@ -51,7 +51,11 @@ async function createBoardNamed(name: string, prefix?: string) {
       { target: { value: prefix } },
     );
   }
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Criar' }));
+  // NOTE: o quadro novo lê o que foi gravado nele logo depois de montar, e a leitura é assíncrona: o `act` espera
+  // por ela.
+  await act(async () => {
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Criar' }));
+  });
 }
 
 function storageEvent(key: string, newValue: string | null) {

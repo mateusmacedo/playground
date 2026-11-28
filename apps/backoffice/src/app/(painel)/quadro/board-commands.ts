@@ -1,7 +1,11 @@
+import type { RunAction } from '@/shared/process/engine';
+
 import type {
   BoardLabel,
   BoardLane,
   BoardPerson,
+  BoardProcess,
+  BoardRules,
   CardAttachment,
 } from './model/board';
 import type { CardPatch } from './model/cards';
@@ -128,6 +132,39 @@ export interface ConfigureSettings {
   readonly doneLaneId?: string | null;
   /** Pessoas do quadro; quem sai deixa de ser responsável pelos cards. */
   readonly people?: readonly BoardPerson[];
+  /** O conjunto inteiro das regras do quadro: a que não vier ligada fica desligada. */
+  readonly rules?: BoardRules;
+}
+
+export interface StartProcessChange {
+  readonly cardId: string;
+  /** Versão publicada que o card vai seguir, com o roteiro dela. */
+  readonly process: BoardProcess;
+  /** Quem iniciou, para a trilha da execução. */
+  readonly by?: string;
+}
+
+export interface AdvanceProcessChange {
+  readonly cardId: string;
+  readonly action: RunAction;
+  /** Quem agiu, para a trilha da execução. */
+  readonly by?: string;
+}
+
+export interface DelegateStepChange {
+  /** Card dono do processo. */
+  readonly cardId: string;
+  /** Ficha parada na etapa que o card filho vai executar. */
+  readonly tokenId: string;
+  /** Quem entregou a etapa, para a trilha da execução. */
+  readonly by?: string;
+}
+
+export interface BlockerChange {
+  /** Card bloqueado. */
+  readonly cardId: string;
+  /** Card que bloqueia. */
+  readonly blockerId: string;
 }
 
 /** O que as telas do quadro pedem; cada comando vira um passo do desfazer e um registro no histórico do card. */
@@ -183,4 +220,26 @@ export interface BoardCommands {
   readonly archiveCard: (cardId: string) => void;
   readonly restoreArchived: (entryId: string) => void;
   readonly deleteArchived: (entryId: string) => void;
+
+  /** Inicia o processo no card. Devolve o motivo da recusa, ou `undefined` quando iniciou. */
+  readonly startProcess: (change: StartProcessChange) => string | undefined;
+  /** Age numa etapa do processo do card. Devolve o motivo da recusa, ou `undefined` quando aplicou. */
+  readonly advanceProcess: (change: AdvanceProcessChange) => string | undefined;
+  /** Tira do card a execução concluída ou cancelada; o histórico do card fica. */
+  readonly removeProcess: (cardId: string) => void;
+  /** Entrega a etapa a um card filho novo. Devolve o id dele, ou `undefined` quando o quadro recusou e avisou. */
+  readonly delegateStep: (change: DelegateStepChange) => string | undefined;
+
+  /**
+   * Faz um card bloquear outro. Devolve o motivo da recusa (o próprio card, card fora das colunas, ciclo de
+   * dependência), ou `undefined` quando aplicou.
+   */
+  readonly addBlocker: (change: BlockerChange) => string | undefined;
+  readonly removeBlocker: (change: BlockerChange) => void;
+  /** O item do checklist vira card filho. Devolve o id dele, ou `undefined` quando o quadro recusou e avisou. */
+  readonly convertChecklistItem: (
+    change: ChecklistItemChange,
+  ) => string | undefined;
+  /** Duplica o card com todas as descendentes. Devolve o id da cópia, ou `undefined` quando o quadro recusou e avisou. */
+  readonly duplicateCardTree: (cardId: string) => string | undefined;
 }

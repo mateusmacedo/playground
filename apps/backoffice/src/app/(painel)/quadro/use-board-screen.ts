@@ -14,6 +14,7 @@ import { type BoardFilter, useBoardFilter } from './use-board-filter';
 import { type BoardFocus, useBoardFocus } from './use-board-focus';
 import { type BoardMoves, useBoardMoves } from './use-board-moves';
 import { useBoardShortcuts } from './use-board-shortcuts';
+import type { BoardStorage } from './use-board-storage';
 import { type BoardView, useBoardView } from './use-board-view';
 import { type BoardWindows, useBoardWindows } from './use-board-windows';
 import { useCardUrl } from './use-card-url';
@@ -29,8 +30,8 @@ export interface BoardScreen {
   readonly commands: BoardCommands;
   readonly canUndo: boolean;
   readonly canRedo: boolean;
-  /** A última gravação falhou, quase sempre por falta de espaço no navegador. */
-  readonly storageFull: boolean;
+  /** A leitura e a gravação do quadro, com as saídas de cada falha. */
+  readonly storage: BoardStorage;
   readonly feedback: BoardFeedback;
   readonly focus: BoardFocus;
   readonly filter: BoardFilter;
@@ -53,8 +54,11 @@ export interface BoardScreen {
 
 /** Monta o estado da tela do quadro, ligando cada parte às que ela precisa. */
 export function useBoardScreen(params: UseBoardParams): BoardScreen {
-  const { board, canUndo, canRedo, loaded, storageFull, commands } =
-    useBoard(params);
+  const feedback = useBoardFeedback();
+  const { board, canUndo, canRedo, loaded, storage, commands } = useBoard({
+    ...params,
+    onRefused: feedback.warn,
+  });
   const { lanes } = board;
   const { keyPrefix } = board.config;
   const shown = visibleLanes(lanes);
@@ -62,9 +66,8 @@ export function useBoardScreen(params: UseBoardParams): BoardScreen {
   const searchRef = useRef<HTMLInputElement>(null);
   const instructionsId = useId();
 
-  const feedback = useBoardFeedback();
   const focus = useBoardFocus();
-  const filter = useBoardFilter({ labels: board.labels, keyPrefix });
+  const filter = useBoardFilter({ labels: board.labels, keyPrefix, lanes });
   const { view, setView } = useBoardView(params.storageKey);
   const listSort = useListSort();
   const collapsedLanes = useCollapsedLanes(params.storageKey);
@@ -119,7 +122,7 @@ export function useBoardScreen(params: UseBoardParams): BoardScreen {
     commands,
     canUndo,
     canRedo,
-    storageFull,
+    storage,
     feedback,
     focus,
     filter,

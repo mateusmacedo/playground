@@ -4,6 +4,7 @@ import {
   type Placement,
   type PlacementsPair,
 } from './activity-changes';
+import { isProcessActivity } from './activity-process';
 import type {
   ArchiveEntry,
   Board,
@@ -67,7 +68,9 @@ export function appendActivity(
   const list = [...params.list];
   for (const entry of params.entries) {
     const last = list.at(-1);
-    if (params.merge && last?.kind === entry.kind) {
+    // NOTE: registro do processo nunca se junta ao anterior: cada etapa resolvida é um fato próprio.
+    const mergeable = params.merge && !isProcessActivity(entry);
+    if (mergeable && last?.kind === entry.kind) {
       const merged = mergeEntries({ last, next: entry });
       list.pop();
       if (merged) {

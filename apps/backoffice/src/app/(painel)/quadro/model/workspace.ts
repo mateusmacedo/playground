@@ -1,33 +1,35 @@
+import {
+  BOARDS_STORAGE_KEY,
+  DEFAULT_BOARD_ID,
+} from '@/shared/board/storage-keys';
+
 import { normalizeText } from './search';
-import { BOARD_STORAGE_KEY } from './storage';
 
 /** Um quadro na lista de quadros: o conteúdo e a configuração ficam gravados à parte, na chave do próprio quadro. */
-export interface BoardSummary {
+export interface WorkspaceBoard {
   readonly id: string;
   readonly name: string;
 }
 
-/** Quadro que já existia antes de haver vários: continua com a chave de sempre, sem precisar migrar o que foi gravado. */
-export const DEFAULT_BOARD_ID = 'board-1';
+// NOTE: as chaves moram em `src/shared`, porque a lista de execuções também lê o que o quadro grava no navegador.
+export {
+  BOARDS_STORAGE_KEY,
+  boardStorageKey,
+  DEFAULT_BOARD_ID,
+} from '@/shared/board/storage-keys';
 
-export const DEFAULT_BOARDS: readonly BoardSummary[] = [
-  { id: DEFAULT_BOARD_ID, name: 'Quadro principal' },
-];
+export const DEFAULT_BOARD: WorkspaceBoard = {
+  id: DEFAULT_BOARD_ID,
+  name: 'Quadro principal',
+};
 
-/** Lista de quadros, compartilhada entre as abas. */
-export const BOARDS_STORAGE_KEY = 'backoffice:quadros:v1';
+export const DEFAULT_BOARDS: readonly WorkspaceBoard[] = [DEFAULT_BOARD];
 
 /** Quadro aberto por último, só desta tela: cada aba pode estar num quadro diferente. */
 export const ACTIVE_BOARD_STORAGE_KEY = `${BOARDS_STORAGE_KEY}:ativo`;
 
-export function boardStorageKey(boardId: string): string {
-  return boardId === DEFAULT_BOARD_ID
-    ? BOARD_STORAGE_KEY
-    : `backoffice:quadro:${boardId}:v1`;
-}
-
 export interface ValidBoardNameParams {
-  readonly boards: readonly BoardSummary[];
+  readonly boards: readonly WorkspaceBoard[];
   readonly name: string;
   readonly boardId?: string;
 }
@@ -44,11 +46,11 @@ export function validBoardName(params: ValidBoardNameParams): string | null {
 }
 
 export interface AddBoardParams {
-  readonly boards: readonly BoardSummary[];
-  readonly board: BoardSummary;
+  readonly boards: readonly WorkspaceBoard[];
+  readonly board: WorkspaceBoard;
 }
 
-export function addBoard(params: AddBoardParams): readonly BoardSummary[] {
+export function addBoard(params: AddBoardParams): readonly WorkspaceBoard[] {
   const name = validBoardName({
     boards: params.boards,
     name: params.board.name,
@@ -59,14 +61,14 @@ export function addBoard(params: AddBoardParams): readonly BoardSummary[] {
 }
 
 export interface RenameBoardParams {
-  readonly boards: readonly BoardSummary[];
+  readonly boards: readonly WorkspaceBoard[];
   readonly boardId: string;
   readonly name: string;
 }
 
 export function renameBoard(
   params: RenameBoardParams,
-): readonly BoardSummary[] {
+): readonly WorkspaceBoard[] {
   const name = validBoardName(params);
   const current = params.boards.find((board) => board.id === params.boardId);
   if (!name || !current || current.name === name) {
@@ -78,14 +80,14 @@ export function renameBoard(
 }
 
 export interface RemoveBoardParams {
-  readonly boards: readonly BoardSummary[];
+  readonly boards: readonly WorkspaceBoard[];
   readonly boardId: string;
 }
 
 /** Tira o quadro da lista; o último quadro não pode sair. */
 export function removeBoard(
   params: RemoveBoardParams,
-): readonly BoardSummary[] {
+): readonly WorkspaceBoard[] {
   const boards = params.boards.filter((board) => board.id !== params.boardId);
   return boards.length > 0 && boards.length < params.boards.length
     ? boards
@@ -93,8 +95,8 @@ export function removeBoard(
 }
 
 export interface NeighborBoardParams {
-  readonly before: readonly BoardSummary[];
-  readonly after: readonly BoardSummary[];
+  readonly before: readonly WorkspaceBoard[];
+  readonly after: readonly WorkspaceBoard[];
   readonly boardId: string;
 }
 
@@ -115,12 +117,12 @@ export function neighborBoard(params: NeighborBoardParams): string | undefined {
   return after[0]?.id;
 }
 
-export function serializeBoards(boards: readonly BoardSummary[]): string {
+export function serializeBoards(boards: readonly WorkspaceBoard[]): string {
   return JSON.stringify({ version: 1, boards });
 }
 
 /** Um quadro da lista gravada; `undefined` quando o item não tem id e nome válidos. */
-function toBoardSummary(item: unknown): BoardSummary | undefined {
+function toWorkspaceBoard(item: unknown): WorkspaceBoard | undefined {
   if (typeof item !== 'object' || item === null) {
     return undefined;
   }
@@ -140,7 +142,7 @@ function toBoardSummary(item: unknown): BoardSummary | undefined {
 /** Lê a lista gravada; `null` quando não há nada, quando está estragada ou quando repete ids. */
 export function parseStoredBoards(
   raw: string | null,
-): readonly BoardSummary[] | null {
+): readonly WorkspaceBoard[] | null {
   if (!raw) {
     return null;
   }
@@ -158,9 +160,9 @@ export function parseStoredBoards(
   ) {
     return null;
   }
-  const boards: BoardSummary[] = [];
+  const boards: WorkspaceBoard[] = [];
   for (const item of data.boards as unknown[]) {
-    const board = toBoardSummary(item);
+    const board = toWorkspaceBoard(item);
     if (board) {
       boards.push(board);
     }

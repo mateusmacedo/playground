@@ -2,6 +2,7 @@ import { allCards, type Board, type BoardCard } from './board';
 import { archivedCards, createBoard } from './board-state';
 import { ancestorsOf } from './hierarchy';
 import { setPeople } from './people';
+import { withConsistentProcesses } from './process-consistency';
 import {
   isPositiveInteger,
   isRecord,
@@ -12,11 +13,13 @@ import {
   toLanes,
   type UnknownRecord,
 } from './stored-items';
+import { toProcesses } from './stored-process';
 
 /** Chave do quadro no `localStorage`; a versão do formato vai dentro do valor gravado. */
-export const BOARD_STORAGE_KEY = 'backoffice:quadro:v1';
+export { BOARD_STORAGE_KEY } from '@/shared/board/storage-keys';
 
-const BOARD_VERSION = 3;
+/** Versão do formato em que o quadro é gravado hoje. */
+export const BOARD_VERSION = 3;
 
 /** Ids e números únicos, pais que existem no quadro e nenhum ciclo na hierarquia das colunas. */
 function isConsistent(board: Board): boolean {
@@ -92,20 +95,18 @@ function fromVersion2(data: UnknownRecord): Board | null {
   if (!lanes) {
     return null;
   }
-  return withKnownReferences(
-    withKnownLabels(
-      createBoard({
-        lanes,
-        labels: keepValid({ value: stored.labels, parse: toLabel }) ?? [],
-        archive:
-          keepValid({ value: stored.archive, parse: toArchiveEntry }) ?? [],
-        nextNumber: isPositiveInteger(stored.nextNumber)
-          ? stored.nextNumber
-          : undefined,
-        config: toConfig(stored.config),
-      }),
-    ),
-  );
+  const board = createBoard({
+    lanes,
+    labels: keepValid({ value: stored.labels, parse: toLabel }) ?? [],
+    archive: keepValid({ value: stored.archive, parse: toArchiveEntry }) ?? [],
+    nextNumber: isPositiveInteger(stored.nextNumber)
+      ? stored.nextNumber
+      : undefined,
+    config: toConfig(stored.config),
+    // NOTE: os roteiros entraram sem subir a versão do formato: o quadro gravado antes deles só não os tem.
+    processes: toProcesses(stored.processes),
+  });
+  return withConsistentProcesses(withKnownReferences(withKnownLabels(board)));
 }
 
 export function serializeBoard(board: Board): string {
@@ -113,20 +114,11 @@ export function serializeBoard(board: Board): string {
 }
 
 /**
- * Lê o quadro gravado, na versão atual, na 2 (sem configuração) ou na 1 (só colunas, que ganham os números dos cards na ordem da tela). Devolve
- * `null` quando não há nada, quando o JSON é inválido ou de versão desconhecida, ou quando o conteúdo não forma um
- * quadro coerente; quem chama continua com o quadro que já tem.
+ * Lê o quadro do valor gravado (`{ version, ... }`), já fora do texto: na versão atual, na 2 (sem configuração) ou na
+ * 1 (só colunas, que ganham os números dos cards na ordem da tela). Devolve `null` quando a versão é desconhecida ou
+ * quando o conteúdo não forma um quadro coerente.
  */
-export function parseStoredBoard(raw: string | null): Board | null {
-  if (!raw) {
-    return null;
-  }
-  let data: unknown;
-  try {
-    data = JSON.parse(raw);
-  } catch {
-    return null;
-  }
+export function readStoredBoard(data: unknown): Board | null {
   if (!isRecord(data)) {
     return null;
   }
@@ -138,4 +130,21 @@ export function parseStoredBoard(raw: string | null): Board | null {
     board = fromVersion2(data);
   }
   return board && isConsistent(board) ? board : null;
+}
+
+/**
+ * Lê o quadro do texto gravado. Devolve `null` quando não há nada, quando o JSON é inválido e quando `readStoredBoard`
+ * não o aceita; quem chama continua com o quadro que já tem.
+ */
+export function parseStoredBoard(raw: string | null): Board | null {
+  if (!raw) {
+    return null;
+  }
+  let data: unknown;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  return readStoredBoard(data);
 }

@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { ConfirmModal } from '@/shared/ui/confirm-modal';
 
 import { DEFAULT_KEY_PREFIX } from '../model/config';
-import type { BoardSummary } from '../model/workspace';
+import type { WorkspaceBoard } from '../model/workspace';
 import { BoardFormDialog, type BoardFormValues } from './board-form-dialog';
 import { OnClosed } from './on-closed';
 
@@ -14,13 +14,13 @@ export interface WorkspaceDialog {
   readonly open: boolean;
   readonly kind: 'new' | 'remove';
   /** Quadro a excluir, guardado para o título não mudar enquanto a janela sai da tela. */
-  readonly board?: BoardSummary;
+  readonly board?: WorkspaceBoard;
 }
 
 export interface WorkspaceDialogState {
   readonly dialog: WorkspaceDialog | null;
   readonly openNew: () => void;
-  readonly openRemove: (board: BoardSummary) => void;
+  readonly openRemove: (board: WorkspaceBoard) => void;
   readonly close: () => void;
 }
 

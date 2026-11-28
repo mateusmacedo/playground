@@ -1,5 +1,6 @@
+import { blockerChanges, checklistChange } from './activity-links';
+import { processChanges } from './activity-process';
 import type { Board, BoardCard, BoardLabel, CardActivity } from './board';
-import { checklistProgress } from './checklist';
 import { personName } from './people';
 
 /** Onde o card está: numa coluna (com o nome dela) ou no arquivo. */
@@ -156,7 +157,7 @@ export function changesOf(params: ChangesOfParams): readonly CardActivity[] {
     changes.push({ at, kind: 'due-done', done: Boolean(after.dueDone) });
   }
   if (before.checklist !== after.checklist) {
-    changes.push({ at, kind: 'checklist', ...checklistProgress(after) });
+    changes.push(checklistChange({ before, after, titles, at }));
   }
   if (before.assigneeId !== after.assigneeId) {
     const to = personName({ board: boards.after, personId: after.assigneeId });
@@ -166,5 +167,7 @@ export function changesOf(params: ChangesOfParams): readonly CardActivity[] {
   if (attachment) {
     changes.push(attachment);
   }
+  changes.push(...blockerChanges({ before, after, titles, at }));
+  changes.push(...processChanges({ before, after, at }));
   return changes;
 }

@@ -1,3 +1,8 @@
+import type { ProcessPlan } from '@/shared/process/plan';
+import type { ProcessRun } from '@/shared/process/run';
+
+import type { LinkActivity } from './link-activity';
+
 /** Item do checklist de um card; o id só precisa ser único dentro do card. */
 export interface ChecklistItem {
   readonly id: string;
@@ -5,8 +10,41 @@ export interface ChecklistItem {
   readonly done: boolean;
 }
 
+/** Registro do processo do card no histórico dele. */
+export type ProcessActivity =
+  | {
+      readonly at: string;
+      readonly kind: 'process-started';
+      readonly name: string;
+    }
+  | {
+      readonly at: string;
+      readonly kind: 'process-step';
+      readonly step: string;
+      /** Ramo escolhido, desfecho da aprovação, exceção ou observação do motor. */
+      readonly detail?: string;
+    }
+  | {
+      readonly at: string;
+      readonly kind: 'process-finished';
+      readonly name: string;
+      readonly outcome?: string;
+    }
+  | {
+      readonly at: string;
+      readonly kind: 'process-cancelled';
+      readonly name: string;
+    }
+  | {
+      readonly at: string;
+      readonly kind: 'process-removed';
+      readonly name: string;
+    };
+
 /** Registro do histórico do card, com o que mudou na hora em que mudou (`at`, ISO 8601). */
 export type CardActivity =
+  | ProcessActivity
+  | LinkActivity
   | { readonly at: string; readonly kind: 'created'; readonly lane: string }
   | {
       readonly at: string;
@@ -78,6 +116,13 @@ export interface CardAttachment {
   readonly size?: number;
 }
 
+/** Etapa do processo de outro card que este card executa. */
+export interface CardStepLink {
+  readonly cardId: string;
+  /** Ficha parada na etapa; a ligação só vale enquanto a ficha existe. */
+  readonly tokenId: string;
+}
+
 /** Card do quadro sem saber o que representa: identidade, texto e os dados genéricos de qualquer quadro. */
 export interface BoardCard {
   readonly id: string;
@@ -99,6 +144,11 @@ export interface BoardCard {
   /** Do mais antigo para o mais recente. */
   readonly comments?: readonly CardComment[];
   readonly attachments?: readonly CardAttachment[];
+  /** Execução do processo deste card; o roteiro dela fica em `Board.processes`. */
+  readonly process?: ProcessRun;
+  /** Ids dos cards que bloqueiam este. */
+  readonly blockedBy?: readonly string[];
+  readonly stepOf?: CardStepLink;
 }
 
 /** Coluna do quadro; a ordem de `cards` é a ordem na tela. */
@@ -143,6 +193,30 @@ export interface ArchiveEntry {
   readonly cards: readonly ArchivedCard[];
 }
 
+/** Roteiro congelado de uma versão de processo, guardado uma vez por quadro para os cards que a executam. */
+export interface BoardProcess {
+  readonly definitionId: string;
+  readonly version: number;
+  readonly name: string;
+  readonly plan: ProcessPlan;
+}
+
+/** Regras opcionais do quadro; ausente vale desligada. Todas, menos `childInherits`, dependem da coluna de conclusão. */
+export interface BoardRules {
+  /** O pai não entra na coluna de conclusão com filha fora dela. */
+  readonly parentWaitsChildren?: boolean;
+  /** A última filha concluída leva o pai para a coluna de conclusão. */
+  readonly parentFollowsChildren?: boolean;
+  /** O card com processo em andamento não entra na coluna de conclusão. */
+  readonly doneWaitsProcess?: boolean;
+  /** O processo concluído leva o card para a coluna de conclusão. */
+  readonly processEndMovesCard?: boolean;
+  /** O card com bloqueador pendente não entra na coluna de conclusão. */
+  readonly doneWaitsBlockers?: boolean;
+  /** O card filho novo herda o responsável e as etiquetas do pai. */
+  readonly childInherits?: boolean;
+}
+
 /** Configuração própria de cada quadro. */
 export interface BoardConfig {
   /** Prefixo do código dos cards (`QD` em `QD-12`). */
@@ -153,6 +227,7 @@ export interface BoardConfig {
   readonly people?: readonly BoardPerson[];
   /** Coluna que conta como concluída no progresso dos filhos de um card. */
   readonly doneLaneId?: string;
+  readonly rules?: BoardRules;
 }
 
 /** O quadro inteiro: colunas, arquivados, etiquetas, configuração e o próximo número de card, que nunca volta atrás. */
@@ -163,6 +238,8 @@ export interface Board {
   readonly labels: readonly BoardLabel[];
   readonly nextNumber: number;
   readonly config: BoardConfig;
+  /** Roteiros das execuções dos cards, um por versão de processo; o que nenhum card usa sai do quadro. */
+  readonly processes?: readonly BoardProcess[];
 }
 
 export interface CardLocation {

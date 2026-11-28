@@ -1,7 +1,6 @@
 import { BOARD_STORAGE_KEY } from './storage';
 import {
   addBoard,
-  type BoardSummary,
   boardStorageKey,
   DEFAULT_BOARD_ID,
   neighborBoard,
@@ -10,9 +9,10 @@ import {
   renameBoard,
   serializeBoards,
   validBoardName,
+  type WorkspaceBoard,
 } from './workspace';
 
-const boards: readonly BoardSummary[] = [
+const boards: readonly WorkspaceBoard[] = [
   { id: 'board-1', name: 'Principal' },
   { id: 'board-2', name: 'Operações' },
   { id: 'board-3', name: 'Jurídico' },

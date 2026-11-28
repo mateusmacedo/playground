@@ -8,6 +8,7 @@ import {
   removeCard,
   updateCard,
 } from '../model/cards';
+import { inheritedFromParent } from '../model/child-inherit';
 import { setParent } from '../model/hierarchy';
 import { nextId } from '../model/ids';
 import type { CommandContext } from './command-context';
@@ -23,7 +24,7 @@ export type CardCommands = Pick<
 >;
 
 /** Id do próximo card; conta também os arquivados, para um card restaurado não colidir com um novo. */
-function nextCardId(board: Board): string {
+export function nextCardId(board: Board): string {
   const live = allCards(board.lanes);
   const archived = archivedCards(board);
   const taken = [...live, ...archived].map((card) => card.id);
@@ -61,6 +62,10 @@ export function cardCommands(context: CommandContext): CardCommands {
               title: card.title,
               parentId: card.parentId,
               number: current.nextNumber,
+              ...inheritedFromParent({
+                board: current,
+                parentId: card.parentId,
+              }),
             },
           });
           if (lanes === current.lanes) {

@@ -30,10 +30,12 @@ export interface KanbanCardProps {
   /** Título do card pai, quando o card tem um. */
   readonly parentTitle?: string;
   readonly childCount: number;
-  /** Filhos na coluna de conclusão, quando o quadro tem uma. */
+  /** Descendentes na coluna de conclusão, quando o quadro tem uma. */
   readonly progress?: ChildProgress;
   /** Nome do responsável. */
   readonly assignee?: string;
+  /** O card tem bloqueador fora da coluna de conclusão. */
+  readonly blocked?: boolean;
   /** Etiquetas do card, na ordem do catálogo. */
   readonly labels: readonly BoardLabel[];
   /** Hoje (`AAAA-MM-DD`), só depois de montar no navegador. */
@@ -99,6 +101,7 @@ export function KanbanCard({
   childCount,
   progress,
   assignee,
+  blocked,
   labels,
   today,
   dimmed,
@@ -166,6 +169,7 @@ export function KanbanCard({
             today={today}
             assignee={assignee}
             progress={progress}
+            blocked={blocked}
           />
           {dimmed ? (
             <span className="visually-hidden">Fora da busca.</span>

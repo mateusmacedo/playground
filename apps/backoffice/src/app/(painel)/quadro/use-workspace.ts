@@ -1,16 +1,19 @@
-import { removeStorage, writeStorage } from './browser-storage';
+import { useState } from 'react';
+
+import { removeStorage } from './browser-storage';
 import type { BoardLane } from './model/board';
 import { createBoard } from './model/board-state';
 import { nextId } from './model/ids';
-import { serializeBoard } from './model/storage';
 import {
   addBoard,
-  type BoardSummary,
   boardStorageKey,
   neighborBoard,
   removeBoard,
   renameBoard,
+  type WorkspaceBoard,
 } from './model/workspace';
+import { type LoadPhase, READY } from './store/load-phase';
+import type { WorkspaceStore } from './store/workspace-store';
 import { boardViewKey } from './use-board-view';
 import { collapsedLanesKey } from './use-collapsed-lanes';
 import { useStoredBoards } from './use-stored-boards';
@@ -42,47 +45,57 @@ export interface WorkspaceCommands {
 }
 
 export interface WorkspaceState {
-  readonly boards: readonly BoardSummary[];
+  readonly boards: readonly WorkspaceBoard[];
   readonly activeId: string;
   /** A lista gravada já foi lida. */
   readonly loaded: boolean;
+  /**
+   * O que a tela mostra no lugar dos quadros. Só a lista que vem de um servidor passa por `loading` e `failed`: a do
+   * navegador é lida na hora, e a tela mostra o quadro principal enquanto isso.
+   */
+  readonly phase: LoadPhase;
+  readonly retryLoad: () => void;
+  /** Mudança na lista que o armazenamento recusou, em uma frase para a tela. */
+  readonly failure: string | null;
+  readonly dismissFailure: () => void;
   readonly commands: WorkspaceCommands;
 }
 
 export interface UseWorkspaceParams {
+  /** Onde a lista e os quadros são lidos e gravados. */
+  readonly store: WorkspaceStore;
   /** Id do quadro pedido no endereço, lido depois de montar. */
   readonly readRequestedId: () => string | null;
 }
 
-interface StoreNewBoardParams {
-  readonly boardId: string;
-  readonly keyPrefix: string;
-}
-
-/** Grava o quadro novo já com o prefixo escolhido, para ele abrir com a configuração certa. */
-function storeNewBoard(params: StoreNewBoardParams): void {
-  const board = createBoard({
-    lanes: NEW_BOARD_LANES,
-    config: { keyPrefix: params.keyPrefix },
-  });
-  writeStorage({
-    key: boardStorageKey(params.boardId),
-    value: serializeBoard(board),
-  });
-}
-
-/** Apaga tudo o que o quadro gravou no navegador: o conteúdo e as preferências de tela. */
-function eraseStoredBoard(boardId: string): void {
+/** Apaga as preferências de tela do quadro, que ficam sempre no navegador. */
+function eraseBoardPreferences(boardId: string): void {
   const key = boardStorageKey(boardId);
-  removeStorage(key);
   removeStorage(collapsedLanesKey(key));
   removeStorage(boardViewKey(key));
 }
 
+interface RestoredBoardParams {
+  readonly boards: readonly WorkspaceBoard[];
+  readonly board: WorkspaceBoard;
+  /** Posição que o quadro tinha na lista. */
+  readonly index: number;
+}
+
+/** A lista com o quadro de volta ao lugar dele, depois de uma exclusão que não deu certo. */
+function withRestoredBoard(
+  params: RestoredBoardParams,
+): readonly WorkspaceBoard[] {
+  const { boards, board, index } = params;
+  return [...boards.slice(0, index), board, ...boards.slice(index)];
+}
+
 /** Lista de quadros, o quadro aberto e os comandos de criar, renomear, excluir e escolher quadro. */
 export function useWorkspace(params: UseWorkspaceParams): WorkspaceState {
-  const { boards, activeId, loaded, setBoards, setActiveId } =
+  const { store } = params;
+  const { boards, activeId, loaded, phase, retry, updateBoards, setActiveId } =
     useStoredBoards(params);
+  const [failure, setFailure] = useState<string | null>(null);
 
   function create(board: NewBoard): string | undefined {
     const id = nextId({
@@ -90,22 +103,40 @@ export function useWorkspace(params: UseWorkspaceParams): WorkspaceState {
       taken: boards.map((existing) => existing.id),
     });
     const next = addBoard({ boards, board: { id, name: board.name } });
-    if (next === boards) {
+    const added = next.at(-1);
+    if (next === boards || !added) {
       return undefined;
     }
-    storeNewBoard({ boardId: id, keyPrefix: board.keyPrefix });
-    setBoards(next);
+    // NOTE: o quadro novo já é gravado com o prefixo escolhido, para abrir com a configuração certa.
+    const content = createBoard({
+      lanes: NEW_BOARD_LANES,
+      config: { keyPrefix: board.keyPrefix },
+    });
+    store.create({ boards: next, board: added, content });
+    updateBoards(() => next);
     setActiveId(id);
     return id;
   }
 
-  function remove(boardId: string) {
-    const next = removeBoard({ boards, boardId });
-    if (next === boards) {
+  function rename(change: BoardRename) {
+    const next = renameBoard({ boards, ...change });
+    const renamed = next.find((board) => board.id === change.boardId);
+    if (next === boards || !renamed) {
       return;
     }
-    eraseStoredBoard(boardId);
-    setBoards(next);
+    store.rename({ boards: next, boardId: renamed.id, name: renamed.name });
+    updateBoards(() => next);
+  }
+
+  function remove(boardId: string) {
+    const next = removeBoard({ boards, boardId });
+    const index = boards.findIndex((board) => board.id === boardId);
+    const removed = boards[index];
+    if (next === boards || !removed) {
+      return;
+    }
+    eraseBoardPreferences(boardId);
+    updateBoards(() => next);
     // NOTE: se o quadro excluído era o aberto, o vizinho dele passa a ser o aberto.
     const stillOpen = neighborBoard({
       before: boards,
@@ -113,6 +144,18 @@ export function useWorkspace(params: UseWorkspaceParams): WorkspaceState {
       boardId: activeId,
     });
     setActiveId(stillOpen ?? activeId);
+    void store.remove({ boards: next, boardId }).then((reason) => {
+      if (reason === null) {
+        return;
+      }
+      // WHY: o quadro continua no armazenamento; fora da lista, ele só voltaria a aparecer na próxima leitura.
+      updateBoards((current) =>
+        withRestoredBoard({ boards: current, board: removed, index }),
+      );
+      setFailure(
+        `Não foi possível excluir o quadro ${removed.name}. ${reason}`,
+      );
+    });
   }
 
   function select(boardId: string) {
@@ -126,11 +169,10 @@ export function useWorkspace(params: UseWorkspaceParams): WorkspaceState {
     boards,
     activeId,
     loaded,
-    commands: {
-      create,
-      rename: (change) => setBoards(renameBoard({ boards, ...change })),
-      remove,
-      select,
-    },
+    phase: store.remote ? phase : READY,
+    retryLoad: retry,
+    failure,
+    dismissFailure: () => setFailure(null),
+    commands: { create, rename, remove, select },
   };
 }

@@ -2,13 +2,14 @@ import { type FormEvent, type ReactNode, useState } from 'react';
 
 import { ConfirmModal } from '@/shared/ui/confirm-modal';
 
-import type { BoardLane, BoardPerson } from '../model/board';
+import type { BoardLane, BoardPerson, BoardRules } from '../model/board';
 import {
   isValidKeyPrefix,
   normalizeKeyPrefix,
   suggestKeyPrefix,
 } from '../model/config';
 import { BoardIdentityFields } from './board-identity-fields';
+import { BoardRulesField } from './board-rules-field';
 import { DoneLaneField } from './done-lane-field';
 import { PeopleEditor } from './people-editor';
 
@@ -19,6 +20,8 @@ export interface BoardFormValues {
   readonly doneLaneId?: string;
   /** Só na configuração de um quadro existente. */
   readonly people?: readonly BoardPerson[];
+  /** Só na configuração de um quadro existente: o conjunto inteiro das regras. */
+  readonly rules?: BoardRules;
 }
 
 export interface BoardFormDialogProps {
@@ -32,7 +35,7 @@ export interface BoardFormDialogProps {
   readonly validateName: (name: string) => string | null;
   /** Texto de apoio do campo do prefixo. */
   readonly prefixHelp?: string;
-  /** Colunas do quadro; com elas, a janela também configura a coluna de conclusão e as pessoas. */
+  /** Colunas do quadro; com elas, a janela também configura a coluna de conclusão, as regras e as pessoas. */
   readonly lanes?: readonly BoardLane[];
   readonly onSave: (values: BoardFormValues) => void;
   readonly onCancel: () => void;
@@ -62,6 +65,7 @@ export function BoardFormDialog({
   const [prefixEdited, setPrefixEdited] = useState(!suggestPrefix);
   const [doneLaneId, setDoneLaneId] = useState(initial.doneLaneId ?? '');
   const [people, setPeople] = useState(initial.people ?? []);
+  const [rules, setRules] = useState(initial.rules ?? {});
 
   const validName = validateName(name);
   const keyPrefix = normalizeKeyPrefix(prefix);
@@ -92,6 +96,7 @@ export function BoardFormDialog({
         keyPrefix,
         doneLaneId: doneLaneId || undefined,
         people,
+        rules,
       });
     } else {
       onSave({ name: validName, keyPrefix });
@@ -125,6 +130,11 @@ export function BoardFormDialog({
               lanes={lanes}
               doneLaneId={doneLaneId}
               onChange={setDoneLaneId}
+            />
+            <BoardRulesField
+              rules={rules}
+              hasDoneLane={lanes.some((lane) => lane.id === doneLaneId)}
+              onChange={setRules}
             />
             <PeopleEditor people={people} onChange={setPeople} />
           </>

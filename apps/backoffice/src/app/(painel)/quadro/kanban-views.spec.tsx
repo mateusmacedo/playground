@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 
 import { fireDrag } from './drag-test-utils';
 import { KanbanBoard } from './kanban-board';
@@ -91,7 +91,7 @@ describe('KanbanBoard: visão em lista', () => {
     ).toBeTruthy();
   });
 
-  it('mostra só os cards da busca e grava a visão escolhida', () => {
+  it('mostra só os cards da busca e grava a visão escolhida', async () => {
     const { unmount } = render(
       <KanbanBoard initialLanes={lanes} storageKey="quadro:visao-teste" />,
     );
@@ -115,6 +115,8 @@ describe('KanbanBoard: visão em lista', () => {
     expect(screen.getByRole('table')).toBeTruthy();
     fireEvent.click(button('Quadro'));
     expect(screen.getByRole('region', { name: 'A fazer' })).toBeTruthy();
+    // NOTE: o quadro lê o que está gravado logo depois de montar, e a leitura é assíncrona: o teste espera por ela.
+    await act(async () => undefined);
   });
 });
 
