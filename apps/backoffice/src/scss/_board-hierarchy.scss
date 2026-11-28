@@ -1,0 +1,14 @@
+// Lista em árvore do quadro: o botão de recolher e expandir e o espaço que alinha os títulos dos cards sem filhos.
+.kanban-list__toggle {
+  display: inline-flex;
+  flex: 0 0 1.25rem;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+// WHY: na visão "Etapas", sem largura mínima a coluna do nome da etapa encolhe até quebrar uma palavra por linha.
+.kanban-steps th[scope='row'] {
+  min-width: 10rem;
+}

@@ -1,0 +1,143 @@
+// Diagrama da execução: o desenho do editor, somente leitura, com as marcas de por onde a execução passou. A cor de
+// cada marca vem sempre com um traço próprio e um selo com ícone e nome.
+
+// WHY: o React Flow ocupa a altura do elemento pai; sem altura definida, o diagrama não aparece.
+.process-run-viewer__canvas {
+  height: 70vh;
+  min-height: 28rem;
+  overflow: hidden;
+  border: 1px solid var(--cui-border-color);
+  border-radius: var(--cui-border-radius);
+}
+
+// A partir de `lg` o diagrama vai até o rodapé, como o editor: o canvas ocupa a altura que sobra.
+@media (min-width: 992px) {
+  .process-run,
+  .process-run-viewer {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .process-run-viewer__canvas {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+  }
+}
+
+// WHY: sem arrastar nem selecionar, o React Flow tira os eventos de ponteiro do bloco inteiro, e o botão de abrir o
+// subprocesso herdaria isso. Ele é o único controle do bloco e precisa responder ao clique.
+.process-run-viewer .process-block__open {
+  pointer-events: auto;
+}
+
+// Cor de cada marca; o traço da moldura muda junto, para a cor não ser o único sinal.
+$process-run-mark-colors: (
+  active: primary,
+  waiting: warning,
+  done: success,
+  raised: danger,
+);
+
+.process-run-badge {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+  padding: 0.125rem 0.375rem;
+  border: 1px solid currentcolor;
+  border-radius: var(--cui-border-radius-pill);
+  background: var(--cui-body-bg);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.process-run-badge__icon {
+  flex: 0 0 auto;
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+@each $mark, $color in $process-run-mark-colors {
+  .process-run-node--#{$mark} > .process-block {
+    outline: 2px solid var(--cui-#{$color});
+    outline-offset: 3px;
+  }
+
+  .process-run-badge--#{$mark} {
+    color: var(--cui-#{$color}-text-emphasis);
+  }
+}
+
+.process-run-node--active > .process-block {
+  outline-width: 3px;
+}
+
+.process-run-node--waiting > .process-block {
+  outline-style: dashed;
+}
+
+.process-run-node--raised > .process-block {
+  outline-style: dotted;
+}
+
+// O selo fica sobre o canto do bloco, fora do caminho da entrada (no meio do topo) e sem mudar o tamanho dele.
+.react-flow__node > .process-run-badge {
+  position: absolute;
+  top: 0;
+  right: 0.5rem;
+  transform: translateY(-60%);
+}
+
+// O Evento de exceção é um círculo pequeno: o selo vai centralizado acima dele.
+.react-flow__node.process-run-node--raised > .process-run-badge {
+  right: auto;
+  left: 50%;
+  transform: translate(-50%, -110%);
+}
+
+.react-flow__edge.process-run-edge--taken .react-flow__edge-path {
+  stroke: var(--cui-success);
+  stroke-width: 3;
+}
+
+// WHY: o rótulo da conexão não tem ação no diagrama; sem os eventos de ponteiro, arrastar sobre ele move o canvas.
+.process-run-edge-label {
+  pointer-events: none;
+}
+
+.process-run-edge-label__taken {
+  display: inline-flex;
+  color: var(--cui-success-text-emphasis);
+
+  svg {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+}
+
+.process-run-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  padding: 0;
+  margin: 0 0 0.5rem;
+  color: var(--cui-secondary-color);
+  font-size: 0.75rem;
+  list-style: none;
+}
+
+.process-run-legend__item {
+  display: inline-flex;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+.process-run-legend__taken {
+  display: inline-block;
+  width: 1.5rem;
+  border-top: 3px solid var(--cui-success);
+}

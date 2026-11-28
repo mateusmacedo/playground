@@ -14,7 +14,7 @@ import { usePathname } from 'next/navigation';
 import SimpleBar from 'simplebar-react';
 
 import {
-  isActivePath,
+  activeHref,
   type NavBadge,
   type NavIcon,
   type NavItem,
@@ -26,6 +26,8 @@ interface NavLabelProps {
   readonly icon?: NavIcon;
   readonly badge?: NavBadge;
   readonly indent?: boolean;
+  /** No botão que abre o grupo, o selo fica junto do nome: a ponta direita é da seta do grupo. */
+  readonly inToggler?: boolean;
 }
 
 function NavLabel({
@@ -33,6 +35,7 @@ function NavLabel({
   icon,
   badge,
   indent = false,
+  inToggler = false,
 }: Readonly<NavLabelProps>) {
   return (
     <>
@@ -47,7 +50,11 @@ function NavLabel({
       )}
       {name}
       {badge && (
-        <CBadge className="ms-auto" color={badge.color} size="sm">
+        <CBadge
+          className={inToggler ? 'ms-2' : 'ms-auto'}
+          color={badge.color}
+          size="sm"
+        >
           {badge.text}
         </CBadge>
       )}
@@ -59,17 +66,20 @@ export interface AppSidebarNavProps {
   readonly items: readonly NavItem[];
 }
 
-/** Itens do menu lateral, com rolagem própria e o item da rota atual marcado. */
+/**
+ * Itens do menu lateral, com rolagem própria. Só o item mais específico da rota atual fica marcado, e o grupo que o
+ * contém abre.
+ *
+ * NOTE: quem expõe o estado ao leitor de tela é o CoreUI: o link ativo sai com `aria-current="page"`, e o botão do
+ * grupo, com `aria-expanded`.
+ */
 export function AppSidebarNav({ items }: Readonly<AppSidebarNavProps>) {
   const pathname = usePathname();
+  const active = activeHref({ pathname, items });
 
   const renderLink = (link: NavLink, indent = false) => (
     <CNavItem as="div" key={link.href}>
-      <CNavLink
-        active={isActivePath(pathname, link.href)}
-        as={Link}
-        href={link.href}
-      >
+      <CNavLink active={link.href === active} as={Link} href={link.href}>
         <NavLabel
           badge={link.badge}
           icon={link.icon}
@@ -96,10 +106,15 @@ export function AppSidebarNav({ items }: Readonly<AppSidebarNavProps>) {
               as="div"
               compact
               key={`group:${item.name}`}
-              toggler={<NavLabel icon={item.icon} name={item.name} />}
-              visible={item.items.some((link) =>
-                isActivePath(pathname, link.href),
-              )}
+              toggler={
+                <NavLabel
+                  badge={item.badge}
+                  icon={item.icon}
+                  inToggler
+                  name={item.name}
+                />
+              }
+              visible={item.items.some((link) => link.href === active)}
             >
               {item.items.map((link) => renderLink(link, true))}
             </CNavGroup>

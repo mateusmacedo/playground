@@ -35,12 +35,16 @@ export interface NavGroup {
   readonly kind: 'group';
   readonly name: string;
   readonly icon?: NavIcon;
+  readonly badge?: NavBadge;
   readonly items: readonly NavLink[];
 }
 
 export type NavItem = NavTitle | NavLink | NavGroup;
 
-/** Menu lateral do painel. As páginas novas entram aqui e em `routes.ts`, para o breadcrumb. */
+/**
+ * Menu lateral do painel. As páginas novas entram aqui e em `routes.ts`, para o breadcrumb. A rota que é filha de
+ * outra entra como filho do grupo do pai, e a própria rota do pai vira o primeiro filho.
+ */
 export const navItems: readonly NavItem[] = [
   { kind: 'link', name: 'Início', href: '/', icon: cilHome },
   {
@@ -51,11 +55,14 @@ export const navItems: readonly NavItem[] = [
     badge: { text: 'Beta', color: 'info' },
   },
   {
-    kind: 'link',
+    kind: 'group',
     name: 'Processos',
-    href: '/processos',
     icon: cilSitemap,
     badge: { text: 'Beta', color: 'info' },
+    items: [
+      { kind: 'link', name: 'Editor', href: '/processos' },
+      { kind: 'link', name: 'Execuções', href: '/processos/execucao' },
+    ],
   },
 ];
 
@@ -90,10 +97,47 @@ function hasEntryBeforeNextTitle(
   return !!next && next.kind !== 'title';
 }
 
-/** O item fica ativo na própria rota e nas rotas abaixo dela; a raiz só na raiz. */
+/** O endereço casa com a própria rota e com as rotas abaixo dela; a raiz só com a raiz. */
 export function isActivePath(pathname: string, href: string): boolean {
   if (href === '/') {
     return pathname === '/';
   }
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function linksOf(items: readonly NavItem[]): readonly NavLink[] {
+  const links: NavLink[] = [];
+  for (const item of items) {
+    if (item.kind === 'link') {
+      links.push(item);
+    }
+    if (item.kind === 'group') {
+      links.push(...item.items);
+    }
+  }
+  return links;
+}
+
+export interface ActiveHrefParams {
+  readonly pathname: string;
+  readonly items: readonly NavItem[];
+}
+
+/**
+ * Endereço do item ativo do menu: entre os links que casam com a rota, só o mais específico, que é o de endereço mais
+ * longo. Em `/processos/execucao` fica ativo "Execuções", e não "Editor", cujo endereço é prefixo do dela. `undefined`
+ * quando nenhum item casa.
+ */
+export function activeHref(params: ActiveHrefParams): string | undefined {
+  const { pathname, items } = params;
+  let active: string | undefined;
+  for (const link of linksOf(items)) {
+    if (!isActivePath(pathname, link.href)) {
+      continue;
+    }
+    if (active === undefined || link.href.length > active.length) {
+      active = link.href;
+    }
+  }
+  return active;
 }

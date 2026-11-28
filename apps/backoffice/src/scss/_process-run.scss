@@ -1,0 +1,56 @@
+// Processo no card do quadro: a seção "Processo" do painel de detalhes e o selo na face do card e na lista.
+
+// WHY: o título da seção recebe o foco quando o controle acionado sai da tela (a etapa foi resolvida); o contorno
+// mostra para onde o foco foi, sem deslocar o texto.
+.kanban-process > h3:focus-visible {
+  outline: 2px solid var(--cui-primary);
+  outline-offset: 2px;
+  border-radius: var(--cui-border-radius-sm);
+}
+
+// Barra de andamento nativa, na altura e nas cores das barras do tema.
+.kanban-process__progress {
+  height: 0.5rem;
+  min-width: 4rem;
+  accent-color: var(--cui-primary);
+}
+
+// A etapa ativa se destaca das outras seções do painel sem pesar: fundo sutil e a borda do tema.
+.kanban-process__step {
+  background-color: var(--cui-tertiary-bg);
+}
+
+// Dados da etapa e campos preenchidos: o rótulo em destaque, com o valor na mesma linha quando cabe.
+.kanban-process__facts {
+  > div {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 0.375rem;
+  }
+
+  dt {
+    font-weight: 600;
+
+    &::after {
+      content: ':';
+    }
+  }
+
+  dd {
+    margin-bottom: 0;
+    // Instruções e valores digitados mantêm as quebras de linha e não estouram o painel.
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
+.kanban-process__trail > summary {
+  cursor: pointer;
+}
+
+// O selo do processo pode ter um nome longo: quebra a linha em vez de alargar o card.
+.kanban-card__process {
+  max-width: 100%;
+  white-space: normal;
+  text-align: start;
+}
