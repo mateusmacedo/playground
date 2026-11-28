@@ -8,6 +8,9 @@
     "tags": [
       "scope:backoffice",
       "type:app"
+    ],
+    "implicitDependencies": [
+      "backoffice-mock"
     ]
   },
   "dependencies": {

@@ -148,7 +148,13 @@
       },
       {
         "filter": { "plugin": "@nx/next/plugin" },
-        "inputs": ["production", "^production"]
+        "inputs": [
+          "production",
+          "^production",
+          { "env": "NEXT_PUBLIC_API_URL" },
+          { "env": "NEXT_PUBLIC_APP_NAME" },
+          { "env": "NEXT_PUBLIC_STAGE" }
+        ]
       },
       {
         "filter": { "plugin": "@nx/js/typescript" },
