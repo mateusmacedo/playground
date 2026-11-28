@@ -103,8 +103,26 @@ jobs:
       - name: Instalar browsers
         run: pnpm exec playwright install --with-deps chromium firefox webkit
 
+      # WHY: o painel do e2e lê e grava na API, servida pelo mock; o `up` só
+      # volta com o container saudável (docs/guides/backoffice-api.md).
+      - name: Subir o mock da API
+        id: mock
+        run: pnpm exec nx run backoffice-mock:up
+
       - name: E2E
         run: pnpm exec nx run-many -t e2e
+
+      # NOTE: o target `logs` do mock segue o log e não termina; aqui vai o
+      # compose direto, com o que o container registrou até a falha. Os dois
+      # passos abaixo só rodam se a subida do mock chegou a ser tentada.
+      - name: Log do mock da API
+        if: ${{ failure() && (steps.mock.outcome == 'success' || steps.mock.outcome == 'failure') }}
+        working-directory: apps/backoffice-mock
+        run: docker compose logs --no-color --tail=500
+
+      - name: Derrubar o mock da API
+        if: ${{ always() && (steps.mock.outcome == 'success' || steps.mock.outcome == 'failure') }}
+        run: pnpm exec nx run backoffice-mock:down
 
   # WHY: nenhuma versão sai sem as metas do ADR 0015, analisadas no próprio
   # commit que vira versão.
